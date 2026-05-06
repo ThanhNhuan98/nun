@@ -1,0 +1,5 @@
+RewriteEngine On
+# Nếu không phải là một file hoặc thư mục có thật, hãy chuyển hướng về index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
