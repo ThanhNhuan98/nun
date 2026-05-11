@@ -19,11 +19,16 @@ class OrderController extends BaseController
     private function uploadProofImage(int $orderId, string $prefix = ''): string
     {
         if (isset($_FILES['proof_image']) && $_FILES['proof_image']['error'] === UPLOAD_ERR_OK) {
+            $validation = app_validate_uploaded_image($_FILES['proof_image']);
+            if (!$validation['valid']) {
+                throw new \RuntimeException($validation['error'] ?? 'Ảnh minh chứng không hợp lệ.');
+            }
+
             $uploadDir = dirname(__DIR__, 3) . '/public/uploads/proofs/';
             if (!is_dir($uploadDir)) {
                 @mkdir($uploadDir, 0777, true);
             }
-            $extension = pathinfo($_FILES['proof_image']['name'], PATHINFO_EXTENSION);
+            $extension = $validation['extension'] ?? 'jpg';
             $prefixStr = $prefix ? "_{$prefix}" : '';
             $filename = 'proof_' . $orderId . $prefixStr . '_' . time() . '_' . uniqid() . '.' . $extension;
             $targetPath = $uploadDir . $filename;
@@ -469,7 +474,12 @@ class OrderController extends BaseController
         if (isset($allowedTransitions[$currentStatus]) && in_array($newStatus, $allowedTransitions[$currentStatus])) {
             
             // Xử lý upload ảnh minh chứng (nếu có)
-            $proofImagePath = $this->uploadProofImage($orderId);
+            try {
+                $proofImagePath = $this->uploadProofImage($orderId);
+            } catch (\RuntimeException $e) {
+                $_SESSION['flash_error'] = $e->getMessage();
+                return $response->redirect("/driver/orders/view/$orderId");
+            }
             
             // Bắt buộc phải có ảnh khi Giao xong, Hủy đơn hoặc Chuyển hoàn
             if (in_array($newStatus, ['completed', 'cancelled', 'returning']) && empty($proofImagePath)) {
@@ -500,6 +510,13 @@ class OrderController extends BaseController
             $db->beginTransaction();
 
             try {
+                if (!empty($proofImagePath)) {
+                    $db->prepare("UPDATE order_deliveries SET proof_image = ? WHERE order_id = ?")->execute([$proofImagePath, $orderId]);
+                }
+                if ($cancelReason !== '') {
+                    $db->prepare("UPDATE order_deliveries SET cancel_reason = ? WHERE order_id = ?")->execute([$cancelReason, $orderId]);
+                }
+
                 if ($orderModel->updateStatus($orderId, $newStatus, $description)) {
                     $successMessage = "Cập nhật trạng thái thành công!";
 
@@ -594,7 +611,12 @@ class OrderController extends BaseController
         }
 
         // Bắt buộc phải có ảnh khi báo cáo bom hàng
-        $proofImagePath = $this->uploadProofImage($orderId, 'noshow');
+        try {
+            $proofImagePath = $this->uploadProofImage($orderId, 'noshow');
+        } catch (\RuntimeException $e) {
+            $_SESSION['flash_error'] = $e->getMessage();
+            return $response->redirect("/driver/orders/view/$orderId");
+        }
 
         if (empty($proofImagePath)) {
             $_SESSION['flash_error'] = "Lỗi: Bạn bắt buộc phải chụp và tải lên ảnh minh chứng tại địa điểm giao/nhận để báo cáo khách bom hàng!";
@@ -611,6 +633,9 @@ class OrderController extends BaseController
             // Nếu đang đi lấy hàng (accepted/picking_up) -> Hủy đơn
             // Nếu đang đi giao hàng (in_transit/shipping) -> Chuyển hoàn (returning)
             $newStatus = in_array($order['status'], ['accepted', 'picking_up']) ? 'cancelled' : 'returning';
+
+            $db->prepare("UPDATE order_deliveries SET proof_image = ?, cancel_reason = ? WHERE order_id = ?")
+                ->execute([$proofImagePath, $reason, $orderId]);
 
             if ($orderModel->updateStatus($orderId, $newStatus, $description)) {
                 // 1. Kích hoạt hàm phạt khách hàng (viết sẵn trong Model)

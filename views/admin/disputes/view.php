@@ -36,7 +36,7 @@
                 <div style="margin-top: 16px;">
                     <span class="detail-label" style="font-size: 14px;">Nội dung phản ánh</span>
                     <div class="detail-content-box">
-                        <?= nl2br(htmlspecialchars($dispute['description'] ?? 'Không có nội dung chi tiết')) ?>
+                        <?= nl2br(htmlspecialchars($dispute['issue_type'] ?? 'Không có nội dung chi tiết')) ?>
                     </div>
                 </div>
             </div>
@@ -95,7 +95,7 @@
                     <label class="form-label">Trạng thái xử lý</label>
                     <select name="status" class="form-control">
                         <option value="open" <?= $dispute['status'] === 'open' ? 'selected' : '' ?>>Đang mở (Cần xử lý)</option>
-                        <option value="processing" <?= $dispute['status'] === 'processing' ? 'selected' : '' ?>>Đang giải quyết</option>
+                        <option value="in_review" <?= in_array($dispute['status'], ['in_review', 'processing'], true) ? 'selected' : '' ?>>Đang giải quyết</option>
                         <option value="resolved" <?= $dispute['status'] === 'resolved' ? 'selected' : '' ?>>Đã giải quyết (Hoàn tất)</option>
                         <option value="rejected" <?= $dispute['status'] === 'rejected' ? 'selected' : '' ?>>Từ chối khiếu nại</option>
                     </select>

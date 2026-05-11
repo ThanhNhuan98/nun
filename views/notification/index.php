@@ -1,3 +1,10 @@
+<?php
+/**
+
+ * @var int $currentPage
+ * @var int $totalPages
+ */
+?>
 <?php require_once __DIR__ . '/../layouts/user_header.php'; ?>
 
 <div class="active-page-header">

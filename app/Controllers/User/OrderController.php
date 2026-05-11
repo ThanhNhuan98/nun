@@ -66,15 +66,20 @@ class OrderController extends BaseController
         try {
             // 2. Validate dữ liệu
             (new Validator($data))->validate([
+                'sender_name' => 'max:120',
+                'sender_phone' => 'phone',
                 'receiver_name' => 'required|max:120',
                 'receiver_phone' => 'required|phone',
                 'pickup_address' => 'required|max:500',
+                'pickup_address_detail' => 'max:255',
                 'delivery_address' => 'required|max:500',
+                'delivery_address_detail' => 'max:255',
                 'sender_lat' => 'required|numeric',
                 'sender_lng' => 'required|numeric',
                 'receiver_lat' => 'required|numeric',
                 'receiver_lng' => 'required|numeric',
                 'weight' => 'required|float|gt:0',
+                'shipping_method' => 'required|in:standard,fast,express',
                 'payment_method' => 'required|in:cash,transfer',
                 'note' => 'max:1000',
                 'scheduled_at' => 'required|after_now|before_one_week',
@@ -90,21 +95,27 @@ class OrderController extends BaseController
 
     private function createOrder(Response $response, array $data)
     {
+        $originalData = $data;
+
         try {
             $data['customer_id'] = $this->userId();
-            $data['sender_name'] = $this->currentUser('name', '');
-            $data['sender_phone'] = $this->currentUser('phone', '');
-            
-            $baseFee = (new ShippingFeeService())->feeOrFallback($data);
-            $method = $data['shipping_method'] ?? 'standard';
-            
-            if ($method === 'express') {
-                $data['shipping_fee'] = $baseFee + 30000;
-            } elseif ($method === 'fast') {
-                $data['shipping_fee'] = $baseFee + 15000;
-            } else {
-                $data['shipping_fee'] = $baseFee;
+            $data['sender_name'] = $this->resolveSenderField($data['sender_name'] ?? '', 'name');
+            $data['sender_phone'] = $this->resolveSenderField($data['sender_phone'] ?? '', 'phone');
+            $data['pickup_address'] = $this->mergeDetailedAddress(
+                $data['pickup_address'] ?? '',
+                $data['pickup_address_detail'] ?? ''
+            );
+            $data['delivery_address'] = $this->mergeDetailedAddress(
+                $data['delivery_address'] ?? '',
+                $data['delivery_address_detail'] ?? ''
+            );
+
+            if (mb_strlen($data['pickup_address']) > 500 || mb_strlen($data['delivery_address']) > 500) {
+                throw new \Exception('Địa chỉ đầy đủ không được vượt quá 500 ký tự.');
             }
+
+            $quote = (new ShippingFeeService())->quote($data);
+            $data['shipping_fee'] = (float) ($quote['shipping_fee'] ?? 25000);
 
             $orderModel = new Order();
             $trackingCode = $orderModel->create($data);
@@ -123,7 +134,7 @@ class OrderController extends BaseController
 
         } catch (\Exception $e) {
             // Nếu có lỗi từ service, hiển thị lại form với lỗi
-            return $this->renderCreateForm($response, ['errors' => ['general' => $e->getMessage()], 'old' => $data]);
+            return $this->renderCreateForm($response, ['errors' => ['general' => $e->getMessage()], 'old' => $originalData]);
         }
     }
 
@@ -134,6 +145,36 @@ class OrderController extends BaseController
         ];
 
         return $response->render('user/orders/create', array_merge($defaults, $params));
+    }
+
+    private function resolveSenderField(string $value, string $sessionKey): string
+    {
+        $value = trim($value);
+        if ($value !== '') {
+            return $value;
+        }
+
+        return (string) $this->currentUser($sessionKey, '');
+    }
+
+    private function mergeDetailedAddress(string $baseAddress, string $detailAddress): string
+    {
+        $baseAddress = trim($baseAddress);
+        $detailAddress = trim($detailAddress);
+
+        if ($detailAddress === '') {
+            return $baseAddress;
+        }
+
+        if ($baseAddress === '') {
+            return $detailAddress;
+        }
+
+        if (stripos($baseAddress, $detailAddress) !== false) {
+            return $baseAddress;
+        }
+
+        return $detailAddress . ', ' . $baseAddress;
     }
 
     /**
@@ -242,7 +283,10 @@ class OrderController extends BaseController
             return $response->json([
                 'success' => true, 
                 'fee' => $quote['shipping_fee'],
+                'base_fee' => $quote['base_fee'] ?? $quote['shipping_fee'],
+                'surge_fee' => $quote['surge_fee'] ?? 0,
                 'distance' => $quote['distance_km'],
+                'duration_minutes' => $quote['duration_minutes'] ?? null,
                 'surge_label' => $quote['surge_label'],
                 'surge_multiplier' => $quote['surge_multiplier']
             ]);
@@ -451,7 +495,7 @@ class OrderController extends BaseController
                     $settingModel = new Setting();
                     $platformFeePercent = (float) $settingModel->get('platform_fee_percent', 20);
                     $feePerOrder = (int) ceil(($order['shipping_fee'] ?? 0) * $platformFeePercent / 100);
-                    $walletModel->add($order['driver_id'], $feePerOrder);
+                    $walletModel->add($order['driver_id'], $feePerOrder, 'refund', "Hoàn phí nền tảng do khách tự hủy đơn #{$order['tracking_code']}", $order['id']);
 
                     // GỬI THÔNG BÁO CHO TÀI XẾ
                     $userModel = new User();
@@ -480,6 +524,7 @@ class OrderController extends BaseController
             $_SESSION['flash_success'] = "Đã hủy đơn hàng thành công.";
         } catch (\Exception $e) {
             $db->rollBack();
+            error_log('Cancel Order Failed: ' . $e->getMessage());
             $_SESSION['flash_error'] = "Có lỗi xảy ra khi hủy đơn hàng.";
         }
 
@@ -535,6 +580,7 @@ class OrderController extends BaseController
 
             $_SESSION['flash_success'] = "Đã gửi yêu cầu khiếu nại thành công. Quản trị viên sẽ sớm liên hệ giải quyết.";
         } catch (\Exception $e) {
+            error_log('Dispute Order Failed: ' . $e->getMessage());
             $_SESSION['flash_error'] = "Có lỗi xảy ra khi gửi khiếu nại.";
         }
 
@@ -576,6 +622,7 @@ class OrderController extends BaseController
 
             $_SESSION['flash_success'] = "Đã rút yêu cầu khiếu nại thành công.";
         } catch (\Exception $e) {
+            error_log('Withdraw Dispute Failed: ' . $e->getMessage());
             $_SESSION['flash_error'] = "Có lỗi xảy ra khi rút khiếu nại.";
         }
 

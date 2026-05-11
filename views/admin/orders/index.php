@@ -36,6 +36,7 @@
         <?php 
         // Danh sách trạng thái cần hiển thị trên thanh filter
         $filterOptions = [
+            'awaiting_payment' => 'Chờ thanh toán',
             'pending' => 'Chờ xử lý',
             'searching_driver' => 'Đang tìm tài xế',
             'in_transit' => 'Đang giao hàng',

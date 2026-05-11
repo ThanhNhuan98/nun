@@ -17,20 +17,31 @@ class AuthController
     private function uploadVehicleImage(): string
     {
         if (isset($_FILES['vehicle_registration']) && $_FILES['vehicle_registration']['error'] === UPLOAD_ERR_OK) {
+            $validation = app_validate_uploaded_image($_FILES['vehicle_registration']);
+            if (!$validation['valid']) {
+                throw new \RuntimeException($validation['error'] ?? 'Ảnh giấy đăng ký xe không hợp lệ.');
+            }
+
             $uploadDir = dirname(__DIR__, 2) . '/public/uploads/vehicles/';
-            if (!is_dir($uploadDir)) @mkdir($uploadDir, 0777, true);
-            $ext = pathinfo($_FILES['vehicle_registration']['name'], PATHINFO_EXTENSION);
+            if (!is_dir($uploadDir)) {
+                @mkdir($uploadDir, 0777, true);
+            }
+
+            $ext = $validation['extension'] ?? 'jpg';
             $filename = 'reg_' . time() . '_' . uniqid() . '.' . $ext;
+
             if (move_uploaded_file($_FILES['vehicle_registration']['tmp_name'], $uploadDir . $filename)) {
                 return '/uploads/vehicles/' . $filename;
             }
+
+            throw new \RuntimeException('Không thể lưu ảnh giấy đăng ký xe.');
         }
+
         return '';
     }
 
     public function showLoginForm(Request $request, Response $response)
     {
-        // Nếu đã đăng nhập thì không cho vào trang login nữa
         if (isset($_SESSION['user'])) {
             return $this->redirectBasedOnRole($response, $_SESSION['user']['role'] ?? 'user');
         }
@@ -45,7 +56,6 @@ class AuthController
         $data = $request->getBody();
 
         try {
-            // Chuẩn hóa: Sử dụng chung thư viện Validator cho mọi Form để thống nhất luồng báo lỗi
             (new Validator($data))->validate([
                 'account' => 'required',
                 'password' => 'required'
@@ -73,16 +83,16 @@ class AuthController
 
                 $_SESSION['user'] = $sessionUser;
                 $_SESSION['user_id'] = $user['id'];
-                
+
                 return $this->redirectBasedOnRole($response, $user['role']);
             }
 
             throw new ValidationException(['account' => ['Tài khoản hoặc mật khẩu không chính xác.']], $data);
-
         } catch (ValidationException $e) {
-            // Lấy thông báo lỗi đầu tiên để hiển thị cho màn hình Login
             $firstError = !empty($e->errors) ? reset($e->errors)[0] ?? reset($e->errors) : 'Lỗi đăng nhập.';
-            if (is_array($firstError)) $firstError = $firstError[0]; // Dự phòng ép kiểu
+            if (is_array($firstError)) {
+                $firstError = $firstError[0];
+            }
 
             return $response->render('auth/login', [
                 'pageTitle' => 'Đăng nhập - NUN Express',
@@ -116,7 +126,7 @@ class AuthController
                 'password' => 'required|min:6',
                 'password_confirm' => 'required|password_match:password',
             ];
-            
+
             if (($data['role'] ?? '') === 'driver') {
                 $rules['license_plate'] = 'required|max:20';
             }
@@ -124,11 +134,16 @@ class AuthController
 
             $vehicleImage = (($data['role'] ?? '') === 'driver') ? $this->uploadVehicleImage() : '';
             return $this->createUserAndSendMail($response, $data, $vehicleImage);
-
         } catch (ValidationException $e) {
             return $response->render('auth/register', [
                 'pageTitle' => 'Đăng ký - NUN Express',
                 'errors' => $e->errors,
+                'old' => $data
+            ]);
+        } catch (\RuntimeException $e) {
+            return $response->render('auth/register', [
+                'pageTitle' => 'Đăng ký - NUN Express',
+                'errors' => ['general' => $e->getMessage()],
                 'old' => $data
             ]);
         }
@@ -144,7 +159,6 @@ class AuthController
 
         $hashedPassword = password_hash($password, PASSWORD_BCRYPT);
 
-        // Sử dụng Transaction: Đảm bảo KHÔNG LƯU VÀO DB nếu gửi mail thất bại
         $db = \App\Core\Database::getInstance();
         $db->beginTransaction();
 
@@ -152,19 +166,21 @@ class AuthController
             $userModel = new User();
             $newUserId = $userModel->create($name, $email, $phone, $hashedPassword, $role, $data['license_plate'] ?? null, $vehicleImage);
             if (!$newUserId) {
-                throw new \Exception("Không thể khởi tạo tài khoản.");
+                throw new \Exception('Không thể khởi tạo tài khoản.');
             }
 
             if (!empty($email)) {
                 $otp = random_int(100000, 999999);
-                $userModel->setVerificationToken($newUserId, (string)$otp);
+                $userModel->setVerificationToken($newUserId, (string) $otp);
 
                 $mailService = new MailService();
-                $mailService->sendVerificationEmail($email, $name, (string)$otp);
+                $mailService->sendVerificationEmail($email, $name, (string) $otp);
 
-                $db->commit(); // Gửi mail thành công mới lưu vĩnh viễn vào DB
+                $db->commit();
 
                 $_SESSION['verification_email'] = $email;
+                $_SESSION['verification_otp'] = (string) $otp;
+                $_SESSION['verification_otp_expires_at'] = time() + (15 * 60);
                 $_SESSION['flash_info'] = 'Đăng ký thành công! Một mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra và xác thực.';
                 return $response->redirect('/auth/verify');
             }
@@ -172,9 +188,8 @@ class AuthController
             $db->commit();
             $_SESSION['flash_success'] = 'Đăng ký tài khoản thành công! Vui lòng đăng nhập bằng số điện thoại.';
             return $response->redirect('/login');
-
         } catch (\Exception $e) {
-            $db->rollBack(); // Mail lỗi thì hoàn tác, xoá sạch dữ liệu rác, đảm bảo DB luôn sạch
+            $db->rollBack();
             $_SESSION['flash_error'] = 'Đã xảy ra lỗi: ' . $e->getMessage();
             return $response->redirect('/register');
         }
@@ -182,8 +197,13 @@ class AuthController
 
     public function showVerifyForm(Request $request, Response $response)
     {
-        // Nếu không có email trong session, tức là chưa đăng ký, thì quay về trang đăng ký
         if (empty($_SESSION['verification_email'])) {
+            return $response->redirect('/register');
+        }
+
+        if (!empty($_SESSION['verification_otp_expires_at']) && time() > (int) $_SESSION['verification_otp_expires_at']) {
+            unset($_SESSION['verification_email'], $_SESSION['verification_otp'], $_SESSION['verification_otp_expires_at']);
+            $_SESSION['flash_error'] = 'Mã OTP xác thực đã hết hạn. Vui lòng đăng ký lại để nhận mã mới.';
             return $response->redirect('/register');
         }
 
@@ -198,12 +218,22 @@ class AuthController
         $data = $request->getBody();
         $otp = trim($data['otp'] ?? '');
 
+        if (empty($_SESSION['verification_email'])) {
+            return $response->redirect('/register');
+        }
+
+        if (!empty($_SESSION['verification_otp_expires_at']) && time() > (int) $_SESSION['verification_otp_expires_at']) {
+            unset($_SESSION['verification_email'], $_SESSION['verification_otp'], $_SESSION['verification_otp_expires_at']);
+            $_SESSION['flash_error'] = 'Mã OTP xác thực đã hết hạn. Vui lòng đăng ký lại để nhận mã mới.';
+            return $response->redirect('/register');
+        }
+
         $userModel = new User();
         $user = $userModel->findUserByToken($otp);
 
-        if ($user) {
+        if ($user && !empty($_SESSION['verification_otp']) && hash_equals((string) $_SESSION['verification_otp'], $otp)) {
             $userModel->markEmailAsVerified($user['id']);
-            unset($_SESSION['verification_email']); // Xóa session sau khi xác thực thành công
+            unset($_SESSION['verification_email'], $_SESSION['verification_otp'], $_SESSION['verification_otp_expires_at']);
             $_SESSION['flash_success'] = 'Xác thực tài khoản thành công! Bây giờ bạn có thể đăng nhập.';
             return $response->redirect('/login');
         }
@@ -218,9 +248,6 @@ class AuthController
         return $response->redirect('/login');
     }
 
-    /**
-     * Show forgot password form
-     */
     public function showForgotPasswordForm(Request $request, Response $response)
     {
         if (isset($_SESSION['user'])) {
@@ -232,9 +259,6 @@ class AuthController
         ]);
     }
 
-    /**
-     * Request OTP for password reset
-     */
     public function requestOTP(Request $request, Response $response)
     {
         if (isset($_SESSION['user'])) {
@@ -263,7 +287,6 @@ class AuthController
             ]);
         }
 
-        // Store in session for next step
         $_SESSION['otp_user_id'] = $result['user_id'];
         $_SESSION['otp_email_hint'] = $result['email_hint'];
         $_SESSION['flash_success'] = $result['message'];
@@ -271,9 +294,6 @@ class AuthController
         return $response->redirect('/verify-otp');
     }
 
-    /**
-     * Show OTP verification form
-     */
     public function showVerifyOTPForm(Request $request, Response $response)
     {
         if (isset($_SESSION['user'])) {
@@ -290,9 +310,6 @@ class AuthController
         ]);
     }
 
-    /**
-     * Verify OTP code
-     */
     public function verifyOTP(Request $request, Response $response)
     {
         if (isset($_SESSION['user'])) {
@@ -315,7 +332,7 @@ class AuthController
         }
 
         $passwordResetModel = new \App\Models\PasswordReset();
-        $result = $passwordResetModel->verifyOTP((int)$_SESSION['otp_user_id'], $otpCode);
+        $result = $passwordResetModel->verifyOTP((int) $_SESSION['otp_user_id'], $otpCode);
 
         if (!$result['success']) {
             return $response->render('auth/verify-otp', [
@@ -325,16 +342,12 @@ class AuthController
             ]);
         }
 
-        // Store reset token and proceed to password reset
         $_SESSION['reset_token'] = $result['reset_token'];
         $_SESSION['flash_success'] = $result['message'];
 
         return $response->redirect('/reset-password');
     }
 
-    /**
-     * Show reset password form
-     */
     public function showResetPasswordForm(Request $request, Response $response)
     {
         if (isset($_SESSION['user'])) {
@@ -350,9 +363,6 @@ class AuthController
         ]);
     }
 
-    /**
-     * Reset password
-     */
     public function resetPassword(Request $request, Response $response)
     {
         if (isset($_SESSION['user'])) {
@@ -373,7 +383,7 @@ class AuthController
 
             $passwordResetModel = new \App\Models\PasswordReset();
             $result = $passwordResetModel->resetPassword(
-                (int)$_SESSION['otp_user_id'],
+                (int) $_SESSION['otp_user_id'],
                 $_SESSION['reset_token'],
                 $data['password']
             );
@@ -385,12 +395,10 @@ class AuthController
                 ]);
             }
 
-            // Clear session
             unset($_SESSION['otp_user_id'], $_SESSION['reset_token'], $_SESSION['otp_email_hint']);
 
             $_SESSION['flash_success'] = $result['message'] . ' Vui lòng đăng nhập với mật khẩu mới.';
             return $response->redirect('/login');
-
         } catch (ValidationException $e) {
             return $response->render('auth/reset-password', [
                 'pageTitle' => 'Đặt lại mật khẩu - NUN Express',
@@ -401,8 +409,12 @@ class AuthController
 
     private function redirectBasedOnRole(Response $response, string $role)
     {
-        if ($role === 'driver') return $response->redirect('/driver/active-orders');
-        if ($role === 'admin') return $response->redirect('/admin/dashboard');
+        if ($role === 'driver') {
+            return $response->redirect('/driver/active-orders');
+        }
+        if ($role === 'admin') {
+            return $response->redirect('/admin/dashboard');
+        }
         return $response->redirect('/user/dashboard');
     }
 }

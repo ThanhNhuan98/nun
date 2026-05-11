@@ -177,3 +177,50 @@ if (!function_exists('array_is_list')) {
         return array_keys($array) === range(0, count($array) - 1);
     }
 }
+
+if (!function_exists('app_validate_uploaded_image')) {
+    /**
+     * Kiá»ƒm tra file upload cĂ³ pháº£i áº£nh há»£p lá»‡ khĂ´ng.
+     *
+     * @param array $file Dữ liệu từ $_FILES[...]
+     * @param array $allowedMimeTypes Danh sách MIME cho phép
+     * @param int $maxBytes Kích thước tối đa
+     * @return array{valid: bool, extension?: string, error?: string}
+     */
+    function app_validate_uploaded_image(array $file, array $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/webp'], int $maxBytes = 5242880): array
+    {
+        if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            return ['valid' => false, 'error' => 'Tải tệp thất bại.'];
+        }
+
+        if (($file['size'] ?? 0) <= 0 || ($file['size'] ?? 0) > $maxBytes) {
+            return ['valid' => false, 'error' => 'Kích thước ảnh không hợp lệ hoặc vượt quá giới hạn cho phép.'];
+        }
+
+        $tmpName = $file['tmp_name'] ?? '';
+        if ($tmpName === '' || !is_uploaded_file($tmpName)) {
+            return ['valid' => false, 'error' => 'Không tìm thấy tệp upload hợp lệ.'];
+        }
+
+        $finfo = function_exists('finfo_open') ? finfo_open(FILEINFO_MIME_TYPE) : false;
+        $mimeType = $finfo ? (string) finfo_file($finfo, $tmpName) : '';
+        if ($finfo) {
+            finfo_close($finfo);
+        }
+
+        if ($mimeType === '' || !in_array($mimeType, $allowedMimeTypes, true)) {
+            return ['valid' => false, 'error' => 'Chỉ cho phép tải lên ảnh JPG, PNG hoặc WEBP.'];
+        }
+
+        $extensionMap = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/webp' => 'webp',
+        ];
+
+        return [
+            'valid' => true,
+            'extension' => $extensionMap[$mimeType] ?? 'jpg',
+        ];
+    }
+}

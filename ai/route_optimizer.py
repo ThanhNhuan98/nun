@@ -87,15 +87,22 @@ def osrm_route(lat1, lon1, lat2, lon2):
         "is_fallback": False,
     }
 
-def calculate_fee(distance_km, weight, service_type="standard", surge_multiplier=1.0):
+def calculate_fee_breakdown(distance_km, weight, service_type="standard", surge_multiplier=1.0):
     services = {
-        "saving": {"base": 8000, "weight": 3500, "distance": 2200},
         "standard": {"base": 12000, "weight": 5000, "distance": 3000},
+        "fast": {"base": 18000, "weight": 6200, "distance": 3800},
         "express": {"base": 25000, "weight": 7500, "distance": 4800},
     }
     config = services.get(service_type, services["standard"])
-    amount = config["base"] + (weight * config["weight"]) + (distance_km * config["distance"])
-    return int(round(amount * surge_multiplier))
+    base_fee = config["base"] + (weight * config["weight"]) + (distance_km * config["distance"])
+    total_fee = int(round(base_fee * surge_multiplier))
+    rounded_base_fee = int(round(base_fee))
+    surge_fee = max(0, total_fee - rounded_base_fee)
+    return {
+        "base_fee": rounded_base_fee,
+        "surge_fee": surge_fee,
+        "shipping_fee": total_fee,
+    }
 
 
 # ==========================================
@@ -201,6 +208,7 @@ def batch_orders(orders_json):
         driver_location = payload.get('driver_location')
         orders = payload.get('orders', [])
         MAX_ORDERS_PER_BATCH = payload.get('max_orders_per_batch', 5)
+        max_weight_capacity = float(payload.get('max_weight_capacity', 0) or 0)
 
         # Sắp xếp đơn hàng ưu tiên theo thời gian hẹn lấy hàng sát nhất
         def get_urgency_key(order):
@@ -220,6 +228,7 @@ def batch_orders(orders_json):
 
             seed_order_data = unassigned_orders.pop(0)
             current_batch_data = [seed_order_data]
+            current_batch_weight = float(seed_order_data.get('weight', 0) or 0)
             
             # Tọa độ trung tâm của cụm (ban đầu là tọa độ của đơn hạt giống)
             center_lat = float(seed_order_data['lat'])
@@ -238,8 +247,15 @@ def batch_orders(orders_json):
                 # Tính khoảng cách từ điểm lấy hàng này đến trung tâm cụm
                 dist = haversine_distance(center_lat, center_lng, o_lat, o_lng)
 
-                if dist <= MAX_PICKUP_DISTANCE_KM:
+                candidate_weight = float(order.get('weight', 0) or 0)
+                exceeds_weight = (
+                    max_weight_capacity > 0
+                    and (current_batch_weight + candidate_weight) > max_weight_capacity
+                )
+
+                if dist <= MAX_PICKUP_DISTANCE_KM and not exceeds_weight:
                     current_batch_data.append(order)
+                    current_batch_weight += candidate_weight
                     orders_to_remove.append(order)
                     
                     # TỐI ƯU 2: KHÔNG cập nhật lại trung tâm cụm.
@@ -273,6 +289,7 @@ def batch_orders(orders_json):
                 "order_ids": [o['id'] for o in current_batch_data], # Giữ danh sách ID gốc
                 "optimized_route": optimized_route_ids, # Thêm lộ trình đã tối ưu
                 "total_orders": len(current_batch_data),
+                "total_weight": current_batch_weight,
                 # [MỚI] Thêm các chỉ số mới
                 "total_duration_s": total_duration_s,
                 "access_duration_s": access_duration_s,
@@ -323,7 +340,7 @@ if __name__ == "__main__":
 
         route = osrm_route(sender_lat, sender_lng, receiver_lat, receiver_lng)
         surge_multiplier, surge_label = traffic_meta(scheduled_at)
-        fee = calculate_fee(route["distance_km"], weight, service_type, surge_multiplier)
+        fee = calculate_fee_breakdown(route["distance_km"], weight, service_type, surge_multiplier)
 
         result = {
             "status": "success",
@@ -332,7 +349,9 @@ if __name__ == "__main__":
             "distance_source": route["source"],
             "surge_multiplier": surge_multiplier,
             "surge_label": surge_label,
-            "shipping_fee": fee,
+            "base_fee": fee["base_fee"],
+            "surge_fee": fee["surge_fee"],
+            "shipping_fee": fee["shipping_fee"],
             "is_fallback": route["is_fallback"],
         }
 

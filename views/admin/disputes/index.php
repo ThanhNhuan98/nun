@@ -49,7 +49,7 @@
         <?php 
         $filterOptions = [
             'open' => 'Chưa xử lý',
-            'processing' => 'Đang giải quyết',
+            'in_review' => 'Đang giải quyết',
             'resolved' => 'Đã giải quyết',
             'rejected' => 'Từ chối'
         ];
@@ -83,11 +83,11 @@
                             // Định dạng màu trạng thái
                             $badgeClass = 'status-pending';
                             if ($d['status'] === 'open') { $badgeClass = 'status-cancelled'; }
-                            elseif ($d['status'] === 'processing') { $badgeClass = 'status-warning'; }
+                            elseif (in_array($d['status'], ['in_review', 'processing'], true)) { $badgeClass = 'status-warning'; }
                             elseif ($d['status'] === 'resolved') { $badgeClass = 'status-completed'; }
                             elseif ($d['status'] === 'rejected') { $badgeClass = 'status-pending'; }
                         ?>
-                        <span class="card-badge <?= $badgeClass ?>" style="<?= $d['status'] === 'processing' ? 'background: #fef3c7; color: #f59e0b;' : '' ?>">
+                        <span class="card-badge <?= $badgeClass ?>" style="<?= in_array($d['status'], ['in_review', 'processing'], true) ? 'background: #fef3c7; color: #f59e0b;' : '' ?>">
                             <?= htmlspecialchars($d['status_label'] ?? $d['status']) ?>
                         </span>
                     </div>
@@ -110,7 +110,7 @@
                             <?= date('d/m/Y', strtotime($d['created_at'])) ?><br>
                             <?= date('H:i', strtotime($d['created_at'])) ?>
                         </div>
-                        <?php if ($d['status'] === 'open' || $d['status'] === 'processing'): ?>
+                        <?php if ($d['status'] === 'open' || in_array($d['status'], ['in_review', 'processing'], true)): ?>
                             <a href="/admin/disputes/view/<?= $d['id'] ?>" class="btn-primary" style="text-decoration: none; padding: 6px 12px; border-radius: 4px; font-size: 13px; display: inline-flex; align-items: center; gap: 5px;">
                                 Xem & Xử lý <span class="material-symbols-outlined" style="font-size: 16px;">arrow_forward</span>
                             </a>

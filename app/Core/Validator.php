@@ -28,14 +28,19 @@ class Validator
     ];
 
     private static array $fieldNames = [
+        'sender_name' => 'Tên người gửi',
+        'sender_phone' => 'Số điện thoại người gửi',
         'receiver_name' => 'Tên người nhận',
         'receiver_phone' => 'Số điện thoại người nhận',
         'pickup_address' => 'Địa chỉ lấy hàng',
+        'pickup_address_detail' => 'Địa chỉ chi tiết điểm lấy',
         'delivery_address' => 'Địa chỉ giao hàng',
+        'delivery_address_detail' => 'Địa chỉ chi tiết điểm giao',
         'weight' => 'Khối lượng',
         'scheduled_at' => 'Thời gian hẹn lấy hàng',
         'note' => 'Ghi chú',
         'payment_method' => 'Phương thức thanh toán',
+        'shipping_method' => 'Gói dịch vụ',
         'license_plate' => 'Biển số xe',
         'account' => 'Tài khoản',
         'password' => 'Mật khẩu',

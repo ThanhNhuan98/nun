@@ -38,8 +38,10 @@ class Dispute
     {
         $statuses = [
             'open'       => 'Mới tạo',
+            'in_review'  => 'Đang xử lý',
             'processing' => 'Đang xử lý',
             'resolved'   => 'Đã giải quyết',
+            'rejected'   => 'Từ chối',
             'closed'     => 'Đã đóng'
         ];
         return $statuses[$status] ?? $status;

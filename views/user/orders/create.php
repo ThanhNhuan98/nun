@@ -55,20 +55,24 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                             <div class="form-grid-2">
                                 <div>
                                     <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Tên người gửi</label>
-                                    <input type="text" name="sender_name" class="form-control" placeholder="Nhập tên" value="<?= app_e($old['sender_name'] ?? '') ?>">
+                                    <input type="text" name="sender_name" class="form-control" placeholder="Nhập tên" value="<?= app_e($old['sender_name'] ?? app_current_user('name', '')) ?>">
                                 </div>
                                 <div>
                                     <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Số điện thoại</label>
-                                    <input type="text" name="sender_phone" class="form-control" placeholder="Nhập SĐT" value="<?= app_e($old['sender_phone'] ?? '') ?>">
+                                    <input type="text" name="sender_phone" class="form-control" placeholder="Nhập SĐT" value="<?= app_e($old['sender_phone'] ?? app_current_user('phone', '')) ?>">
                                 </div>
                             </div>
                             
                             <div>
-                                <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Địa chỉ chi tiết *</label>
+                                <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Địa chỉ trên bản đồ *</label>
                                 <div class="form-input-with-icon" style="position: relative;">
                                     <span class="material-symbols-outlined" style="position: absolute; left: 10px; top: 10px; color: var(--text-muted); font-size: 18px;">search</span>
                                     <input type="text" name="pickup_address" id="pickup_address" class="form-control" style="padding-left: 36px;" placeholder="Tìm kiếm địa chỉ..." value="<?= app_e($old['pickup_address'] ?? '') ?>" required>
                                 </div>
+                            </div>
+                            <div>
+                                <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Địa chỉ chi tiết/bổ sung</label>
+                                <input type="text" name="pickup_address_detail" id="pickup_address_detail" class="form-control" placeholder="Ví dụ: Số nhà, tầng, hẻm, cổng sau..." value="<?= app_e($old['pickup_address_detail'] ?? '') ?>">
                             </div>
                         </div>
 
@@ -91,11 +95,15 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                             </div>
                             
                             <div>
-                                <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Địa chỉ chi tiết *</label>
+                                <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Địa chỉ trên bản đồ *</label>
                                 <div class="form-input-with-icon" style="position: relative;">
                                     <span class="material-symbols-outlined" style="position: absolute; left: 10px; top: 10px; color: var(--text-muted); font-size: 18px;">search</span>
                                     <input type="text" name="delivery_address" id="delivery_address" class="form-control" style="padding-left: 36px;" placeholder="Tìm kiếm địa chỉ..." value="<?= app_e($old['delivery_address'] ?? '') ?>" required>
                                 </div>
+                            </div>
+                            <div>
+                                <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Địa chỉ chi tiết/bổ sung</label>
+                                <input type="text" name="delivery_address_detail" id="delivery_address_detail" class="form-control" placeholder="Ví dụ: Số nhà, chung cư, quầy lễ tân..." value="<?= app_e($old['delivery_address_detail'] ?? '') ?>">
                             </div>
                         </div>
                     </div>
@@ -331,17 +339,23 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
     // ===== LƯU NHÁP (AUTOSAVE) =====
     const draftKey = 'nun_order_draft';
     function saveDraft() {
+        const selectedPayment = document.querySelector('input[name="payment_method"]:checked');
         const formData = {
             sender_lat: document.getElementById('sender_lat').value,
             sender_lng: document.getElementById('sender_lng').value,
+            sender_name: document.querySelector('input[name="sender_name"]').value,
+            sender_phone: document.querySelector('input[name="sender_phone"]').value,
             pickup_address: document.getElementById('pickup_address').value,
+            pickup_address_detail: document.getElementById('pickup_address_detail').value,
             receiver_lat: document.getElementById('receiver_lat').value,
             receiver_lng: document.getElementById('receiver_lng').value,
             receiver_name: document.querySelector('input[name="receiver_name"]').value,
             receiver_phone: document.querySelector('input[name="receiver_phone"]').value,
             delivery_address: document.getElementById('delivery_address').value,
+            delivery_address_detail: document.getElementById('delivery_address_detail').value,
             weight: document.querySelector('input[name="weight"]').value,
             shipping_method: document.querySelector('select[name="shipping_method"]').value,
+            payment_method: selectedPayment ? selectedPayment.value : 'cash',
             scheduled_at: document.getElementById('scheduled_at').value,
             note: document.querySelector('textarea[name="note"]').value,
         };
@@ -362,14 +376,22 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                 if (data.pickup_address || data.delivery_address) {
                     if (data.sender_lat) document.getElementById('sender_lat').value = data.sender_lat;
                     if (data.sender_lng) document.getElementById('sender_lng').value = data.sender_lng;
+                    if (data.sender_name) document.querySelector('input[name="sender_name"]').value = data.sender_name;
+                    if (data.sender_phone) document.querySelector('input[name="sender_phone"]').value = data.sender_phone;
                     if (data.pickup_address) document.getElementById('pickup_address').value = data.pickup_address;
+                    if (data.pickup_address_detail) document.getElementById('pickup_address_detail').value = data.pickup_address_detail;
                     if (data.receiver_lat) document.getElementById('receiver_lat').value = data.receiver_lat;
                     if (data.receiver_lng) document.getElementById('receiver_lng').value = data.receiver_lng;
                     if (data.receiver_name) document.querySelector('input[name="receiver_name"]').value = data.receiver_name;
                     if (data.receiver_phone) document.querySelector('input[name="receiver_phone"]').value = data.receiver_phone;
                     if (data.delivery_address) document.getElementById('delivery_address').value = data.delivery_address;
+                    if (data.delivery_address_detail) document.getElementById('delivery_address_detail').value = data.delivery_address_detail;
                     if (data.weight) document.querySelector('input[name="weight"]').value = data.weight;
                     if (data.shipping_method) document.querySelector('select[name="shipping_method"]').value = data.shipping_method;
+                    if (data.payment_method) {
+                        const paymentRadio = document.querySelector(`input[name="payment_method"][value="${data.payment_method}"]`);
+                        if (paymentRadio) paymentRadio.checked = true;
+                    }
                     if (data.scheduled_at) document.getElementById('scheduled_at').value = data.scheduled_at;
                     if (data.note) document.querySelector('textarea[name="note"]').value = data.note;
                     
@@ -405,14 +427,18 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                 if (data && data.success) {
                     const fmt = new Intl.NumberFormat('vi-VN');
                     document.getElementById('previewDistance').textContent = data.distance + ' km';
-                    document.getElementById('previewTime').textContent = Math.round(data.distance * 3) + ' - ' + Math.round(data.distance * 5); // Tạm giả lập thời gian từ khoảng cách
-                    
-                    document.getElementById('previewBaseFee').textContent = fmt.format(data.fee) + ' đ';
-                    let surgeFee = (data.surge_multiplier > 1.0) ? (data.fee * (data.surge_multiplier - 1)) : 0;
-                    document.getElementById('previewSurge').textContent = fmt.format(surgeFee) + ' đ';
-                    document.getElementById('previewFee').textContent = fmt.format(data.fee + surgeFee) + ' đ';
+                    document.getElementById('previewTime').textContent = data.duration_minutes ? (data.duration_minutes + ' phút') : '-- phút';
+                    document.getElementById('previewBaseFee').textContent = fmt.format(data.base_fee ?? data.fee ?? 0) + ' đ';
+                    document.getElementById('previewSurge').textContent = fmt.format(data.surge_fee ?? 0) + ' đ';
+                    document.getElementById('previewFee').textContent = fmt.format(data.fee ?? 0) + ' đ';
                 }
             } catch (e) { console.error("Tính cước thất bại", e); }
+        } else {
+            document.getElementById('previewDistance').textContent = '-- km';
+            document.getElementById('previewTime').textContent = '-- phút';
+            document.getElementById('previewBaseFee').textContent = '0 đ';
+            document.getElementById('previewSurge').textContent = '0 đ';
+            document.getElementById('previewFee').textContent = '0 đ';
         }
     }
 

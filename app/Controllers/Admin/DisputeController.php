@@ -136,7 +136,7 @@ class DisputeController extends BaseController
                                     $driverEarnings = (int) ($currentOrder['shipping_fee'] ?? 0) - $feePerOrder;
                                     
                                     if ($driverEarnings > 0) {
-                                        $walletModel->add($currentOrder['driver_id'], $driverEarnings);
+                                        $walletModel->add($currentOrder['driver_id'], $driverEarnings, 'adjustment', "Cộng tiền cước đơn #{$currentOrder['tracking_code']} (Admin xử lý khiếu nại)", $currentOrder['id']);
                                         $userModel = new User();
                                         $userModel->createNotification($currentOrder['driver_id'], 'Cộng tiền cước', "Bạn đã được cộng " . number_format($driverEarnings, 0, ',', '.') . "đ cho đơn #{$currentOrder['tracking_code']} sau khi Admin xử lý khiếu nại.", 'wallet', "/driver/orders/view/{$currentOrder['id']}");
                                     }
@@ -147,7 +147,7 @@ class DisputeController extends BaseController
                                     $settingModel = new Setting();
                                     $feePerOrder = (int) ceil(($currentOrder['shipping_fee'] ?? 0) * (float) $settingModel->get('platform_fee_percent', 20) / 100);
                                     
-                                    $walletModel->add($currentOrder['driver_id'], $feePerOrder);
+                                    $walletModel->add($currentOrder['driver_id'], $feePerOrder, 'refund', "Hoàn phí nền tảng đơn #{$currentOrder['tracking_code']} (Khách hủy)", $currentOrder['id']);
                                     $userModel = new User();
                                     $userModel->createNotification($currentOrder['driver_id'], 'Cộng tiền - Hoàn phí', "Đơn #{$currentOrder['tracking_code']} đã bị hủy sau khi khiếu nại. Bạn được hoàn lại " . number_format($feePerOrder, 0, ',', '.') . "đ phí.", 'wallet', "/driver/orders/view/{$currentOrder['id']}");
                                 }
@@ -164,13 +164,11 @@ class DisputeController extends BaseController
                                 
                                 // ÉP TRỪ: Nếu hàm deduct trả về false (do ví 0đ hoặc không đủ), dùng SQL để ép số dư xuống âm.
                                 if (!$deducted) {
-                                    $stmt = $db->prepare("SELECT id FROM wallets WHERE user_id = ?");
-                                    $stmt->execute([$currentOrder['driver_id']]);
-                                    if (!$stmt->fetch()) {
-                                        $db->prepare("INSERT INTO wallets (user_id, balance) VALUES (?, 0)")->execute([$currentOrder['driver_id']]);
-                                    }
-                                    $db->prepare("UPDATE wallets SET balance = balance - ? WHERE user_id = ?")->execute([$penaltyAmount, $currentOrder['driver_id']]);
-                                    $db->prepare("INSERT INTO wallet_transactions (user_id, amount, type, description, created_at) VALUES (?, ?, 'penalty', ?, NOW())")->execute([$currentOrder['driver_id'], -$penaltyAmount, "Admin phạt lỗi khiếu nại đơn #{$currentOrder['tracking_code']}"]);
+                                    // Cập nhật trực tiếp vào driver_profiles vì Database lưu balance ở đây
+                                    $db->prepare("UPDATE driver_profiles SET balance = balance - ? WHERE user_id = ?")->execute([$penaltyAmount, $currentOrder['driver_id']]);
+                                    
+                                    $currentBalance = $walletModel->getBalance($currentOrder['driver_id']);
+                                    $db->prepare("INSERT INTO wallet_transactions (user_id, amount, type, description, balance_after, created_at) VALUES (?, ?, 'penalty', ?, ?, NOW())")->execute([$currentOrder['driver_id'], -$penaltyAmount, "Admin phạt lỗi khiếu nại đơn #{$currentOrder['tracking_code']}", $currentBalance]);
                                 }
                                 
                                 $currentBalance = $walletModel->getBalance($currentOrder['driver_id']);

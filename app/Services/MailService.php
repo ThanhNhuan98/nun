@@ -8,9 +8,9 @@ use PHPMailer\PHPMailer\Exception;
 class MailService
 {
     /**
-     * Gửi email chứa mã OTP để xác thực tài khoản
+     * Gửi email chung
      */
-    public function sendVerificationEmail(string $toEmail, string $toName, string $otp): bool
+    public function send(string $toEmail, string $subject, string $htmlContent, string $toName = ''): bool
     {
         $mail = new PHPMailer(true);
 
@@ -36,22 +36,16 @@ class MailService
 
             // Người gửi & Người nhận
             $mail->setFrom($mail->Username ?: 'no-reply@nun.vn', 'NUN Express');
-            $mail->addAddress($toEmail, $toName);
+            if ($toName) {
+                $mail->addAddress($toEmail, $toName);
+            } else {
+                $mail->addAddress($toEmail);
+            }
 
             // Nội dung Email HTML
             $mail->isHTML(true);
-            $mail->Subject = "{$otp} là mã xác thực tài khoản NUN Express của bạn";
-            $mail->Body    = "
-                <h2>Chào {$toName},</h2>
-                <p>Cảm ơn bạn đã đăng ký tài khoản tại <strong>NUN Express</strong>. Vui lòng sử dụng mã OTP dưới đây để hoàn tất quá trình đăng ký:</p>
-                <div style='background-color: #f0f0f0; padding: 15px; text-align: center; font-size: 24px; letter-spacing: 5px; margin: 20px 0;'>
-                    <strong>{$otp}</strong>
-                </div>
-                <p>Mã này sẽ hết hạn sau 15 phút. Vui lòng không chia sẻ mã này với bất kỳ ai.</p>
-                <br>
-                <p>Trân trọng,</p>
-                <p><strong>Đội ngũ NUN Express</strong></p>
-            ";
+            $mail->Subject = $subject;
+            $mail->Body    = $htmlContent;
 
             if (!$mail->send()) {
                 throw new \Exception($mail->ErrorInfo ?: "Lỗi không xác định khi kết nối SMTP.");
@@ -59,8 +53,28 @@ class MailService
             
             return true;
         } catch (Exception $e) {
-            // Ném lỗi trực tiếp ra để hiển thị lên giao diện
             throw new \Exception($mail->ErrorInfo ?: $e->getMessage());
         }
+    }
+
+    /**
+     * Gửi email chứa mã OTP để xác thực tài khoản
+     */
+    public function sendVerificationEmail(string $toEmail, string $toName, string $otp): bool
+    {
+        $subject = "{$otp} là mã xác thực tài khoản NUN Express của bạn";
+        $htmlContent = "
+            <h2>Chào {$toName},</h2>
+            <p>Cảm ơn bạn đã đăng ký tài khoản tại <strong>NUN Express</strong>. Vui lòng sử dụng mã OTP dưới đây để hoàn tất quá trình đăng ký:</p>
+            <div style='background-color: #f0f0f0; padding: 15px; text-align: center; font-size: 24px; letter-spacing: 5px; margin: 20px 0;'>
+                <strong>{$otp}</strong>
+            </div>
+            <p>Mã này sẽ hết hạn sau 15 phút. Vui lòng không chia sẻ mã này với bất kỳ ai.</p>
+            <br>
+            <p>Trân trọng,</p>
+            <p><strong>Đội ngũ NUN Express</strong></p>
+        ";
+        
+        return $this->send($toEmail, $subject, $htmlContent, $toName);
     }
 }

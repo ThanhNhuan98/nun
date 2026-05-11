@@ -51,14 +51,7 @@
                 <button type="submit">Tra cứu</button>
             </form>
 
-            <div class="hero-social-proof">
-                <div class="hero-avatars">
-                    <img src="https://i.pravatar.cc/100?img=1" alt="User">
-                    <img src="https://i.pravatar.cc/100?img=2" alt="User">
-                    <img src="https://i.pravatar.cc/100?img=3" alt="User">
-                </div>
-                Hơn 10,000+ đối tác tin dùng
-            </div>
+            
         </div>
 
         <div class="hero-image-wrapper">
@@ -75,12 +68,6 @@
         </div>
     </section>
 
-    <section class="partners-section">
-        <div class="partner-logo">PARTNER ONE</div>
-        <div class="partner-logo">GLOBAL LOGISTICS</div>
-        <div class="partner-logo">TECH EXPRESS</div>
-        <div class="partner-logo">ECO DELIVERY</div>
-    </section>
 
     <section class="features-section">
         <h2 class="section-title">Giải pháp Vận chuyển Toàn diện</h2>
@@ -123,7 +110,7 @@
             </div>
 
             <div class="pricing-card highlight">
-                <div class="pricing-badge-top">⭐ Lựa chọn phổ biến nhất</div>
+                <div class="pricing-badge-top">Lựa chọn phổ biến nhất</div>
                 <h3 class="p-title">Giao hàng siêu tốc</h3>
                 <div class="p-subtitle">Dành cho tài liệu, hàng hóa khẩn cấp</div>
                 <div class="p-price">25k <span>/đơn đầu tiên</span></div>

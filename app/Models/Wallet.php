@@ -115,7 +115,7 @@ class Wallet
     }
 
     private function recordTransaction(
-        int $driverId,
+        int $userId,
         ?int $orderId,
         float $amount,
         string $type,
@@ -124,10 +124,10 @@ class Wallet
     ): void {
         try {
             $stmt = $this->db->prepare("
-                INSERT INTO wallet_transactions (driver_id, order_id, amount, type, description, balance_after, created_at)
+                INSERT INTO wallet_transactions (user_id, order_id, amount, type, description, balance_after, created_at)
                 VALUES (?, ?, ?, ?, ?, ?, NOW())
             ");
-            $stmt->execute([$driverId, $orderId, $amount, $type, $description, $balanceAfter]);
+            $stmt->execute([$userId, $orderId, $amount, $type, $description, $balanceAfter]);
         } catch (\Throwable $e) {
             error_log('Wallet transaction log failed: ' . $e->getMessage());
         }
@@ -155,7 +155,7 @@ class Wallet
             return $this->add(
                 $driverId,
                 $driverEarnings,
-                'order_completion',
+                'adjustment',
                 "Earnings from order #{$orderId} ({$commissionPercentage}%)",
                 $orderId
             );
