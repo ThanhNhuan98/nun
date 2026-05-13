@@ -70,6 +70,13 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                 </div>
             </div>
 
+            <?php if ($order['status'] === 'awaiting_payment'): ?>
+                <a href="/user/orders/payment/<?= app_e($order['tracking_code']) ?>" style="display: flex; align-items: center; justify-content: center; gap: 8px; background: var(--primary); color: #fff; padding: 14px; border-radius: 4px; font-size: 14px; font-weight: 600; text-decoration: none; margin-bottom: 24px; width: 100%; box-shadow: 0 4px 6px rgba(37,99,235,0.15); transition: 0.2s;" onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='var(--primary)'">
+                    <span class="material-symbols-outlined" style="font-size: 20px;">qr_code_scanner</span> 
+                    Tiếp tục thanh toán đơn hàng này
+                </a>
+            <?php endif; ?>
+
             <?php if (!empty($order['driver_id'])): ?>
                 <div class="t-card">
                     <div class="t-card-title">THÔNG TIN TÀI XẾ</div>

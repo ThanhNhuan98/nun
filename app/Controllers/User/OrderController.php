@@ -85,6 +85,28 @@ class OrderController extends BaseController
                 'scheduled_at' => 'required|after_now|before_one_week',
             ])->throw();
 
+            // Yêu cầu thời gian hẹn lấy đối với đơn Hỏa tốc / Giao nhanh
+            if (in_array($data['shipping_method'] ?? '', ['fast', 'express'])) {
+                if (!empty($data['scheduled_at'])) {
+                    $scheduledTime = strtotime($data['scheduled_at']);
+                    if ($scheduledTime > time() + 15 * 60) { // 10 phút + 5 phút thao tác điền form
+                        // Hệ thống tự động đặt lại giờ lấy hàng
+                        $data['scheduled_at'] = date('Y-m-d\TH:i', time() + 10 * 60);
+                        $_SESSION['flash_error'] = "Đơn hàng Giao nhanh/Siêu tốc yêu cầu thời gian hẹn lấy hàng không được quá 10 phút kể từ hiện tại. Hệ thống đã đặt lại giờ cho bạn.";
+                        throw new ValidationException([], $data);
+                    }
+                }
+            }
+
+            // Kiểm tra giới hạn cân nặng từ Setting
+            $settingModel = new Setting();
+            $maxOrderWeight = (float) $settingModel->get('max_order_weight', $settingModel->get('default_max_total_weight', 100));
+            
+            if (isset($data['weight']) && (float) $data['weight'] > $maxOrderWeight) {
+                $_SESSION['flash_error'] = "Cân nặng đơn hàng không được vượt quá {$maxOrderWeight}kg.";
+                throw new ValidationException([], $data);
+            }
+
             // 3. Nếu không có lỗi, gọi Service để xử lý nghiệp vụ
             return $this->createOrder($response, $data);
         } catch (ValidationException $e) {
@@ -277,6 +299,17 @@ class OrderController extends BaseController
     public function apiCalculateFee(Request $request, Response $response)
     {
         $data = $request->getJsonBody() ?: $request->getBody();
+        
+        $settingModel = new Setting();
+        $maxOrderWeight = (float) $settingModel->get('max_order_weight', $settingModel->get('default_max_total_weight', 100));
+        if (isset($data['weight']) && (float) $data['weight'] > $maxOrderWeight) {
+            return $response->json([
+                'success' => false, 
+                'message' => "Cân nặng đơn hàng không được vượt quá {$maxOrderWeight}kg.",
+                'error' => "Cân nặng đơn hàng không được vượt quá {$maxOrderWeight}kg."
+            ]); // Xóa mã 400, để mặc định là 200 OK giúp JS đọc được chuỗi message
+        }
+
         $quote = (new ShippingFeeService())->quote($data);
 
         if ($quote['success']) {

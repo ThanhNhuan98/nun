@@ -23,12 +23,21 @@
             Ví tài xế
         </a>
 
+        <!-- HIỂN THỊ SỐ DƯ HIỆN TẠI -->
+        <div style="background: linear-gradient(135deg, var(--primary), #1e40af); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <div style="font-size: 14px; opacity: 0.9; margin-bottom: 8px;">Số dư ví hiện tại</div>
+            <div style="font-size: 32px; font-weight: 700; letter-spacing: 0.5px;"><?= app_money($currentBalance ?? 0, ' đ') ?></div>
+        </div>
+
         <h2 class="topup-title">Nạp tiền vào ví</h2>
         <p class="topup-desc">Nạp tiền để duy trì số dư tối thiểu, giúp bạn nhận các chuyến đi mới từ NUN AI.</p>
 
         <div class="topup-form-group">
             <label for="amount">Số tiền cần nạp (VNĐ)</label>
-            <input type="number" id="amount" class="topup-input" min="10000" step="1000" placeholder="Ví dụ: 50.000">
+            <div style="display: flex; gap: 10px;">
+                <input type="number" id="amount" class="topup-input" min="10000" step="1000" placeholder="Ví dụ: 50000" style="margin-bottom: 0;">
+                <button type="button" class="btn-topup-submit" onclick="generateQR()" style="width: auto; padding: 0 20px; margin: 0; white-space: nowrap;">Tạo mã QR</button>
+            </div>
             
             <div class="topup-helper">
                 <span class="material-symbols-outlined">info</span>
@@ -42,19 +51,10 @@
             <div class="btn-quick-amount" onclick="setAmount(200000)">200.000đ</div>
         </div>
 
-        <div class="topup-actions">
-            <a href="/driver/receive-orders" class="btn-topup-cancel">Quay lại</a>
-            <button type="button" class="btn-topup-submit" onclick="generateQR()">Tạo mã QR</button>
-        </div>
     </div>
 
     <!-- BƯỚC 2: THANH TOÁN QR CODE (Giao diện giống Payment) -->
-    <div id="step-2" class="payment-container" style="display: none; margin-top: 0;">
-        <div style="margin-bottom: 20px;">
-            <button type="button" class="btn-back-text" onclick="resetTopup()" style="background: none; border: none; cursor: pointer; padding: 0;">
-                <span class="material-symbols-outlined" style="font-size: 18px;">arrow_back</span> Nhập lại số tiền
-            </button>
-        </div>
+    <div id="step-2" class="payment-container" style="display: none; margin-top: 0; padding-top: 24px; border-top: 1px dashed var(--border-color);">
 
         <div class="payment-card">
             <div class="payment-qr-col">
@@ -127,7 +127,7 @@
 <script>
     function setAmount(value) {
         document.getElementById('amount').value = value;
-        document.getElementById('amount').focus();
+        generateQR(); // Tự động tạo QR ngay khi bấm chọn mệnh giá
     }
 
     function generateQR() {
@@ -159,14 +159,8 @@
         const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
         document.getElementById('qr-image').src = qrUrl;
 
-        // Chuyển trang
-        document.getElementById('step-1').style.display = 'none';
         document.getElementById('step-2').style.display = 'block';
-    }
-
-    function resetTopup() {
-        document.getElementById('step-2').style.display = 'none';
-        document.getElementById('step-1').style.display = 'block';
+        document.getElementById('step-2').scrollIntoView({ behavior: 'smooth' });
     }
 
     function copyToClipboard(elementId) {

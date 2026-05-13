@@ -72,6 +72,49 @@ class Wallet
         }
     }
 
+    public function forceDeduct(
+        int $userId,
+        float $amount,
+        string $type = 'penalty',
+        string $description = '',
+        ?int $orderId = null
+    ): bool {
+        if ($amount <= 0) {
+            return false;
+        }
+
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) {
+            $this->db->beginTransaction();
+        }
+
+        try {
+            $stmt = $this->db->prepare("SELECT balance FROM driver_profiles WHERE user_id = ? FOR UPDATE");
+            $stmt->execute([$userId]);
+            $currentBalance = (float) ($stmt->fetchColumn() ?: 0);
+
+            // Ép trừ: Không kiểm tra số dư, cho phép ví xuống mức âm
+            $balanceAfter = $currentBalance - $amount;
+            $stmt = $this->db->prepare("UPDATE driver_profiles SET balance = ? WHERE user_id = ?");
+            $stmt->execute([$balanceAfter, $userId]);
+
+            $this->recordTransaction($userId, $orderId, -$amount, $type, $description ?: 'Force deduction', $balanceAfter);
+
+            if ($ownsTransaction) {
+                $this->db->commit();
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            if ($ownsTransaction && $this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+
+            error_log('Wallet force deduct failed: ' . $e->getMessage());
+            return false;
+        }
+    }
+
     public function add(
         int $userId,
         float $amount,

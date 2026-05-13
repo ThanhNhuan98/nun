@@ -18,6 +18,20 @@
         </div>
     <?php else: ?>
         
+        <!-- Bản đồ dẫn đường chuyến ghép -->
+        <div class="active-route-card" style="margin-bottom: 24px; border-color: var(--primary);">
+            <div class="active-card-header" style="background: #eff6ff; padding: 12px 20px; border-bottom: 1px solid #bfdbfe;">
+                <div class="header-left" style="color: var(--primary);">
+                    <span class="material-symbols-outlined">navigation</span>
+                    BẢN ĐỒ DẪN ĐƯỜNG TRỰC TIẾP
+                </div>
+            </div>
+            <div id="inline-route-map" style="width: 100%; height: 400px; z-index: 1;"></div>
+        </div>
+        <script>
+            let batchPointsForMap = [];
+        </script>
+
         <div class="active-orders-list">
             <?php foreach ($groupedOrders as $timeKey => $group): ?>
                 <?php 
@@ -32,6 +46,30 @@
                             <div class="header-left">
                                 <span class="material-symbols-outlined">layers</span>
                                 CHUYẾN GHÉP (<?= count($group) ?> ĐƠN)
+                                <?php 
+                                    $pickupPoints = [];
+                                    $deliveryPoints = [];
+                                    foreach ($group as $o) {
+                                        if (in_array($o['status'], ['accepted', 'picking_up'])) {
+                                            if (!empty($o['sender_lat']) && !empty($o['sender_lng'])) {
+                                                $pickupPoints[] = ['lat' => (float)$o['sender_lat'], 'lng' => (float)$o['sender_lng'], 'title' => 'Lấy hàng: ' . ($o['sender_name'] ?? ''), 'type' => 'pickup'];
+                                            }
+                                        }
+                                        if (in_array($o['status'], ['accepted', 'picking_up', 'in_transit', 'shipping'])) {
+                                            if (!empty($o['receiver_lat']) && !empty($o['receiver_lng'])) {
+                                                $deliveryPoints[] = ['lat' => (float)$o['receiver_lat'], 'lng' => (float)$o['receiver_lng'], 'title' => 'Giao hàng: ' . ($o['receiver_name'] ?? 'Khách'), 'type' => 'delivery'];
+                                            }
+                                        }
+                                    }
+                                    $pointsData = array_merge($pickupPoints, $deliveryPoints);
+                                    $pointsJson = htmlspecialchars(json_encode($pointsData), ENT_QUOTES, 'UTF-8');
+                                ?>
+                                <script>
+                                    if (batchPointsForMap.length === 0) batchPointsForMap = <?= json_encode($pointsData) ?>;
+                                </script>
+                                <?php if (!empty($pointsData)): ?>
+                                    <button type="button" onclick="showBatchRouteMap(<?= $pointsJson ?>)" class="btn-process-solid" style="padding: 4px 10px; font-size: 11px; margin-left: 10px; width: auto; background: #fff; color: var(--primary); border: 1px solid var(--primary);">Xem lộ trình</button>
+                                <?php endif; ?>
                             </div>
                             <div class="header-right">
                                 <div><span class="label">Tổng cước</span><strong class="text-primary"><?= app_money($totalFee, 'đ') ?></strong></div>
@@ -49,6 +87,9 @@
                                     <div class="sub-order-content">
                                         <div class="sub-header-row">
                                             <span class="tracking-code-pill">#<?= app_e($order['tracking_code']) ?></span>
+                                            <span style="background-color: #f8fafc; color: <?= \App\Models\Order::getShippingMethodColor($order['shipping_method'] ?? null) ?>; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; border: 1px solid <?= \App\Models\Order::getShippingMethodColor($order['shipping_method'] ?? null) ?>;">
+                                                <?= \App\Models\Order::getShippingMethodLabel($order['shipping_method'] ?? null) ?>
+                                            </span>
                                             <span class="status-badge-flat <?= $sClass ?>"><?= app_e(App\Models\Order::getStatusLabel($order['status'])) ?></span>
                                         </div>
                                         
@@ -65,13 +106,44 @@
                                                 <div>
                                                     <div class="r-label">Điểm giao (<strong>Khách hàng</strong>)</div>
                                                     <div class="r-address"><?= app_e($order['delivery_address']) ?></div>
+                                                    <?php if (($order['customer_no_show_count'] ?? 0) > 0): ?>
+                                                        <div style="margin-top: 6px; color: var(--danger); font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; background: var(--danger-light); padding: 2px 6px; border-radius: 4px; border: 1px solid #fca5a5;">
+                                                            <span class="material-symbols-outlined" style="font-size: 13px;">warning</span>
+                                                            Từng bom hàng: <?= htmlspecialchars($order['customer_no_show_count']) ?> lần
+                                                        </div>
+                                                    <?php endif; ?>
+                                                </div>
+                                            </div>
+                                            <div class="r-node">
+                                                <span class="material-symbols-outlined r-icon" style="color: var(--warning);">assignment_late</span>
+                                                <div>
+                                                    <div class="r-label">Quản lý (<strong>Sự cố / Hủy đơn</strong>)</div>
+                                                    <div class="r-address">
+                                                        <a href="/driver/orders/view/<?= $order['id'] ?>" style="color: var(--primary); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                                                            <span class="material-symbols-outlined" style="font-size: 16px;">open_in_new</span> Xem chi tiết & Báo cáo
+                                                        </a>
+                                                    </div>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
-                                    <div class="sub-order-actions">
-                                        <div class="s-weight">TL: <?= number_format((float)($order['weight'] ?? 0), 1) ?>kg</div>
-                                        <a href="/driver/orders/view/<?= $order['id'] ?>" class="btn-process-solid">Xử lý đơn này</a>
+                                    <div class="sub-order-actions" style="width: auto; min-width: 180px;">
+                                        <div class="s-weight" style="text-align: right; margin-bottom: 8px;">TL: <?= number_format((float)($order['weight'] ?? 0), 1) ?>kg</div>
+                                        <form action="/driver/orders/update-status/<?= $order['id'] ?>" method="POST" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:8px;">
+                                            <input type="hidden" name="redirect_to" value="active">
+                                            <?php if ($order['status'] === 'accepted'): ?>
+                                                <input type="hidden" name="status" value="picking_up">
+                                                <button type="submit" class="btn-process-solid" style="background:var(--warning); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Bắt đầu đi lấy</button>
+                                            <?php elseif ($order['status'] === 'picking_up'): ?>
+                                                <input type="hidden" name="status" value="in_transit">
+                                                <button type="submit" class="btn-process-solid" style="background:var(--primary); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Đã lấy hàng & Đi giao</button>
+                                            <?php elseif (in_array($order['status'], ['in_transit', 'shipping'])): ?>
+                                                <input type="hidden" name="status" value="completed">
+                                                <label style="font-size:11px; color:var(--danger); font-weight:bold; margin-bottom: -4px;">* Chụp ảnh minh chứng:</label>
+                                                <input type="file" name="proof_image" accept="image/*" capture="environment" required style="font-size:11px; width: 100%; border: 1px solid var(--border-color); padding: 4px; border-radius: 4px;">
+                                                <button type="submit" class="btn-process-solid" style="background:var(--success); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Giao thành công</button>
+                                            <?php endif; ?>
+                                        </form>
                                     </div>
                                 </div>
                             <?php endforeach; ?>
@@ -86,6 +158,28 @@
                                 <span class="material-symbols-outlined" style="color: var(--text-muted);">local_shipping</span>
                                 ĐƠN LẺ 
                                 <span style="color: var(--text-muted); font-weight: normal; margin-left: 6px; font-size: 13px;">#<?= app_e($order['tracking_code']) ?></span>
+                                <?php 
+                                    $pickupPoints = [];
+                                    $deliveryPoints = [];
+                                    if (in_array($order['status'], ['accepted', 'picking_up'])) {
+                                        if (!empty($order['sender_lat']) && !empty($order['sender_lng'])) {
+                                            $pickupPoints[] = ['lat' => (float)$order['sender_lat'], 'lng' => (float)$order['sender_lng'], 'title' => 'Lấy hàng: ' . ($order['sender_name'] ?? ''), 'type' => 'pickup'];
+                                        }
+                                    }
+                                    if (in_array($order['status'], ['accepted', 'picking_up', 'in_transit', 'shipping'])) {
+                                        if (!empty($order['receiver_lat']) && !empty($order['receiver_lng'])) {
+                                            $deliveryPoints[] = ['lat' => (float)$order['receiver_lat'], 'lng' => (float)$order['receiver_lng'], 'title' => 'Giao hàng: ' . ($order['receiver_name'] ?? 'Khách'), 'type' => 'delivery'];
+                                        }
+                                    }
+                                    $pointsData = array_merge($pickupPoints, $deliveryPoints);
+                                    $pointsJson = htmlspecialchars(json_encode($pointsData), ENT_QUOTES, 'UTF-8');
+                                ?>
+                                <script>
+                                    if (batchPointsForMap.length === 0) batchPointsForMap = <?= json_encode($pointsData) ?>;
+                                </script>
+                                <?php if (!empty($pointsData)): ?>
+                                    <button type="button" onclick="showBatchRouteMap(<?= $pointsJson ?>)" class="btn-process-solid" style="padding: 4px 10px; font-size: 11px; margin-left: 10px; width: auto; background: #fff; color: var(--text-main); border: 1px solid var(--border-color);">Xem lộ trình</button>
+                                <?php endif; ?>
                             </div>
                             <div class="header-right">
                                 <div><span class="label">Cước phí</span><strong class="text-primary"><?= app_money($order['shipping_fee'], 'đ') ?></strong></div>
@@ -101,6 +195,9 @@
                                             $sClass = 'gray';
                                             if (in_array($order['status'], ['picking_up', 'in_transit', 'shipping'])) $sClass = 'blue';
                                         ?>
+                                        <span style="background-color: #f8fafc; color: <?= \App\Models\Order::getShippingMethodColor($order['shipping_method'] ?? null) ?>; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; border: 1px solid <?= \App\Models\Order::getShippingMethodColor($order['shipping_method'] ?? null) ?>;">
+                                            <?= \App\Models\Order::getShippingMethodLabel($order['shipping_method'] ?? null) ?>
+                                        </span>
                                         <span class="status-badge-flat <?= $sClass ?>"><?= app_e(App\Models\Order::getStatusLabel($order['status'])) ?></span>
                                     </div>
                                     
@@ -117,12 +214,43 @@
                                             <div>
                                                 <div class="r-label">Điểm giao (<strong>Khách hàng</strong>)</div>
                                                 <div class="r-address"><?= app_e($order['delivery_address']) ?></div>
+                                                <?php if (($order['customer_no_show_count'] ?? 0) > 0): ?>
+                                                    <div style="margin-top: 6px; color: var(--danger); font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; background: var(--danger-light); padding: 2px 6px; border-radius: 4px; border: 1px solid #fca5a5;">
+                                                        <span class="material-symbols-outlined" style="font-size: 13px;">warning</span>
+                                                        Từng bom hàng: <?= htmlspecialchars($order['customer_no_show_count']) ?> lần
+                                                    </div>
+                                                <?php endif; ?>
+                                            </div>
+                                        </div>
+                                        <div class="r-node">
+                                            <span class="material-symbols-outlined r-icon" style="color: var(--warning);">assignment_late</span>
+                                            <div>
+                                                <div class="r-label">Quản lý (<strong>Sự cố / Hủy đơn</strong>)</div>
+                                                <div class="r-address">
+                                                    <a href="/driver/orders/view/<?= $order['id'] ?>" style="color: var(--primary); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
+                                                        <span class="material-symbols-outlined" style="font-size: 16px;">open_in_new</span> Xem chi tiết & Báo cáo
+                                                    </a>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                <div class="sub-order-actions" style="justify-content: flex-end;">
-                                    <a href="/driver/orders/view/<?= $order['id'] ?>" class="btn-process-solid">Xử lý đơn này</a>
+                                <div class="sub-order-actions" style="width: auto; min-width: 180px;">
+                                    <form action="/driver/orders/update-status/<?= $order['id'] ?>" method="POST" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:8px;">
+                                        <input type="hidden" name="redirect_to" value="active">
+                                        <?php if ($order['status'] === 'accepted'): ?>
+                                            <input type="hidden" name="status" value="picking_up">
+                                            <button type="submit" class="btn-process-solid" style="background:var(--warning); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Bắt đầu đi lấy</button>
+                                        <?php elseif ($order['status'] === 'picking_up'): ?>
+                                            <input type="hidden" name="status" value="in_transit">
+                                            <button type="submit" class="btn-process-solid" style="background:var(--primary); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Đã lấy hàng & Đi giao</button>
+                                        <?php elseif (in_array($order['status'], ['in_transit', 'shipping'])): ?>
+                                            <input type="hidden" name="status" value="completed">
+                                            <label style="font-size:11px; color:var(--danger); font-weight:bold; margin-bottom: -4px;">* Chụp ảnh minh chứng:</label>
+                                            <input type="file" name="proof_image" accept="image/*" capture="environment" required style="font-size:11px; width: 100%; border: 1px solid var(--border-color); padding: 4px; border-radius: 4px;">
+                                            <button type="submit" class="btn-process-solid" style="background:var(--success); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Giao thành công</button>
+                                        <?php endif; ?>
+                                    </form>
                                 </div>
                             </div>
                         </div>
@@ -156,6 +284,14 @@
     let multiMap = null;
     let multiRoutingControl = null;
 
+    function createCustomMarkerIcon(icon, color) {
+        return L.divIcon({
+            className: 'custom-div-icon',
+            html: `<div style="background-color:${color};width:36px;height:36px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;position:relative;"><span class="material-symbols-outlined" style="color:#fff;font-size:20px;">${icon}</span><div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);border-width:8px 6px 0;border-style:solid;border-color:#fff transparent transparent transparent;"></div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);border-width:6px 4px 0;border-style:solid;border-color:${color} transparent transparent transparent;"></div></div>`,
+            iconSize: [36, 44], iconAnchor: [18, 44], popupAnchor: [0, -44]
+        });
+    }
+
     function showBatchRouteMap(points) {
         document.getElementById('routeModal').style.display = 'flex';
         
@@ -170,8 +306,8 @@
         if (validPoints.length === 0) return;
 
         const waypoints = validPoints.map(p => L.latLng(p.lat, p.lng));
-        const pickupIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png', shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34] });
-        const deliveryIcon = L.icon({ iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png', shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png', iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34] });
+        const pickupIcon = createCustomMarkerIcon('storefront', '#f59e0b');
+        const deliveryIcon = createCustomMarkerIcon('location_on', '#10b981');
 
         multiRoutingControl = L.Routing.control({
             waypoints: waypoints,
@@ -189,6 +325,47 @@
     }
 
     function closeRouteModal() { document.getElementById('routeModal').style.display = 'none'; }
+
+    // Khởi tạo bản đồ dẫn đường trực tiếp (Inline Map)
+    document.addEventListener('DOMContentLoaded', function() {
+        if (batchPointsForMap && batchPointsForMap.length > 0) {
+            const inlineMap = L.map('inline-route-map').setView([16.4637, 107.5909], 13);
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '© OpenStreetMap' }).addTo(inlineMap);
+
+            const validPoints = batchPointsForMap.filter(p => p.lat !== 0 && p.lng !== 0);
+            if (validPoints.length > 0) {
+                const pickupIcon = createCustomMarkerIcon('storefront', '#f59e0b');
+                const deliveryIcon = createCustomMarkerIcon('location_on', '#10b981');
+                const driverIcon = createCustomMarkerIcon('two_wheeler', '#2563eb');
+
+                if (navigator.geolocation) {
+                    navigator.geolocation.getCurrentPosition((pos) => {
+                        drawInlineRoute([{ lat: pos.coords.latitude, lng: pos.coords.longitude, title: 'Vị trí của bạn', type: 'driver' }, ...validPoints]);
+                    }, () => drawInlineRoute(validPoints), { enableHighAccuracy: true, timeout: 5000 });
+                } else {
+                    drawInlineRoute(validPoints);
+                }
+
+                function drawInlineRoute(routePoints) {
+                    const waypoints = routePoints.map(p => L.latLng(p.lat, p.lng));
+                    L.Routing.control({
+                        waypoints: waypoints,
+                        router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1' }),
+                        routeWhileDragging: false, addWaypoints: false, fitSelectedRoutes: true, show: false,
+                        lineOptions: { styles: [{color: '#3b82f6', opacity: 0.9, weight: 6}] },
+                        createMarker: function(i, wp) {
+                            let icon = routePoints[i].type === 'pickup' ? pickupIcon : deliveryIcon;
+                            if (routePoints[i].type === 'driver') icon = driverIcon;
+                            return L.marker(wp.latLng, {icon: icon}).bindPopup(`<b>${routePoints[i].type === 'driver' ? '' : i + '. '}${routePoints[i].title}</b>`);
+                        }
+                    }).addTo(inlineMap);
+                }
+            }
+        } else {
+            const mapContainer = document.getElementById('inline-route-map');
+            if (mapContainer) mapContainer.parentElement.style.display = 'none';
+        }
+    });
 </script>
 
 <?php require_once __DIR__ . '/../../layouts/user_footer.php'; ?>

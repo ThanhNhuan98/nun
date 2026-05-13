@@ -225,10 +225,8 @@ class AdminController extends BaseController
             
             // ÉP TRỪ: Bỏ qua kiểm tra số dư an toàn, ép ví xuống âm nếu hàm deduct mặc định từ chối
             if (!$deducted) {
-                // Cập nhật trực tiếp vào driver_profiles vì Database lưu balance ở đây
-                $db->prepare("UPDATE driver_profiles SET balance = balance - ? WHERE user_id = ?")->execute([$penaltyAmount, $driverId]);
-                $currentBalance = $walletModel->getBalance($driverId);
-                $db->prepare("INSERT INTO wallet_transactions (user_id, amount, type, description, balance_after, created_at) VALUES (?, ?, 'penalty', ?, ?, NOW())")->execute([$driverId, -$penaltyAmount, $reason, $currentBalance]);
+                // Cần định nghĩa hàm forceDeduct trong Wallet Model để đảm bảo tính đóng gói MVC
+                $walletModel->forceDeduct($driverId, $penaltyAmount, 'penalty', $reason);
             }
             
             // 2. Lấy số dư ví hiện tại

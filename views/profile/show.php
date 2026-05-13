@@ -89,6 +89,14 @@ $roleLabel = $targetUser['role'] === 'admin' ? 'Quản trị viên' : ($targetUs
                         </div>
                     </div>
 
+                    <?php if ($targetUser['role'] === 'driver'): ?>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; font-weight: 500; margin-bottom: 8px; color: #475569;">Biển số xe</label>
+                        <input type="text" value="<?= htmlspecialchars($targetUser['license_plate'] ?? 'Chưa cập nhật') ?>" readonly style="width: 100%; padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 6px; background: #f8fafc; color: #64748b; font-size: 15px; outline: none;">
+                        <small style="color: #94a3b8; display: block; margin-top: 4px;">* Để thay đổi Biển số xe, vui lòng liên hệ Quản trị viên để xác minh lại giấy tờ.</small>
+                    </div>
+                    <?php endif; ?>
+
                     <?php if ($isOwnProfile): ?>
                         <button type="submit" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; font-size: 15px; cursor: pointer; transition: background 0.3s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
                             Lưu thông tin

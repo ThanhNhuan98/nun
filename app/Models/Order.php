@@ -246,9 +246,9 @@ class Order
     {
         $sql = "
             SELECT 
-                o.id, o.tracking_code, o.status, o.created_at, o.updated_at, od.accepted_at, o.weight, o.scheduled_at,
-                oa.sender_address AS pickup_address, oa.sender_lat, oa.sender_lng,
-                oa.receiver_address AS delivery_address, oa.receiver_lat, oa.receiver_lng,
+                o.id, o.tracking_code, o.status, o.created_at, o.updated_at, od.accepted_at, o.weight, o.scheduled_at, o.shipping_method,
+                oa.sender_name, oa.sender_address AS pickup_address, oa.sender_lat, oa.sender_lng,
+                oa.receiver_name, oa.receiver_address AS delivery_address, oa.receiver_lat, oa.receiver_lng,
                 fin.shipping_fee
             FROM orders o
             JOIN order_deliveries od ON o.id = od.order_id
@@ -773,14 +773,19 @@ class Order
 
         // 2. Kiểm tra số lượng đơn hiện tại
         $stmtCount = $this->db->prepare("
-            SELECT COUNT(*) as active_count 
+            SELECT COUNT(*) as active_count, SUM(CASE WHEN o.shipping_method = 'express' THEN 1 ELSE 0 END) as express_count 
             FROM orders o
             JOIN order_deliveries od ON o.id = od.order_id
             WHERE od.driver_id = ? AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping')
         ");
         $stmtCount->execute([$driverId]);
         $countResult = $stmtCount->fetch(PDO::FETCH_ASSOC);
-        $activeOrderCount = $countResult['active_count'] ?? 0;
+        $activeOrderCount = (int)($countResult['active_count'] ?? 0);
+        $activeExpressCount = (int)($countResult['express_count'] ?? 0);
+
+        if ($activeExpressCount > 0) {
+            return ['can_accept' => false, 'message' => 'Bạn đang thực hiện đơn Siêu tốc (độc quyền), không thể nhận thêm đơn.'];
+        }
 
         // Kiểm tra giới hạn từ driver_profiles
         $stmtDriver = $this->db->prepare("
@@ -816,6 +821,10 @@ class Order
 
         if (!$order) {
             return ['can_accept' => false, 'message' => 'Đơn hàng không tồn tại'];
+        }
+
+        if (($order['shipping_method'] ?? 'standard') === 'express' && $activeOrderCount > 0) {
+            return ['can_accept' => false, 'message' => 'Bạn đang có đơn hàng khác, không thể nhận đơn Siêu tốc.'];
         }
 
         if (!empty($order['scheduled_at'])) {
@@ -873,11 +882,19 @@ class Order
 
         // 2. Đếm số đơn đang hoạt động (Chỉ 1 Query)
         $stmtCount = $this->db->prepare("
-            SELECT COUNT(*) FROM orders o JOIN order_deliveries od ON o.id = od.order_id
+            SELECT COUNT(*) as total_active, SUM(CASE WHEN o.shipping_method = 'express' THEN 1 ELSE 0 END) as express_count 
+            FROM orders o JOIN order_deliveries od ON o.id = od.order_id
             WHERE od.driver_id = ? AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping')
         ");
         $stmtCount->execute([$driverId]);
-        $activeCount = (int) $stmtCount->fetchColumn();
+        $activeStats = $stmtCount->fetch(PDO::FETCH_ASSOC);
+        $activeCount = (int) $activeStats['total_active'];
+        $activeExpressCount = (int) $activeStats['express_count'];
+
+        if ($activeExpressCount > 0) {
+            foreach ($orderIds as $oid) $response['rejected_orders'][$oid] = 'Bạn đang thực hiện đơn Siêu tốc (độc quyền), không thể nhận thêm đơn.';
+            return $response;
+        }
 
         $settingModel = new Setting();
         $defaultMaxOrders = (int) $settingModel->get('default_max_concurrent_orders', 10);
@@ -888,13 +905,14 @@ class Order
 
         // 3. Lấy thông tin đơn hàng (Chỉ 1 Query)
         $inClause = implode(',', array_fill(0, count($orderIds), '?'));
-        $stmtOrders = $this->db->prepare("SELECT id, weight, scheduled_at FROM orders WHERE id IN ($inClause)");
+        $stmtOrders = $this->db->prepare("SELECT id, weight, scheduled_at, shipping_method FROM orders WHERE id IN ($inClause)");
         $stmtOrders->execute($orderIds);
         $orderData = [];
         while ($row = $stmtOrders->fetch(PDO::FETCH_ASSOC)) {
             $orderData[$row['id']] = [
                 'weight' => isset($row['weight']) ? (float) $row['weight'] : 1.0,
-                'scheduled_at' => $row['scheduled_at'] ?? null
+                'scheduled_at' => $row['scheduled_at'] ?? null,
+                'shipping_method' => $row['shipping_method'] ?? 'standard'
             ];
         }
 
@@ -905,6 +923,19 @@ class Order
                 $response['rejected_orders'][$oid] = 'Đơn hàng không tồn tại';
                 continue;
             }
+            
+            $isExpress = $orderData[$oid]['shipping_method'] === 'express';
+            if ($isExpress) {
+                if ($activeCount > 0) {
+                    $response['rejected_orders'][$oid] = 'Bạn đang có đơn hàng khác, không thể nhận đơn Siêu tốc.';
+                    continue;
+                }
+                if (count($orderIds) > 1) {
+                    $response['rejected_orders'][$oid] = 'Đơn Siêu tốc phải được nhận độc lập, không thể ghép chung.';
+                    continue;
+                }
+            }
+
             if (!empty($orderData[$oid]['scheduled_at'])) {
                 $scheduledTime = strtotime($orderData[$oid]['scheduled_at']);
                 // Đã đồng bộ múi giờ toàn hệ thống, chỉ cần thêm 5 phút (300s) bù trừ trễ mạng.
@@ -944,6 +975,24 @@ class Order
         $stmt->execute([$driverId]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
         return (int)($result['count'] ?? 0);
+    }
+
+    /**
+     * Kiểm tra xem tài xế có đang thực hiện đơn hàng Siêu tốc nào không
+     */
+    public function hasDriverActiveExpressOrder(int $driverId): bool
+    {
+        $stmt = $this->db->prepare("
+            SELECT 1 
+            FROM orders o
+            JOIN order_deliveries od ON o.id = od.order_id
+            WHERE od.driver_id = ? 
+              AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping')
+              AND o.shipping_method = 'express'
+            LIMIT 1
+        ");
+        $stmt->execute([$driverId]);
+        return (bool) $stmt->fetchColumn();
     }
 
     /**
@@ -999,6 +1048,21 @@ class Order
                 $stmtHist->execute([$orderId, $desc]);
 
                 $this->db->commit();
+                
+                // Tìm thông tin khách hàng để gửi thông báo trấn an
+                $stmtInfo = $this->db->prepare("SELECT tracking_code, customer_id FROM orders WHERE id = ?");
+                $stmtInfo->execute([$orderId]);
+                if ($info = $stmtInfo->fetch(\PDO::FETCH_ASSOC)) {
+                    $userModel = new \App\Models\User();
+                    $userModel->createNotification(
+                        $info['customer_id'],
+                        'Đang tìm lại tài xế',
+                        "Đơn hàng #{$info['tracking_code']} đang được hệ thống tự động tìm lại tài xế mới do tài xế trước đó không đến lấy hàng.",
+                        'order',
+                        "/user/orders/track/{$info['tracking_code']}"
+                    );
+                }
+                
                 return true;
             }
             $this->db->rollBack();
@@ -1018,7 +1082,7 @@ class Order
         try {
             // Lấy danh sách đơn quá hạn 1 ngày (so với lúc tạo hoặc lúc hẹn lấy hàng)
             $stmt = $this->db->prepare("
-                SELECT id 
+                SELECT id, tracking_code, customer_id 
                 FROM orders 
                 WHERE status IN ('pending', 'searching_driver') 
                   AND is_archived = 0
@@ -1029,23 +1093,30 @@ class Order
                   )
             ");
             $stmt->execute();
-            $expiredOrders = $stmt->fetchAll(\PDO::FETCH_COLUMN);
+            $expiredOrders = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
             if (empty($expiredOrders)) {
                 $this->db->rollBack();
                 return false;
             }
 
-            // Cập nhật trạng thái
-            $inClause = implode(',', array_fill(0, count($expiredOrders), '?'));
-            $updateStmt = $this->db->prepare("UPDATE orders SET status = 'cancelled', updated_at = NOW() WHERE id IN ($inClause)");
-            $updateStmt->execute($expiredOrders);
-
-            // Thêm vào lịch sử
+            $updateStmt = $this->db->prepare("UPDATE orders SET status = 'cancelled', updated_at = NOW() WHERE id = ?");
             $desc = "Hệ thống tự động hủy đơn do quá 24h không có tài xế nhận.";
             $histStmt = $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, 'cancelled', ?, NOW())");
-            foreach ($expiredOrders as $orderId) {
-                $histStmt->execute([$orderId, $desc]);
+            $userModel = new \App\Models\User();
+
+            foreach ($expiredOrders as $order) {
+                $updateStmt->execute([$order['id']]);
+                $histStmt->execute([$order['id'], $desc]);
+                
+                // Gửi thông báo cho khách hàng
+                $userModel->createNotification(
+                    $order['customer_id'],
+                    'Hủy đơn hàng tự động',
+                    "Đơn hàng #{$order['tracking_code']} của bạn đã bị hủy tự động do không có tài xế nhận sau 24 giờ.",
+                    'system',
+                    "/user/orders/track/{$order['tracking_code']}"
+                );
             }
 
             $this->db->commit();

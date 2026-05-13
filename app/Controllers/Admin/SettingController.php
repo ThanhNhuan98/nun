@@ -31,6 +31,10 @@ class SettingController extends BaseController
                 $data['no_show_threshold_for_ban'] = max(1, (int) $data['no_show_threshold_for_ban']);
             }
 
+            if (isset($data['max_order_weight'])) {
+                $data['max_order_weight'] = max(1, (float) $data['max_order_weight']);
+            }
+
             // Bọc trong transaction để đảm bảo an toàn
             $db = Database::getInstance();
             $db->beginTransaction();

@@ -162,13 +162,9 @@ class DisputeController extends BaseController
                                 $walletModel = new Wallet();
                                 $deducted = $walletModel->deduct($currentOrder['driver_id'], $penaltyAmount, 'penalty', "Admin phạt lỗi khiếu nại đơn #{$currentOrder['tracking_code']}");
                                 
-                                // ÉP TRỪ: Nếu hàm deduct trả về false (do ví 0đ hoặc không đủ), dùng SQL để ép số dư xuống âm.
+                                // ÉP TRỪ: Nếu hàm deduct trả về false (do ví 0đ hoặc không đủ), gọi hàm forceDeduct của Model
                                 if (!$deducted) {
-                                    // Cập nhật trực tiếp vào driver_profiles vì Database lưu balance ở đây
-                                    $db->prepare("UPDATE driver_profiles SET balance = balance - ? WHERE user_id = ?")->execute([$penaltyAmount, $currentOrder['driver_id']]);
-                                    
-                                    $currentBalance = $walletModel->getBalance($currentOrder['driver_id']);
-                                    $db->prepare("INSERT INTO wallet_transactions (user_id, amount, type, description, balance_after, created_at) VALUES (?, ?, 'penalty', ?, ?, NOW())")->execute([$currentOrder['driver_id'], -$penaltyAmount, "Admin phạt lỗi khiếu nại đơn #{$currentOrder['tracking_code']}", $currentBalance]);
+                                    $walletModel->forceDeduct($currentOrder['driver_id'], $penaltyAmount, 'penalty', "Admin phạt lỗi khiếu nại đơn #{$currentOrder['tracking_code']}", $currentOrder['id']);
                                 }
                                 
                                 $currentBalance = $walletModel->getBalance($currentOrder['driver_id']);

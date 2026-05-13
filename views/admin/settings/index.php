@@ -43,6 +43,19 @@
 
                 <div class="settings-row">
                     <div class="settings-label-col">
+                        <label for="max_order_weight">Giới hạn cân nặng tối đa/đơn (kg)</label>
+                        <p>Mức cân nặng lớn nhất mà khách hàng có thể nhập khi tạo 1 đơn hàng mới.</p>
+                    </div>
+                    <div class="settings-input-col">
+                        <div class="input-suffix-group">
+                            <input type="number" id="max_order_weight" name="max_order_weight" class="form-control" min="1" step="0.1" value="<?= app_e($settings['max_order_weight'] ?? '100') ?>" required>
+                            <span class="suffix">kg</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-row">
+                    <div class="settings-label-col">
                         <label for="default_max_total_weight">Giới hạn tải trọng tối đa mặc định (kg)</label>
                         <p>Mức tổng tải trọng tối đa được gán mặc định cho các tài xế khi hệ thống tạo mới hồ sơ tài xế.</p>
                     </div>

@@ -117,6 +117,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     <div>
                         <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Trọng lượng (kg) *</label>
                         <input type="number" step="0.1" min="0.1" name="weight" class="form-control" placeholder="0.0" value="<?= app_e($old['weight'] ?? '') ?>" required>
+                        <div id="weightError" style="color: var(--danger); font-size: 12px; margin-top: 6px; display: none;"></div>
                     </div>
                 </div>
 
@@ -230,17 +231,15 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
     let markers = { sender: null, receiver: null };
     let currentMode = 'sender';
 
+    const createCustomMarkerIcon = (icon, color) => L.divIcon({
+        className: 'custom-div-icon',
+        html: `<div style="background-color:${color};width:36px;height:36px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;position:relative;"><span class="material-symbols-outlined" style="color:#fff;font-size:20px;">${icon}</span><div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);border-width:8px 6px 0;border-style:solid;border-color:#fff transparent transparent transparent;"></div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);border-width:6px 4px 0;border-style:solid;border-color:${color} transparent transparent transparent;"></div></div>`,
+        iconSize: [36, 44], iconAnchor: [18, 44], popupAnchor: [0, -44]
+    });
+
     const icons = {
-        sender: L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-blue.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41], iconAnchor: [12, 41]
-        }),
-        receiver: L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
-            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
-            iconSize: [25, 41], iconAnchor: [12, 41]
-        })
+        sender: createCustomMarkerIcon('storefront', '#f59e0b'),
+        receiver: createCustomMarkerIcon('location_on', '#10b981')
     };
 
     function setMapMode(mode) {
@@ -414,13 +413,14 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
         const receiverLng = document.getElementById('receiver_lng').value;
         const weight = document.querySelector('input[name="weight"]').value;
         const shippingMethod = document.querySelector('select[name="shipping_method"]').value;
+        const scheduledAt = document.getElementById('scheduled_at').value;
 
         if (senderLat && senderLng && receiverLat && receiverLng && weight > 0) {
             document.getElementById('previewFee').textContent = 'Đang tính...';
             try {
                 const response = await fetch('/api/orders/calculate-fee', {
                     method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ sender_lat: senderLat, sender_lng: senderLng, receiver_lat: receiverLat, receiver_lng: receiverLng, weight: weight, shipping_method: shippingMethod })
+                    body: JSON.stringify({ sender_lat: senderLat, sender_lng: senderLng, receiver_lat: receiverLat, receiver_lng: receiverLng, weight: weight, shipping_method: shippingMethod, scheduled_at: scheduledAt })
                 });
                 
                 const data = await response.json();
@@ -431,14 +431,39 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     document.getElementById('previewBaseFee').textContent = fmt.format(data.base_fee ?? data.fee ?? 0) + ' đ';
                     document.getElementById('previewSurge').textContent = fmt.format(data.surge_fee ?? 0) + ' đ';
                     document.getElementById('previewFee').textContent = fmt.format(data.fee ?? 0) + ' đ';
+
+                    document.getElementById('weightError').style.display = 'none';
+                    document.querySelector('input[name="weight"]').style.borderColor = '';
                 }
-            } catch (e) { console.error("Tính cước thất bại", e); }
+                else if (data && !data.success) {
+                    document.getElementById('previewDistance').textContent = '-- km';
+                    document.getElementById('previewTime').textContent = '-- phút';
+                    document.getElementById('previewBaseFee').textContent = '0 đ';
+                    document.getElementById('previewSurge').textContent = '0 đ';
+                    document.getElementById('previewFee').textContent = data.error ? 'Quá tải trọng' : 'Lỗi tính cước';
+                    
+                    if (data.error) {
+                        document.getElementById('weightError').textContent = data.error;
+                        document.getElementById('weightError').style.display = 'block';
+                        document.querySelector('input[name="weight"]').style.borderColor = 'var(--danger)';
+                    } else if (data.message) {
+                        document.getElementById('weightError').style.display = 'none';
+                        document.querySelector('input[name="weight"]').style.borderColor = '';
+                        alert(data.message);
+                    }
+                }
+            } catch (e) { 
+                console.error("Tính cước thất bại", e); 
+                document.getElementById('previewFee').textContent = 'Lỗi kết nối'; 
+            }
         } else {
             document.getElementById('previewDistance').textContent = '-- km';
             document.getElementById('previewTime').textContent = '-- phút';
             document.getElementById('previewBaseFee').textContent = '0 đ';
             document.getElementById('previewSurge').textContent = '0 đ';
             document.getElementById('previewFee').textContent = '0 đ';
+            document.getElementById('weightError').style.display = 'none';
+            document.querySelector('input[name="weight"]').style.borderColor = '';
         }
     }
 
@@ -450,6 +475,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
 
     document.querySelector('input[name="weight"]').addEventListener('input', debouncedCalculateFee);
     document.querySelector('select[name="shipping_method"]').addEventListener('change', calculateFee);
+    document.getElementById('scheduled_at').addEventListener('change', calculateFee);
     
     document.querySelector('.order-form').addEventListener('submit', function() {
         const btn = document.getElementById('submitBtn');
@@ -471,6 +497,25 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
             
             scheduledAtInput.min = formatDateTime(now);
             scheduledAtInput.max = formatDateTime(new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000));
+            
+            // Cập nhật lại giới hạn Max time khi đổi loại giao hàng
+            document.querySelector('select[name="shipping_method"]').addEventListener('change', function() {
+                const method = this.value;
+                const currentNow = new Date();
+                if (method === 'fast' || method === 'express') {
+                    // Giao nhanh/siêu tốc tối đa 10 phút + 5 phút thao tác
+                    const maxDate = new Date(currentNow.getTime() + 15 * 60 * 1000);
+                    scheduledAtInput.max = formatDateTime(maxDate);
+                    
+                    if (new Date(scheduledAtInput.value) > maxDate) {
+                        scheduledAtInput.value = formatDateTime(currentNow);
+                        alert("Đơn hàng Giao nhanh/Siêu tốc yêu cầu thời gian hẹn lấy hàng không được quá 10 phút kể từ hiện tại. Hệ thống đã đặt lại giờ cho bạn.");
+                    }
+                } else {
+                    // Tiêu chuẩn tối đa 1 tuần
+                    scheduledAtInput.max = formatDateTime(new Date(currentNow.getTime() + 7 * 24 * 60 * 60 * 1000));
+                }
+            });
         }
     });
 </script>

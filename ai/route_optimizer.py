@@ -215,7 +215,13 @@ def batch_orders(orders_json):
             time_str = order.get('scheduled_at')
             if not time_str:
                 time_str = order.get('created_at') or "9999-12-31 23:59:59"
-            return time_str
+            
+            method = order.get('shipping_method', 'standard')
+            priority = 0 if method == 'express' else (1 if method == 'fast' else 2)
+            return (priority, time_str)
+            
+        def get_raw_time(order):
+            return order.get('scheduled_at') or order.get('created_at') or "9999-12-31 23:59:59"
 
         orders.sort(key=get_urgency_key)
 
@@ -235,32 +241,36 @@ def batch_orders(orders_json):
             center_lng = float(seed_order_data['lng'])
 
             orders_to_remove = []
+            
+            # MUTUAL EXCLUSION: Nếu đơn hạt giống là Siêu tốc, không cho phép ghép thêm bất kỳ đơn nào khác
+            is_seed_express = seed_order_data.get('shipping_method') == 'express'
 
-            # Tìm các đơn hàng khác ở gần đơn hạt giống
-            for order in unassigned_orders:
-                if len(current_batch_data) >= MAX_ORDERS_PER_BATCH:
-                    break # Đã đầy xe
+            if not is_seed_express:
+                # Tìm các đơn hàng khác ở gần đơn hạt giống
+                for order in unassigned_orders:
+                    if len(current_batch_data) >= MAX_ORDERS_PER_BATCH:
+                        break # Đã đầy xe
+                        
+                    # Không cho phép đơn tiêu chuẩn/fast lôi kéo một đơn Siêu tốc vào cụm của mình
+                    if order.get('shipping_method') == 'express':
+                        continue
 
-                o_lat = float(order['lat'])
-                o_lng = float(order['lng'])
-                
-                # Tính khoảng cách từ điểm lấy hàng này đến trung tâm cụm
-                dist = haversine_distance(center_lat, center_lng, o_lat, o_lng)
-
-                candidate_weight = float(order.get('weight', 0) or 0)
-                exceeds_weight = (
-                    max_weight_capacity > 0
-                    and (current_batch_weight + candidate_weight) > max_weight_capacity
-                )
-
-                if dist <= MAX_PICKUP_DISTANCE_KM and not exceeds_weight:
-                    current_batch_data.append(order)
-                    current_batch_weight += candidate_weight
-                    orders_to_remove.append(order)
+                    o_lat = float(order['lat'])
+                    o_lng = float(order['lng'])
                     
-                    # TỐI ƯU 2: KHÔNG cập nhật lại trung tâm cụm.
-                    # Giữ nguyên tâm là đơn hàng hạt giống (đơn cần lấy gấp nhất).
-                    # Điều này đảm bảo tất cả các đơn ghép vào đều chắc chắn nằm gọn trong bán kính 3km từ đơn ưu tiên, tránh tình trạng "trôi tâm" tạo ra lộ trình quá dài.
+                    # Tính khoảng cách từ điểm lấy hàng này đến trung tâm cụm
+                    dist = haversine_distance(center_lat, center_lng, o_lat, o_lng)
+
+                    candidate_weight = float(order.get('weight', 0) or 0)
+                    exceeds_weight = (
+                        max_weight_capacity > 0
+                        and (current_batch_weight + candidate_weight) > max_weight_capacity
+                    )
+
+                    if dist <= MAX_PICKUP_DISTANCE_KM and not exceeds_weight:
+                        current_batch_data.append(order)
+                        current_batch_weight += candidate_weight
+                        orders_to_remove.append(order)
 
             # Xóa các đơn đã được ghép khỏi danh sách chờ
             for o in orders_to_remove:
@@ -293,7 +303,8 @@ def batch_orders(orders_json):
                 # [MỚI] Thêm các chỉ số mới
                 "total_duration_s": total_duration_s,
                 "access_duration_s": access_duration_s,
-                "most_urgent_time": min([get_urgency_key(o) for o in current_batch_data])
+                "most_urgent_time": min([get_raw_time(o) for o in current_batch_data]),
+                "priority": min([get_urgency_key(o)[0] for o in current_batch_data])
             })
 
         return {

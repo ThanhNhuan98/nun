@@ -65,9 +65,11 @@ class OrderController extends BaseController
 
             // TỐI ƯU HÓA (DRY - Đừng lặp lại code):
             // Tái sử dụng lại hàm gọi AI đã được tách ra để chuẩn hóa kiến trúc
-            $batches = $this->processAIRouting($driverId);
+            $routingResult = $this->processAIRouting($driverId);
+            $batches = $routingResult['batches'] ?? [];
+            $message = $routingResult['message'] ?? '';
             
-            return $response->json(['success' => true, 'batches' => $batches]);
+            return $response->json(['success' => true, 'batches' => $batches, 'message' => $message]);
         }
 
         if (!$isVerified && !isset($_SESSION['flash_error'])) {
@@ -100,7 +102,7 @@ class OrderController extends BaseController
         $batches = [];
         
         if (empty($orders)) {
-            return $batches;
+            return ['batches' => [], 'message' => 'Hiện tại khu vực của bạn không có đơn hàng mới nào đang chờ.'];
         }
 
         $settingModel = new Setting();
@@ -115,6 +117,13 @@ class OrderController extends BaseController
         $driverMaxWeight = $dp ? (float)$dp['max_total_weight'] : $defaultMaxWeight;
         
         $activeCount = $orderModel->getDriverActiveOrderCount($driverId);
+        $hasExpress = $orderModel->hasDriverActiveExpressOrder($driverId);
+        
+        // MUTUAL EXCLUSION: Khóa hoàn toàn Radar nếu tài xế đang thực hiện đơn Siêu tốc
+        if ($hasExpress) {
+            return ['batches' => [], 'message' => 'Bạn đang thực hiện đơn Siêu tốc (độc quyền). Radar tự động ẩn các đơn khác để đảm bảo chất lượng dịch vụ.'];
+        }
+        
         $availableCapacity = max(0, $driverMaxOrders - $activeCount);
         
         $currentWeight = $orderModel->getDriverCurrentWeight($driverId);
@@ -122,20 +131,40 @@ class OrderController extends BaseController
         
         $maxOrdersPerBatch = min($globalMaxOrdersPerBatch, $availableCapacity);
 
-        if ($maxOrdersPerBatch <= 0 || $availableWeightCapacity <= 0) {
-            return [];
+        if ($maxOrdersPerBatch <= 0) {
+            return ['batches' => [], 'message' => "Bạn đã đạt giới hạn nhận đơn ({$activeCount}/{$driverMaxOrders} đơn). Vui lòng hoàn thành bớt các đơn đang chạy."];
+        }
+        if ($availableWeightCapacity <= 0) {
+            return ['batches' => [], 'message' => "Xe của bạn đã đầy tải trọng ({$currentWeight}/{$driverMaxWeight}kg). Vui lòng giao bớt hàng trước khi nhận thêm."];
         }
 
         $validOrders = [];
+        $skippedExpressCount = 0;
+        $skippedWeightCount = 0;
         foreach ($orders as $o) {
+            // MUTUAL EXCLUSION: Nếu tài xế đang có đơn Tiêu chuẩn (activeCount > 0), ẩn các đơn Siêu tốc đi
+            $isExpress = ($o['shipping_method'] ?? 'standard') === 'express';
+            if ($activeCount > 0 && $isExpress) {
+                $skippedExpressCount++;
+                continue;
+            }
+            
             if ((float)($o['weight'] ?? 1.0) <= $availableWeightCapacity) {
                 $validOrders[] = $o;
+            } else {
+                $skippedWeightCount++;
             }
         }
         $orders = $validOrders;
 
         if (empty($orders)) {
-            return [];
+            $msg = 'Không có đơn hàng mới nào phù hợp với xe của bạn lúc này.';
+            if ($skippedExpressCount > 0 && $skippedWeightCount == 0) {
+                $msg = "Có {$skippedExpressCount} đơn Siêu tốc xung quanh, nhưng bạn đang giữ đơn Tiêu chuẩn nên Radar ẩn đi để tránh làm trễ giờ khách hàng.";
+            } elseif ($skippedWeightCount > 0) {
+                $msg = "Có {$skippedWeightCount} đơn hàng xung quanh nhưng khối lượng vượt quá tải trọng còn trống của bạn ({$availableWeightCapacity}kg).";
+            }
+            return ['batches' => [], 'message' => $msg];
         }
 
         $ordersData = array_map(function($o) {
@@ -145,7 +174,8 @@ class OrderController extends BaseController
                 'lng' => (float)($o['sender_lng'] ?? 0),
                 'weight' => (float)($o['weight'] ?? 1.0),
                 'scheduled_at' => $o['scheduled_at'] ?? null,
-                'created_at' => $o['created_at'] ?? null
+                'created_at' => $o['created_at'] ?? null,
+                'shipping_method' => $o['shipping_method'] ?? 'standard'
             ];
         }, $orders);
 
@@ -184,6 +214,8 @@ class OrderController extends BaseController
                         $order['formatted_scheduled_at'] = !empty($order['scheduled_at']) 
                             ? date('H:i d/m/Y', strtotime($order['scheduled_at'])) 
                             : 'Càng sớm càng tốt';
+                        $order['shipping_method_label'] = \App\Models\Order::getShippingMethodLabel($order['shipping_method'] ?? null);
+                        $order['shipping_method_color'] = \App\Models\Order::getShippingMethodColor($order['shipping_method'] ?? null);
                         $batchOrders[] = $order;
                         $totalFee += (float) ($order['shipping_fee'] ?? 0);
                         $totalWeight += (float) ($order['weight'] ?? 1.0);
@@ -213,6 +245,11 @@ class OrderController extends BaseController
                 $batches[] = $b;
             }
             usort($batches, function($a, $b) {
+                $prioA = $a['priority'] ?? 2;
+                $prioB = $b['priority'] ?? 2;
+                if ($prioA !== $prioB) {
+                    return $prioA <=> $prioB; // Số nhỏ ưu tiên hơn (0=express, 1=fast, 2=standard)
+                }
                 $timeA = $a['most_urgent_time'] ?? '9999-12-31 23:59:59';
                 $timeB = $b['most_urgent_time'] ?? '9999-12-31 23:59:59';
                 if ($timeA !== $timeB) {
@@ -226,6 +263,8 @@ class OrderController extends BaseController
                 $o['formatted_scheduled_at'] = !empty($o['scheduled_at']) 
                     ? date('H:i d/m/Y', strtotime($o['scheduled_at'])) 
                     : 'Càng sớm càng tốt';
+                $o['shipping_method_label'] = \App\Models\Order::getShippingMethodLabel($o['shipping_method'] ?? null);
+                $o['shipping_method_color'] = \App\Models\Order::getShippingMethodColor($o['shipping_method'] ?? null);
                 $batches[] = [
                     'batch_id' => 'ĐƠN LẺ',
                     'order_ids' => [$o['id']],
@@ -238,17 +277,27 @@ class OrderController extends BaseController
                     'access_duration_minutes' => 'N/A',
                     'efficiency_score' => 0,
                     'most_urgent_time' => $o['scheduled_at'] ?? $o['created_at'] ?? '9999-12-31 23:59:59',
-                    'formatted_urgent_time' => !empty($o['scheduled_at']) ? date('H:i d/m/Y', strtotime($o['scheduled_at'])) : 'Càng sớm càng tốt'
+                    'formatted_urgent_time' => !empty($o['scheduled_at']) ? date('H:i d/m/Y', strtotime($o['scheduled_at'])) : 'Càng sớm càng tốt',
+                    'priority' => ($o['shipping_method'] ?? 'standard') === 'express' ? 0 : (($o['shipping_method'] ?? 'standard') === 'fast' ? 1 : 2)
                 ];
             }
             
             usort($batches, function($a, $b) {
+                $prioA = $a['priority'] ?? 2;
+                $prioB = $b['priority'] ?? 2;
+                if ($prioA !== $prioB) {
+                    return $prioA <=> $prioB;
+                }
                 $timeA = $a['most_urgent_time'] ?? '9999-12-31 23:59:59';
                 $timeB = $b['most_urgent_time'] ?? '9999-12-31 23:59:59';
                 return strcmp($timeA, $timeB);
             });
         }
-        return $batches;
+
+        // TỐI ƯU GIAO DIỆN: Chỉ lấy Top 10 chuyến ghép tốt nhất để Radar không bị quá dài
+        $batches = array_slice($batches, 0, 10);
+
+        return ['batches' => $batches, 'message' => ''];
     }
 
     public function acceptOrder(Request $request, Response $response)
@@ -452,6 +501,8 @@ class OrderController extends BaseController
         $data = $request->getBody();
         $newStatus = $_POST['status'] ?? $data['status'] ?? '';
         $cancelReason = app_sanitize($_POST['cancel_reason'] ?? $data['cancel_reason'] ?? '');
+        $redirectTo = $_POST['redirect_to'] ?? '';
+        $redirectUrl = $redirectTo === 'active' ? "/driver/active-orders" : "/driver/orders/view/$orderId";
 
         $orderModel = new Order();
         $order = $orderModel->findByIdForDriver($orderId, $driverId);
@@ -484,10 +535,10 @@ class OrderController extends BaseController
             // Bắt buộc phải có ảnh khi Giao xong, Hủy đơn hoặc Chuyển hoàn
             if (in_array($newStatus, ['completed', 'cancelled', 'returning']) && empty($proofImagePath)) {
                 $_SESSION['flash_error'] = "Lỗi: Bạn bắt buộc phải chụp và tải lên ảnh minh chứng!";
-                return $response->redirect("/driver/orders/view/$orderId");
+                return $response->redirect($redirectUrl);
             }
 
-            $description = "Tài xế đã cập nhật trạng thái đơn hàng thành: " . $newStatus;
+            $description = "Tài xế đã cập nhật trạng thái đơn hàng thành: " . Order::getStatusLabel($newStatus);
             if ($newStatus === 'completed') {
                 $description = "Tài xế đã giao hàng thành công.";
             } elseif ($newStatus === 'cancelled') {
@@ -584,7 +635,7 @@ class OrderController extends BaseController
             $_SESSION['flash_error'] = "Chuyển đổi trạng thái không hợp lệ.";
         }
 
-        return $response->redirect("/driver/orders/view/$orderId");
+        return $response->redirect($redirectUrl);
     }
 
     /**
@@ -723,9 +774,6 @@ class OrderController extends BaseController
         }
 
         $orderModel = new Order();
-
-        // Tự động dọn dẹp/hủy các đơn hàng đã treo quá 1 ngày không có tài xế nhận
-        $orderModel->autoCancelExpiredPendingOrders();
 
         // TỐI ƯU HÓA: Dùng hàm COUNT trực tiếp trong SQL thay vì kéo toàn bộ array về PHP
         $count = $orderModel->countPendingOrders();

@@ -56,7 +56,7 @@ class UserController extends BaseController
         $totalPages = (int) ceil($totalUsers / $perPage);
 
         return $response->render('admin/users/index', [
-            'pageTitle' => 'Quan ly nguoi dung',
+            'pageTitle' => 'Quản lý người dùng',
             'users' => $users,
             'roleFilter' => $roleFilter,
             'search' => $search,

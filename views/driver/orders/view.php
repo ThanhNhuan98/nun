@@ -77,6 +77,10 @@
                         <?= \App\Models\Order::getShippingMethodLabel($order['shipping_method'] ?? 'standard') ?>
                     </strong>
                 </div>
+                <div class="trip-fee-row" style="margin-bottom: 8px;">
+                    <span>Ngày hẹn lấy:</span>
+                    <strong><?= !empty($order['scheduled_at']) ? date('H:i d/m/Y', strtotime($order['scheduled_at'])) : 'Càng sớm càng tốt' ?></strong>
+                </div>
                 <div class="trip-fee-row">
                     <span>Phí vận chuyển:</span>
                     <strong><?= app_money($order['shipping_fee'] ?? 0, ' đ') ?></strong>
@@ -297,11 +301,14 @@
                     waypoints.push(L.latLng(receiverLat, receiverLng));
                 }
 
-                const customIcon = L.icon({
-                    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-                    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-                    iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34]
+                const createCustomMarkerIcon = (icon, color) => L.divIcon({
+                    className: 'custom-div-icon',
+                    html: `<div style="background-color:${color};width:36px;height:36px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;position:relative;"><span class="material-symbols-outlined" style="color:#fff;font-size:20px;">${icon}</span><div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);border-width:8px 6px 0;border-style:solid;border-color:#fff transparent transparent transparent;"></div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);border-width:6px 4px 0;border-style:solid;border-color:${color} transparent transparent transparent;"></div></div>`,
+                    iconSize: [36, 44], iconAnchor: [18, 44], popupAnchor: [0, -44]
                 });
+                const driverIcon = createCustomMarkerIcon('two_wheeler', '#2563eb');
+                const senderIcon = createCustomMarkerIcon('storefront', '#f59e0b');
+                const receiverIcon = createCustomMarkerIcon('location_on', '#10b981');
 
                 if (routingControl) {
                     routingControl.setWaypoints(waypoints);
@@ -319,7 +326,23 @@
                         styles: [{color: '#2563eb', opacity: 0.8, weight: 6}]
                     },
                     createMarker: function(i, wp, nWps) {
-                        return L.marker(wp.latLng, {icon: customIcon});
+                        let iconToUse;
+                        if (orderStatus === 'accepted' || orderStatus === 'picking_up') {
+                            if (currentHasLoc) { iconToUse = (i === 0) ? driverIcon : senderIcon; } 
+                            else { iconToUse = (i === 0) ? senderIcon : receiverIcon; }
+                        } else if (orderStatus === 'in_transit' || orderStatus === 'shipping') {
+                            if (currentHasLoc) { iconToUse = (i === 0) ? driverIcon : receiverIcon; } 
+                            else { iconToUse = (i === 0) ? senderIcon : receiverIcon; }
+                        } else {
+                            iconToUse = (i === 0) ? senderIcon : receiverIcon;
+                        }
+                        
+                        let title = '';
+                        if (iconToUse === driverIcon) title = 'Vị trí của bạn';
+                        if (iconToUse === senderIcon) title = 'Điểm lấy hàng';
+                        if (iconToUse === receiverIcon) title = 'Điểm giao hàng';
+                        
+                        return L.marker(wp.latLng, {icon: iconToUse}).bindPopup(`<b>${title}</b>`);
                     }
                 }).addTo(map);
                 

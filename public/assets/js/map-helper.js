@@ -93,21 +93,15 @@ class MapHelper {
 
         this.map.setView([senderLat, senderLng], 14);
 
-        const driverIcon = L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-orange.png',
-            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-            iconSize: [25, 41], iconAnchor: [12, 41]
+        const createCustomMarkerIcon = (icon, color) => L.divIcon({
+            className: 'custom-div-icon',
+            html: `<div style="background-color:${color};width:36px;height:36px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;position:relative;"><span class="material-symbols-outlined" style="color:#fff;font-size:20px;">${icon}</span><div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);border-width:8px 6px 0;border-style:solid;border-color:#fff transparent transparent transparent;"></div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);border-width:6px 4px 0;border-style:solid;border-color:${color} transparent transparent transparent;"></div></div>`,
+            iconSize: [36, 44], iconAnchor: [18, 44], popupAnchor: [0, -44]
         });
-        const senderIcon = L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
-            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-            iconSize: [25, 41], iconAnchor: [12, 41]
-        });
-        const receiverIcon = L.icon({
-            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
-            shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-            iconSize: [25, 41], iconAnchor: [12, 41]
-        });
+
+        const driverIcon = createCustomMarkerIcon('two_wheeler', '#2563eb');
+        const senderIcon = createCustomMarkerIcon('storefront', '#f59e0b');
+        const receiverIcon = createCustomMarkerIcon('location_on', '#10b981');
 
         let routingControl = null;
         let dLat = parseFloat(driverLat) || 0;

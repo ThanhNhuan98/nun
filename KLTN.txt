@@ -1,0 +1,1161 @@
+ 
+                      
+LỜI CẢM ƠN
+
+Trước tiên, tôi xin gửi lời cảm ơn chân thành đến các thầy cô giáo tại Trường Đại Học Khoa Học Đại Học Huế, những người đã dành hết tâm huyết và công sức để truyền đạt kiến thức cho chúng tôi trong suốt quá trình học tập. Sự dìu dắt và hướng dẫn của thầy cô không chỉ giúp tôi nâng cao kiến thức chuyên môn mà còn truyền cảm hứng để tôi hoàn thành khóa luận này.
+Tôi cũng xin gửi lời cảm ơn đến giáo viên hướng dẫn Nguyễn Thanh Tuấn đã tận tình hướng dẫn em hoàn thiện đề tài. Trong quá trình thực hiện, mặc dù đã hết sức cố gắng hoàn thiện khóa luận tốt nghiệp, trao đổi và tiếp thu ý kiến đóng góp từ quý Thầy, Cô và bạn bè nhưng với thời gian nghiên cứu và kiến thức còn hạn chế, bài khóa luận này không tránh khỏi những sai sót.
+Cuối cùng, tôi xin cảm ơn gia đình đã luôn ở bên, ủng hộ và tạo điều kiện tốt nhất cho tôi trong suốt quá trình học tập. Tình yêu thương và sự hy sinh của gia đình là nguồn động lực lớn lao giúp tôi hoàn thành khóa luận này.
+Xin chân thành cảm ơn!
+Huế, tháng 6 năm 2026
+Sinh viên thực hiện
+
+Trần Đức Thành Nhuận
+
+
+
+
+
+
+
+MỞ ĐẦU	vi
+Chương 1: Cơ sở lý thuyết và các công nghệ ứng dụng	3
+1.1.	Tổng quan về Logistics và Giao hàng chặng cuối (Last-mile Delivery)	3
+1.1.1.	Khái niệm và vai trò của Last-mile Delivery trong chuỗi cung ứng	3
+1.1.2.	Các thách thức hiện nay (Bài toán chi phí, thời gian và tối ưu lộ trình)	4
+1.2.	Cơ sở toán học - Bài toán Định tuyến phương tiện (VRP)	5
+1.2.1.	Tổng quan về bài toán Định tuyến phương tiện (Vehicle Routing Problem)	5
+1.2.2.	Bài toán ghép chuyến (Batching Orders) trong thực tiễn hệ thống	8
+1.3.	Nền tảng lập trình và Kiến trúc hệ thống	8
+1.3.1.	Ngôn ngữ lập trình PHP và mô hình kiến trúc MVC	8
+1.3.2.	Hệ quản trị cơ sở dữ liệu quan hệ MySQL và kỹ thuật Database Transaction	10
+1.3.3.	Ngôn ngữ Python và vai trò Microservice xử lý thuật toán	12
+1.4.	Các thư viện phần mềm và API tích hợp	14
+1.4.1.	Bộ thư viện mã nguồn mở Google OR-Tools	14
+1.4.2.	Thư viện bản đồ LeafletJS và Nền tảng máy chủ định tuyến OSRM (Open Source Routing Machine)	16
+Chương 2: Phân tích và thiết kế hệ thống NUN Express	18
+2.1.	Phân tích yêu cầu hệ thống	18
+2.2.	Mô hình hóa yêu cầu (Biểu đồ Use Case)	23
+2.2.1.	Biểu đồ Use Case tổng quát toàn hệ thống	23
+2.2.2.	Phân rã Use Case phân hệ Khách hàng:	24
+2.2.3.	Phân rã Use Case phân hệ Tài xế:	27
+2.2.4.	Phân rã Use Case phân hệ Quản trị viên:	31
+2.3.	Thiết kế kiến trúc tổng thể	35
+2.3.1.	Kiến trúc hệ thống lõi (Core System):	35
+2.3.2.	Mô hình giao tiếp liên dịch vụ (Microservice Communication):	36
+2.4.	Thiết kế luồng xử lý (Biểu đồ Hoạt động & Biểu đồ Tuần tự)	37
+2.4.1.	Luồng xử lý vòng đời một đơn hàng (Order Lifecycle):	37
+2.4.2.	Luồng xử lý Radar và Ghép chuyến bằng AI:	37
+2.4.3.	Luồng xử lý giao dịch tài chính an toàn	39
+2.4.4.	Luồng xử lý báo cáo sự cố	39
+2.5.	Thiết kế cơ sở dữ liệu	40
+2.5.1.	Sơ đồ Mô hình thực thể liên kết (ERD - Entity Relationship Diaram)	40
+2.5.2.	Đặc tả chi tiết các lớp:	41
+2.6.	Thiết kế giao diện (UI/UX Design)	48
+2.6.1.	Nguyên tắc thiết kế: (Design Principles)	48
+2.6.2.	Thiết kế giao diện Web Admin:	49
+CHƯƠNG 3: PHÂN TÍCH VÀ XÂY DỰNG THUẬT TOÁN AI GHÉP CHUYẾN	50
+3.1.	Đặt vấn đề và Lựa chọn công nghệ	50
+3.1.1.	Bài toán Định tuyến phương tiện (VRP - Vehicle Routing Problem)	50
+3.1.2.	Lựa chọn công nghệ lõi Để xử lý bài toán này trong thời gian thực (Real-time) khi tài xế bật Radar, hệ thống lựa chọn các công nghệ sau:	52
+3.2.	Xây dựng Giải thuật Gom cụm không gian (Spatial Clustering Heuristic)	54
+3.2.1.	Đặt vấn đề và Phương pháp tiếp cận	54
+3.2.2.	Chi tiết các bước thực thi của Giải thuật Gom cụm	54
+3.3.	Thuật toán Tối ưu Lộ trình (Routing Optimization với OR-Tools)	56
+3.3.1.	Đặt vấn đề và Vai trò của OR-Tools	56
+3.3.2.	Tiền xử lý và Khởi tạo Ma trận Chi phí (Cost Matrix)	56
+3.3.3.	Xây dựng Mô hình Định tuyến (Routing Model)	57
+3.3.4.	Cấu hình Chiến lược Tìm kiếm (Search Strategies)	57
+3.3.5.	Kết xuất dữ liệu (Output Extraction)	58
+3.4.	Chỉ số Đánh giá và Phân loại Lộ trình (Efficiency Scoring)	58
+3.4.1.	Đặt vấn đề về Bài toán Kinh tế trong Điều phối	58
+3.4.2.	Xây dựng công thức tính Điểm hiệu quả (Efficiency Score)	59
+3.4.3.	Thuật toán Sắp xếp Đa tầng (Multi-level Sorting Algorithm)	60
+CHƯƠNG 4: CÀI ĐẶT HỆ THỐNG, KIỂM THỬ VÀ ĐÁNH GIÁ KẾT	60
+4.1.	Môi trường và công cụ phát triển	60
+4.1.1.	Môi trường Phần cứng (Hardware Environment)	61
+4.1.2.	Môi trường Phần mềm và Hệ quản trị Cơ sở dữ liệu (Software & DBMS)	61
+4.1.3.	Ngôn ngữ lập trình và Nền tảng (Programming Languages)	61
+4.1.4.	Các Thư viện và Dịch vụ API Tích hợp (Libraries & APIs)	62
+4.1.5.	Công cụ hỗ trợ Lập trình (IDE)	62
+4.2.	Cài đặt hệ thống	62
+4.3.	Kịch bản Kiểm thử hệ thống (Testing)	66
+4.4.	Đánh giá kết quả thực nghiệm Thuật toán AI Ghép chuyến	70
+KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN TƯƠNG LAI	72
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+MỞ ĐẦU
+	Lý do chọn đề tài
+Sự bùng nổ của thị trường và nhu cầu tối ưu hóa giao hàng chặng cuối Trong kỷ nguyên công nghệ số, sự phát triển bứt phá của nền kinh tế thương mại điện tử (E-commerce) tại Việt Nam đang kéo theo nhu cầu vận chuyển hàng hóa gia tăng với tốc độ chóng mặt [1]. Tuy nhiên, điểm nghẽn lớn nhất trong toàn bộ chuỗi cung ứng hiện nay chính là khâu giao hàng chặng cuối (Last-mile delivery) [2]. Khách hàng ngày càng khắt khe hơn về tốc độ giao nhận, tính minh bạch của lộ trình và sự tiện lợi trong quá trình thanh toán. Điều này đặt ra một áp lực rất lớn về mặt chi phí và hiệu suất lên các doanh nghiệp vận tải, khi mà chi phí dành riêng cho khâu giao nhận chặng cuối có thể chiếm tới 41% - 53% tổng chi phí của toàn bộ chuỗi cung ứng [3].
+Những hạn chế và bất cập của mô hình quản lý hiện tại Thực trạng hiện nay cho thấy, ở nhiều mô hình giao nhận quy mô vừa và nhỏ, công tác quản lý và điều phối vẫn diễn ra phân tán hoặc bán thủ công. Việc phân bổ đơn hàng cho tài xế phần lớn dựa trên cảm tính và kinh nghiệm chủ quan, thiếu đi sự tính toán logic về khoảng cách và tải trọng xe. Điều này dẫn đến tình trạng lãng phí nhiên liệu, tỷ lệ chạy rỗng cao và thời gian chờ đợi kéo dài. Bên cạnh đó, việc thiếu hụt một hệ thống đối soát tài chính tập trung và công cụ giám sát lộ trình thực tế thường xuyên làm phát sinh các khiếu nại, tranh chấp giữa người gửi, người giao và người quản lý.
+Nhu cầu cấp thiết về một giải pháp phần mềm toàn diện Để giải quyết triệt để các bài toán trên, việc chuyển đổi số và áp dụng một hệ thống phần mềm chuyên biệt là điều vô cùng cấp thiết. Hệ thống này cần đóng vai trò là nền tảng trung tâm, kết nối chặt chẽ và tương tác thời gian thực giữa ba chủ thể chính: Khách hàng (Customer) - Tài xế (Driver) - Quản trị viên (Admin). Hơn cả một công cụ lưu trữ dữ liệu (CRUD) thông thường, nền tảng đòi hỏi phải tích hợp các giải pháp điều phối thông minh, tự động hóa thanh toán và bảo vệ quyền lợi của các bên thông qua các cơ chế xử lý vi phạm chặt chẽ.
+Quyết định lựa chọn đề tài Xuất phát từ nhu cầu thực tiễn khắt khe của thị trường vận tải, kết hợp với mong muốn vận dụng những kiến thức đã được đào tạo (như Phân tích thiết kế hệ thống thông tin, mô hình MVC, Quản trị cơ sở dữ liệu, và ứng dụng Trí tuệ nhân tạo), em đã quyết định chọn đề tài: “Xây dựng hệ thống đặt lịch giao hàng chặng cuối NUN Express và tối ưu hóa ghép chuyến bằng Trí tuệ nhân tạo” làm Khóa luận tốt nghiệp. Đề tài hướng tới việc giải quyết trọn vẹn bài toán vòng đời đơn hàng: từ việc đặt lịch, AI tự động ghép chuyến, cho đến theo dõi bản đồ trực tuyến và quản lý dòng tiền tự động qua ví điện tử.
+	Mục tiêu nghiên cứu
+	Mục tiêu tổng quát
+Mục tiêu tổng quát của đề tài là nghiên cứu, phân tích và xây dựng thành công một nền tảng phần mềm khép kín hỗ trợ đặt lịch và quản lý giao hàng chặng cuối (Last-mile delivery) hoạt động trên môi trường Web, với tên gọi NUN Express. Hệ thống hướng tới việc số hóa toàn bộ quy trình giao nhận hàng hóa nội thành, kết nối trực tiếp và đồng bộ dữ liệu theo thời gian thực giữa ba chủ thể tham gia cốt lõi trong chuỗi cung ứng: Khách hàng (Customer) - Tài xế (Driver) - Quản trị viên (Admin).
+Điểm nhấn và mục tiêu học thuật trọng tâm của đề tài không chỉ dừng lại ở việc xây dựng một hệ thống quản lý dữ liệu thông thường (CRUD), mà là việc nghiên cứu và tích hợp thành công module Trí tuệ nhân tạo (AI) để tối ưu hóa công tác điều phối. Cụ thể, đề tài đặt mục tiêu ứng dụng thuật toán để giải quyết bài toán Định tuyến phương tiện (Vehicle Routing Problem - VRP) [4], nhằm tự động hóa việc tính toán lộ trình di chuyển ngắn nhất và ghép chuyến thông minh (Batching). Quá trình phân bổ này được thiết kế để tuân thủ nghiêm ngặt các ràng buộc vật lý trong thực tiễn như giới hạn tải trọng của phương tiện và số lượng đơn hàng tối đa có thể phục vụ cùng lúc.
+Thông qua nền tảng NUN Express, đề tài kỳ vọng cung cấp một giải pháp công nghệ toàn diện giúp các cá nhân và doanh nghiệp vận tải giải quyết bài toán tối ưu hóa chi phí vận hành, giảm thiểu tỷ lệ chạy rỗng và lãng phí nhiên liệu – vốn là những yêu cầu vô cùng cấp thiết trong bối cảnh chuyển đổi số ngành Logistics tại Việt Nam hiện nay [5]. Đồng thời, hệ thống cũng hướng tới việc minh bạch hóa quy trình đối soát dòng tiền thông qua tích hợp ví điện tử nội bộ và bảo vệ quyền lợi của các bên bằng cơ chế xử lý khiếu nại chặt chẽ.
+	Mục tiêu cụ thể
+Để hiện thực hóa được mục tiêu tổng quát đã đề ra, đề tài tập trung giải quyết các bài toán chi tiết trên ba phương diện cốt lõi: Lý thuyết, Công nghệ và Nghiệp vụ hệ thống.
+	Về mặt Cơ sở lý thuyết
+	Nghiên cứu tổng quan về chuỗi cung ứng đô thị: Hệ thống hóa các khái niệm, quy trình vận hành và đặc biệt là phân tích sâu các điểm nghẽn về chi phí, thời gian chạy rỗng trong hoạt động giao nhận chặng cuối (Last-mile delivery) [6].
+	Nghiên cứu Toán học và Tối ưu hóa: Tìm hiểu chuyên sâu về bài toán Định tuyến phương tiện có ràng buộc sức chứa (Capacitated Vehicle Routing Problem - CVRP). Phân tích mô hình toán học của phương pháp Ghép chuyến thời gian thực (Real-time Batching) nhằm tối ưu hóa mật độ giao hàng.
+	Làm chủ thuật toán: Nghiên cứu nguyên lý hoạt động, cấu trúc đồ thị và cách thức thiết lập các hàm ràng buộc (Callbacks) bên trong bộ thư viện mã nguồn mở Google OR-Tools.
+	Về mặt Ứng dụng công nghệ
+	Quản trị Cơ sở dữ liệu an toàn: Thiết kế cơ sở dữ liệu quan hệ MySQL chuẩn hóa (đạt chuẩn 3NF). Đặc biệt, đề tài đặt mục tiêu vận dụng triệt để kỹ thuật Giao dịch cơ sở dữ liệu (Database Transactions) nhằm đảm bảo 4 tính chất ACID (Tính nguyên tử, Nhất quán, Độc lập, Bền vững) [7], qua đó xử lý an toàn vấn đề tranh chấp dữ liệu khi nhiều tài xế cùng bấm nhận một đơn hàng.
+	Thiết kế Kiến trúc hệ thống lai (Hybrid Architecture):
+	Xây dựng hệ thống Web lõi (Core System) bằng ngôn ngữ PHP tuân thủ nguyên tắc thiết kế MVC (Model-View-Controller) nhằm xử lý nhanh các luồng giao dịch HTTP.
+	Phát triển một Vi dịch vụ (Microservice) [8] độc lập bằng ngôn ngữ Python để gánh vác riêng khối lượng tính toán thuật toán AI đồ sộ, thiết lập cơ chế giao tiếp liên tiến trình (IPC) an toàn giữa PHP và Python.
+	Tích hợp Bản đồ số đa nền tảng: Ứng dụng thư viện LeafletJS kết hợp API của Open Source Routing Machine (OSRM) để tính toán chính xác khoảng cách dựa trên mạng lưới đường bộ thực tế và vẽ lộ trình trực quan lên giao diện Web.
+	Về mặt Nghiệp vụ hệ thống
+Xây dựng hoàn chỉnh nền tảng NUN Express khép kín với các chức năng chuyên biệt phục vụ cho 3 nhóm tác nhân (Actors):
+	Phân hệ Khách hàng (Customer): Cung cấp giao diện trực quan để đặt đơn hàng, tự động ước tính cước phí dựa trên khoảng cách địa lý. Hỗ trợ theo dõi vị trí tài xế theo thời gian thực (Real-time Tracking) và cung cấp công cụ thanh toán, đánh giá, khiếu nại (Dispute).
+	Phân hệ Tài xế (Driver): Trang bị tính năng "Radar nhận đơn". Thay vì hiển thị đơn lẻ, Radar sẽ tự động gọi luồng AI để đề xuất các "Chuyến ghép tối ưu" nhất, đảm bảo tuyệt đối không vượt quá tải trọng xe. Tích hợp tính năng bắt buộc chụp ảnh minh chứng (Proof of Delivery) và hệ thống "Ví điện tử nội bộ" để thu phí tự động.
+	Phân hệ Quản trị viên (Admin): Xây dựng Bảng điều khiển (Dashboard) giám sát tổng quan. Cung cấp công cụ mạnh mẽ để duyệt hồ sơ tài xế, đối soát dòng tiền và trực tiếp phân xử các khiếu nại. Xây dựng cơ chế tự động hóa hình phạt (Khóa tài khoản khách bom hàng, phạt tiền tài xế vi phạm).
+	Đối tượng và phạm vi nghiên cứu
+	Đối tượng nghiên cứu
+Đối tượng nghiên cứu của đề tài được xác định rõ ràng và bao quát trên ba phương diện cốt lõi, nhằm đảm bảo giải quyết trọn vẹn từ khâu lý thuyết đến thực hành, cụ thể như sau:
+	Về mặt quy trình và nghiệp vụ Logistics: 
+Đối tượng nghiên cứu là mô hình vận hành và điều phối giao nhận chặng cuối (Last-mile delivery) trong khu vực đô thị [9]. Hệ thống tập trung phân tích sâu vào vòng đời khép kín của một đơn hàng, cơ chế kiểm soát chất lượng giao nhận thông qua hình ảnh minh chứng (Proof of Delivery), và đặc biệt là quy trình quản lý rủi ro, đối soát tài chính tự động giữa các chủ thể (Khách hàng - Tài xế - Nền tảng) thông qua hệ thống ví điện tử.
+	Về mặt cơ sở toán học và thuật toán: 
+Đề tài tập trung nghiên cứu mô hình toán học của bài toán Định tuyến phương tiện có ràng buộc về sức chứa (Capacitated Vehicle Routing Problem - CVRP). Trọng tâm là việc giải quyết bài toán Ghép chuyến thời gian thực (Real-time Batching) nhằm tối ưu hóa mật độ giao hàng. Đối tượng nghiên cứu sâu về mặt công cụ là bộ thư viện mã nguồn mở Google OR-Tools cùng các chiến lược tìm kiếm xấp xỉ (Heuristics) của nó.
+	Về mặt công nghệ và kỹ thuật phần mềm: 
+Đối tượng nghiên cứu bao gồm việc ứng dụng ngôn ngữ PHP và mô hình kiến trúc MVC (Model-View-Controller) để phát triển hệ thống Web lõi. Đồng thời, đề tài tập trung vào việc áp dụng kỹ thuật Khóa giao dịch cơ sở dữ liệu (Database Transactions) trong MySQL để bảo đảm tính toàn vẹn của dòng tiền, cùng cơ chế thiết lập Vi dịch vụ (Microservice) bằng Python và giao tiếp liên tiến trình (IPC) để giải quyết các tác vụ tính toán hiệu năng cao.
+	Phạm vi nghiên cứu
+Để đảm bảo tính khả thi và độ sâu của Khóa luận trong giới hạn thời gian thực hiện, đề tài đã khoanh vùng phạm vi nghiên cứu trên các khía cạnh cụ thể, đồng thời thiết lập các ranh giới rõ ràng về những vấn đề hệ thống sẽ không tập trung giải quyết:
+a) Về phạm vi nghiệp vụ và chức năng hệ thống
+	Chức năng cốt lõi: 
+Hệ thống NUN Express tập trung phát triển một vòng đời đơn hàng khép kín bao gồm: Khách hàng tạo đơn – Hệ thống phân tích ghép chuyến – Tài xế nhận và cập nhật tiến trình – Quản lý khiếu nại.
+	Giới hạn thanh toán: 
+Để minh họa cho luồng tài chính và đối soát phí nền tảng tự động, hệ thống xây dựng một module "Ví điện tử nội bộ" (Internal Wallet). Đề tài ứng dụng tư duy phát triển Sản phẩm khả dụng tối thiểu (MVP) [10], do đó tạm thời không tích hợp các Cổng thanh toán điện tử thực tế (như MoMo, VNPay) hoặc API Ngân hàng. Việc nạp tiền vào ví được giả lập thông qua xác nhận thủ công hoặc cung cấp mã QR chuyển khoản tĩnh.
+b) Về phạm vi thuật toán Trí tuệ nhân tạo (AI Batching)
+	Ràng buộc vật lý 1 chiều (Cân nặng và Số lượng): 
+Bài toán CVRP trong hệ thống chỉ xét đến hai ràng buộc chính là sức chứa theo tải trọng tối đa (Max Weight) và giới hạn số đơn tối đa (Max Concurrent Orders).
+	Giới hạn không gian: 
+Hệ thống không xử lý bài toán Xếp dỡ không gian 3D (3D Bin Packing Problem - tức là không tính toán kích thước Dài x Rộng x Cao của gói hàng xem có vừa cốp xe hay không). Theo các nghiên cứu chuyên sâu về Vận trù học, việc tách biệt ràng buộc thể tích 3D khỏi bài toán Định tuyến (Routing) là một quy chuẩn phổ biến để đảm bảo thuật toán có thể phản hồi trong thời gian thực [11].
+c) Về phạm vi công nghệ và môi trường triển khai
+	Nền tảng Web Responsive: 
+Đề tài tập trung phát triển hệ thống trên môi trường Web (Sử dụng PHP và HTML/CSS/JS). Phân hệ dành cho Tài xế được tối ưu hóa hiển thị (Mobile-first) thông qua trình duyệt điện thoại, không phát triển ứng dụng di động gốc (Native App trên Android/iOS) để tập trung nguồn lực giải quyết thuật toán.
+	Dữ liệu bản đồ và giao thông: 
+Nền tảng sử dụng API định tuyến của máy chủ mã nguồn mở OSRM (Open Source Routing Machine). OSRM cung cấp khoảng cách và thời gian di chuyển dựa trên cấu trúc mạng lưới đường bộ tĩnh [12]. Hệ thống không áp dụng các mô hình học máy (Machine Learning) để dự đoán kẹt xe hay biến động giao thông theo thời gian thực (Real-time traffic prediction).
+
+	Phương pháp nghiên cứu
+Để giải quyết trọn vẹn các mục tiêu đã đề ra từ khía cạnh lý thuyết thuật toán cho đến việc hoàn thiện sản phẩm phần mềm thực tế, đề tài đã áp dụng kết hợp các phương pháp nghiên cứu khoa học và kỹ thuật kỹ nghệ phần mềm sau đây:
+	Phương pháp thu thập và nghiên cứu tài liệu
+Phương pháp này được áp dụng trong giai đoạn đầu của đề tài nhằm xây dựng nền tảng cơ sở lý thuyết và lựa chọn công nghệ:
+Khảo sát và phân tích nghiệp vụ vận hành thực tế của các nền tảng giao hàng chặng cuối (Last-mile delivery) để rút ra các yêu cầu cốt lõi về quy trình giao/nhận, đối soát ví điện tử và xử lý khiếu nại.
+Nghiên cứu chuyên sâu tài liệu học thuật về bài toán Định tuyến phương tiện có ràng buộc sức chứa (CVRP) và đọc hiểu tài liệu kỹ thuật (Documentation) chính thức của bộ thư viện Google OR-Tools.
+	Phương pháp phân tích và thiết kế hướng đối tượng (OOAD)
+Trước khi tiến hành lập trình, đề tài sử dụng phương pháp Phân tích và Thiết kế Hướng đối tượng (Object-Oriented Analysis and Design) thông qua Ngôn ngữ mô hình hóa thống nhất UML [13].
+Sử dụng Biểu đồ Use Case để xác định rõ ranh giới quyền hạn của 3 nhóm tác nhân: Khách hàng, Tài xế và Quản trị viên.
+Sử dụng Biểu đồ Hoạt động (Activity Diagram) và Biểu đồ Tuần tự (Sequence Diagram) để mô hình hóa các luồng xử lý phức tạp, đặc biệt là luồng giao tiếp liên tiến trình (IPC) giữa Core Web (PHP) và Microservice AI (Python), cũng như luồng trừ/hoàn tiền an toàn trong Ví điện tử.
+Thiết kế Mô hình thực thể liên kết (ERD) và chuẩn hóa Cơ sở dữ liệu quan hệ (MySQL) đạt chuẩn 3NF nhằm loại bỏ sự dư thừa dữ liệu.
+	Phương pháp phát triển phần mềm lặp (Iterative Development)
+Do đặc thù của đề tài yêu cầu tích hợp giữa giao diện Web và một thuật toán Trí tuệ nhân tạo có độ phức tạp cao, việc áp dụng mô hình Thác nước (Waterfall) truyền thống sẽ tiềm ẩn nhiều rủi ro. Thay vào đó, đề tài áp dụng phương pháp Phát triển lặp và tăng dần (Iterative and Incremental Development) [14]. Quá trình xây dựng phần mềm được chia thành các vòng lặp (Iterations) chức năng:
+Vòng lặp 1: Xây dựng bộ khung Custom MVC bằng PHP, thiết lập Cơ sở dữ liệu và hoàn thiện các chức năng CRUD cơ bản (Đăng ký, Đăng nhập, Tạo đơn hàng).
+Vòng lặp 2: Xây dựng các luồng giao dịch tài chính (Ví điện tử) kết hợp kỹ thuật Database Transaction.
+Vòng lặp 3 (Cốt lõi): Lập trình Microservice độc lập bằng Python, tích hợp Google OR-Tools và OSRM API để tinh chỉnh thuật toán Ghép chuyến (Batching).
+Vòng lặp 4: Tích hợp giao diện Bản đồ (LeafletJS), ghép nối API giữa PHP và Python, tinh chỉnh giao diện người dùng (UI/UX).
+	Phương pháp thực nghiệm và kiểm thử (Testing Methods)
+Để đảm bảo chất lượng phần mềm (Software Quality Assurance) và tính đúng đắn của thuật toán AI, đề tài áp dụng các chiến lược kiểm thử nghiêm ngặt [15]:
+Kiểm thử Hộp đen (Black-box Testing): Đóng vai (Role-play) các tác nhân User, Driver và Admin để chạy thử toàn bộ vòng đời khép kín của một đơn hàng từ lúc tạo mới đến khi hoàn thành, đảm bảo giao diện (UI) và logic nghiệp vụ hoạt động khớp với thiết kế.
+Kiểm thử các trường hợp ngoại lệ (Edge-case & Concurrency Testing): Thiết lập các kịch bản kiểm thử khắt khe đối với luồng tranh chấp dữ liệu (Race Condition). Ví dụ: Giả lập 2 tài xế cùng bấm nhận một chuyến ghép tại cùng một mili-giây để kiểm chứng khả năng Rollback của Database Transaction, đảm bảo tuyệt đối không xảy ra tình trạng âm ví hoặc trùng lặp đơn hàng.
+Thực nghiệm thuật toán bằng dữ liệu giả lập (Mock Data Simulation): Khởi tạo một tập dữ liệu lớn bao gồm các tọa độ GPS ngẫu nhiên và mức trọng lượng khác nhau trong khu vực nội thành. Đưa tập dữ liệu này qua Module AI để quan sát, đánh giá tốc độ phản hồi (Response time) và so sánh tổng quãng đường di chuyển giữa phương pháp AI Ghép chuyến với phương pháp giao hàng truyền thống.
+
+	Nội dung nghiên cứu (Bố cục báo cáo dự kiến)
+Chương 1: Cơ sở lý thuyết và các công nghệ ứng dụng.
+Chương 2: Phân tích và thiết kế hệ thống NUN Express.
+Chương 3: Xây dựng Module AI tối ưu hóa lộ trình và ghép chuyến 
+Chương 4: Cài đặt hệ thống, Kiểm thử và Đánh giá kết quả 
+Phần Kết luận và Hướng phát triển:
+	Kết quả dự kiến
+Sau khi hoàn thành quá trình nghiên cứu, phân tích, thiết kế và tiến hành lập trình, đề tài dự kiến sẽ đạt được những kết quả cụ thể trên ba phương diện cốt lõi sau:
+	Về mặt Sản phẩm phần mềm (Ứng dụng thực tiễn)
+	Xây dựng thành công nền tảng Web NUN Express: Ứng dụng dự kiến sẽ hoạt động ổn định trên môi trường Web, tuân thủ nguyên tắc thiết kế đáp ứng (Responsive Design), đặc biệt tối ưu hóa giao diện di động (Mobile-first) đối với phân hệ dành cho Tài xế.
+	Hoàn thiện luồng nghiệp vụ Logistics khép kín: Giải quyết trọn vẹn vòng đời của một đơn hàng (từ lúc Khách tạo đơn, Hệ thống phân bổ, Tài xế lấy/giao hàng, đến khi Hoàn thành hoặc Chuyển hoàn). Hệ thống tích hợp tính năng theo dõi lộ trình thời gian thực (Real-time Tracking), qua đó giải quyết bài toán nâng cao trải nghiệm và sự an tâm của khách hàng thương mại điện tử [16].
+	Vận hành an toàn Ví điện tử nội bộ: Xây dựng thành công cơ chế đối soát tài chính tự động. Bằng việc ứng dụng kỹ thuật Database Transaction, hệ thống dự kiến sẽ xử lý an toàn các luồng tiền nhạy cảm như: tự động trừ phí nền tảng khi nhận đơn, hoàn tiền chính xác khi khách hủy đơn và xử lý triệt để bài toán tranh chấp dữ liệu khi nhiều tài xế cùng bấm nhận một đơn hàng.
+	Về mặt Thuật toán và Cơ sở khoa học
+	Làm chủ và tích hợp thành công Trí tuệ nhân tạo: Tách biệt thành công khối lượng tính toán toán học ra khỏi máy chủ Web bằng việc xây dựng một Microservice độc lập (Python). Hệ thống tích hợp thành công bộ thư viện Google OR-Tools để giải quyết bài toán Định tuyến phương tiện có ràng buộc sức chứa (CVRP).
+	Tự động hóa ghép chuyến thông minh (Batching): Thuật toán AI dự kiến sẽ thay thế hoàn toàn phương pháp điều phối thủ công. Từ một tập hợp các đơn hàng chờ, hệ thống có khả năng tính toán hoán vị và tự động gom nhóm thành các "Chuyến ghép" (Batches) tối ưu nhất, tuân thủ nghiêm ngặt hai giới hạn vật lý: Tải trọng tối đa của xe (Max Total Weight) và Số lượng đơn tối đa cùng lúc (Max Concurrent Orders).
+	Tối ưu hóa chỉ số vận hành: Theo các nghiên cứu Vận trù học, việc ứng dụng thuật toán tối ưu (Heuristics) vào định tuyến có thể giúp giảm thiểu từ 5% đến 20% tổng chi phí vận tải [17]. Nền tảng NUN Express dự kiến sẽ chứng minh được thực nghiệm này thông qua việc rút ngắn tổng quãng đường di chuyển và loại bỏ thời gian chạy rỗng của tài xế.
+	Về mặt Tài liệu và Đóng góp học thuật
+	Hoàn thành Báo cáo Khóa luận tốt nghiệp: Trình bày chi tiết, logic và khoa học về toàn bộ quá trình thực hiện phần mềm. Báo cáo cung cấp đầy đủ các bản thiết kế kiến trúc (MVC, Microservice), thiết kế cơ sở dữ liệu (ERD) và các biểu đồ quy trình nghiệp vụ (UML).
+	Tính ứng dụng và khả năng nhân rộng: Kết quả của đề tài không chỉ mang giá trị hoàn thành chương trình Đại học, mà dự kiến sẽ cung cấp một bộ khung mã nguồn (Framework) và tài liệu tham khảo có giá trị cao. Đây có thể xem là một mô hình kiến trúc mẫu giúp các doanh nghiệp vận tải vừa và nhỏ (SMEs) ứng dụng để thực hiện chuyển đổi số trong bối cảnh Cách mạng Công nghiệp 4.0 [18].
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+ 
+ 
+Chương 1: Cơ sở lý thuyết và các công nghệ ứng dụng
+	Tổng quan về Logistics và Giao hàng chặng cuối (Last-mile Delivery)
+	Khái niệm và vai trò của Last-mile Delivery trong chuỗi cung ứng
+a) Khái niệm về Giao hàng chặng cuối (Last-mile Delivery) Trong lý thuyết về Quản trị Chuỗi cung ứng (Supply Chain Management), Giao hàng chặng cuối (Last-mile Delivery) được định nghĩa là công đoạn vận tải cuối cùng, trong đó hàng hóa được trung chuyển từ một điểm lưu trữ (như kho phân phối trung tâm hoặc điểm trung chuyển) đến tận tay người tiêu dùng cuối cùng [19].
+Đặc thù cốt lõi của Last-mile Delivery so với các khâu vận tải khác (như vận tải biển hay vận tải liên tỉnh) là sự phân mảnh lớn về mặt không gian (các điểm giao hàng rải rác khắp khu vực đô thị) và sự khắt khe về giới hạn thời gian phục vụ (Time windows). Chính vì tính chất phân tán, khó đạt được tính kinh tế nhờ quy mô (Economies of scale) ở giai đoạn này, Giao hàng chặng cuối luôn được giới học thuật và các chuyên gia đánh giá là khâu phức tạp nhất, kém hiệu quả nhất và tốn kém chi phí nhất trong toàn bộ mạng lưới Logistics đô thị [20].
+b) Vai trò của Last-mile Delivery trong chuỗi cung ứng Trong bối cảnh nền kinh tế thương mại điện tử (E-commerce) bùng nổ, Last-mile Delivery không chỉ đơn thuần là một hoạt động dịch chuyển vật lý mà đã vươn lên trở thành một yếu tố chiến lược mang tính sống còn đối với các doanh nghiệp, thể hiện rõ qua hai phương diện trọng tâm:
+	Quyết định mức độ hài lòng và trải nghiệm khách hàng (Customer Experience): Đối với thương mại điện tử, Last-mile chính là điểm chạm vật lý duy nhất (Physical touchpoint) giữa nhà bán lẻ và người tiêu dùng. Chất lượng của chặng giao hàng này (bao gồm tốc độ giao nhận, tính minh bạch trong việc theo dõi lộ trình và thái độ của tài xế) tác động trực tiếp đến mức độ hài lòng, lòng trung thành và quyết định quay lại sử dụng dịch vụ của khách hàng [21]. Hệ thống NUN Express được thiết kế với chức năng theo dõi trực tuyến (Real-time Tracking) chính là để giải quyết yêu cầu này.
+	Tác động mạnh mẽ đến biên lợi nhuận (Profit Margin): Như đã phân tích, chi phí dành cho khâu giao nhận chặng cuối chiếm tỷ trọng khổng lồ trong chuỗi cung ứng. Việc áp dụng các hệ thống quản lý vận tải (TMS) kết hợp với Trí tuệ nhân tạo (AI) để tối ưu hóa tuyến đường, loại bỏ thời gian chạy rỗng và ứng dụng ghép chuyến (Batching) sẽ giúp các doanh nghiệp giảm thiểu đáng kể lãng phí nhiên liệu. Khả năng số hóa và làm chủ Last-mile chính là chìa khóa để mở rộng biên lợi nhuận và tạo ra lợi thế cạnh tranh tuyệt đối trên thị trường [20].
+
+	Các thách thức hiện nay (Bài toán chi phí, thời gian và tối ưu lộ trình)
+Mặc dù giữ vai trò chiến lược, hoạt động giao hàng chặng cuối đang phải đối mặt với áp lực to lớn từ sự kỳ vọng của người tiêu dùng và các giới hạn về hạ tầng đô thị. Dựa trên thực tiễn vận hành, các thách thức này có thể được quy tụ thành ba bài toán cốt lõi:
+a) Bài toán về Chi phí và Rủi ro vận hành (Cost & Risk Constraints) Sự phân mảnh của thị trường bán lẻ điện tử khiến các đơn hàng chặng cuối thường có kích thước nhỏ, giá trị không đồng đều nhưng lại nằm rải rác ở nhiều khu vực địa lý khác nhau. Theo các nghiên cứu về Logistics đô thị, những nguyên nhân chính đẩy chi phí Last-mile lên mức báo động bao gồm [22]:
+	Tỷ lệ chạy rỗng và lãng phí năng lượng: Việc tài xế chỉ nhận và giao từng đơn hàng lẻ tẻ (Point-to-Point delivery) trên một tuyến đường dài gây ra sự lãng phí rất lớn về nhiên liệu và sức lao động, làm giảm biên lợi nhuận của toàn chuỗi.
+	Chi phí chìm từ giao hàng thất bại: Các tình huống khách hàng vắng mặt, sai tọa độ hoặc cố tình từ chối nhận hàng (hành vi "Bom hàng" / No-show) buộc tài xế phải mang hàng hoàn trả về kho. Mỗi lần giao hàng thất bại tạo ra tổn thất kép (chi phí chiều đi và chiều về) cho nền tảng mà không sinh ra bất kỳ doanh thu nào.
+b) Bài toán về Cửa sổ thời gian (Time Windows Constraints) Khách hàng hiện đại luôn mong muốn nhận được hàng trong thời gian ngắn nhất (giao hỏa tốc) hoặc theo một khung giờ hẹn trước cực kỳ khắt khe (Time Windows).
+	Áp lực biến động giao thông: Tại các đô thị đông đúc, tình trạng ùn tắc giao thông làm phát sinh các độ trễ phi tuyến, gây sai lệch nghiêm trọng cho các dự báo về thời gian đến dự kiến (ETA - Estimated Time of Arrival) [23].
+	Xung đột đa mục tiêu (Multi-objective conflict): Tồn tại một mâu thuẫn lớn giữa lợi ích của tài xế và trải nghiệm của khách hàng. Nếu tài xế nhận quá nhiều đơn hàng cùng lúc ("ôm đơn") để tăng thu nhập, thời gian chờ đợi của khách hàng ở các điểm giao cuối cùng sẽ bị kéo dài đáng kể, vi phạm cam kết chất lượng dịch vụ (SLA). Ngược lại, nếu giới hạn khắt khe số lượng đơn, tài xế lại không đảm bảo được sinh kế.
+c) Bài toán Tối ưu lộ trình và Ghép chuyến (Routing & Batching Problem) Đây là bài toán mang tính học thuật và kỹ thuật phức tạp nhất trong công tác điều phối vận tải hiện đại [24]:
+	Sự bất lực của phương pháp thủ công: Ở nhiều mô hình vừa và nhỏ, việc phân bổ đơn hàng mang nặng tính cảm tính hoặc phụ thuộc vào thói quen của tài xế. Trí óc con người không thể tính toán hoán vị và phân tích ma trận khoảng cách giữa hàng chục điểm giao nhận trong thời gian ngắn, dẫn đến việc sinh ra các lộ trình vòng vèo, trùng lặp.
+	Sự phức tạp của đa ràng buộc vật lý: Việc nhóm nhiều đơn hàng lại cho một tài xế (Ghép chuyến - Batching) không đơn giản chỉ là tìm các điểm gần nhau về mặt khoảng cách địa lý (Euclidean distance). Bài toán này yêu cầu thuật toán phải tuân thủ nghiêm ngặt các giới hạn năng lực phục vụ của phương tiện (Capacity Constraints), điển hình là: Tải trọng hàng hóa tối đa (Max Total Weight) và Số lượng đơn vị tối đa được phép vận chuyển cùng lúc (Max Concurrent Orders).
+
+	Cơ sở toán học - Bài toán Định tuyến phương tiện (VRP)
+	Tổng quan về bài toán Định tuyến phương tiện (Vehicle Routing Problem)
+a) Khái niệm và nguồn gốc Bài toán Định tuyến phương tiện (Vehicle Routing Problem - VRP) là một trong những bài toán tối ưu hóa tổ hợp (Combinatorial Optimization) quan trọng và được nghiên cứu rộng rãi nhất. VRP được giới thiệu lần đầu tiên vào năm 1959 bởi hai nhà toán học George Dantzig và John Ramser thông qua bài toán điều phối lộ trình cho một đội xe tải giao xăng dầu [25].
+Về mặt bản chất toán học, VRP là sự tổng quát hóa của bài toán Người chào hàng (Traveling Salesman Problem - TSP). Thay vì tìm đường đi ngắn nhất cho một người qua tất cả các điểm, VRP giải quyết bài toán phức tạp hơn: Tìm tập hợp các lộ trình tối ưu cho một đội xe (nhiều phương tiện) xuất phát từ một kho trung tâm để phục vụ một tập hợp khách hàng phân tán.
+b) Mô hình toán học tổng quát Mô hình toán học của VRP được biểu diễn dưới dạng một đồ thị có hướng G = (V,E), trong đó:
+Tập đỉnh V: V = {0,1,2,...,n}, với đỉnh 0 đại diện cho điểm xuất phát (Depot) và các đỉnh từ 1 đến n đại diện cho các khách hàng cần phục vụ.
+Tập cạnh E: E = {(i,j) | i,j ∈ V,i ≠j}  , đại diện cho mạng lưới đường giao thông nối giữa các đỉnh.
+Ma trận chi phí C: Mỗi cạnh (i,j) được gán một trọng số c_{ij} ≥ 0 biểu thị chi phí (khoảng cách hoặc thời gian) di chuyển từ đỉnh i đến đỉnh j.
+Đội xe K: Một tập hợp gồm K phương tiện đồng nhất có sẵn tại Depot.
+Biến quyết định (Decision Variable): Bài toán sử dụng biến nhị phân x_{ijk}\in\left\{0,\right.\left.1\right\}
+x_{ijk}=\ 1: Nếu phương tiện k di chuyển trực tiếp từ đỉnh i đến đỉnh j.
+x_{ijk}=\ 0: Trong các trường hợp còn lại.
+Hàm mục tiêu (Objective Function): Mục tiêu cốt lõi của VRP là cực tiểu hóa tổng chi phí di chuyển của toàn bộ hệ thống: min\emsp Z=\sum_{k\in K}\sum_{i\in V}\sum_{j\in V}{c_{ij}x_{ijk}}
+
+Các ràng buộc cơ bản (Degree Constraints): (1) Mỗi khách hàng chỉ được ghé thăm đúng một lần bởi một phương tiện duy nhất: 
+\sum_{k\in K}\sum_{j\in V,j\neq i} x_{ijk}=1\emsp\forall i\in\{1,2,\ldots,n\}
+(2) Luồng di chuyển liên tục (Nếu một xe đi vào đỉnh p , nó bắt buộc phải đi ra khỏi đỉnh \sum_{i\in V} x_{ipk}-\sum_{j\in V} x_{pjk}=0\emsp\forall p\in V,\forall k\in K
+Bài toán VRP có ràng buộc về năng lực (Capacitated VRP - CVRP)
+a) Ràng buộc sức chứa cơ bản (Single-capacity) Trong thực tế vận tải, không có bất kỳ phương tiện nào sở hữu sức chứa vô hạn. Bài toán Định tuyến phương tiện có ràng buộc về sức chứa (Capacitated Vehicle Routing Problem - CVRP) mở rộng mô hình VRP chuẩn bằng cách đưa thêm các biến số giới hạn vật lý [26]:
+Mỗi đỉnh khách hàng i∈1,…,n có một mức yêu cầu vận chuyển hàng hóa là d_i\geq0.
+Mỗi phương tiện k ∈K có mức tải trọng tối đa là Q.
+Ràng buộc sức chứa quy định rằng: Tổng lượng hàng hóa trên một lộ trình do phương tiện k đảm nhận không được phép vượt quá tải trọng Q của phương tiện đó: \sum_{i=1}^{n}{d_i\sum_{j\in V} x_{ijk}}\le Q\emsp\forall k\in K
+b) Mô hình CVRP Đa ràng buộc năng lực (Multi-capacity CVRP) ứng dụng trong hệ thống Trong mô hình giao hàng chặng cuối (Last-mile delivery) hiện đại, bài toán CVRP không chỉ giới hạn ở một chiều vật lý. Việc tài xế nhận quá nhiều đơn hàng (dù tổng cân nặng chưa vượt mức cho phép) sẽ kéo dài thời gian di chuyển, làm ảnh hưởng nghiêm trọng đến trải nghiệm của những khách hàng nhận sau cùng.
+Để giải quyết vấn đề này, module Trí tuệ nhân tạo trong nền tảng NUN Express được mô hình hóa theo bài toán CVRP Đa năng lực. Hệ thống thiết lập hệ bất phương trình ràng buộc đồng thời đối với một chuyến đi k:
+Ràng buộc tổng tải trọng (max_total_weight): Tổng khối lượng hàng không được vượt quá tải trọng xe. \sum_{i=1}^{n}{w_i\sum_{j\in V} x_{ijk}}\le W_{max}\emsp\forall k\in K (Với w_i là cân nặng của kiện hàng tại điểm i, W_{max}\ là mức tải trọng tối đa của tài xế).
+Ràng buộc số lượng đơn ghép (max_concurrent_orders): Tổng số điểm giao nhận không được vượt quá giới hạn năng lực phục vụ cùng lúc. \sum_{i=1}^{n}\sum_{j\in V} x_{ijk}\le O_{max}\emsp\forall k\in K (Với O_{max}\ là số lượng đơn hàng ghép tối đa được Admin cấu hình).
+	Bài toán ghép chuyến (Batching Orders) trong thực tiễn hệ thống
+Dựa trên nền tảng toán học của CVRP, bài toán điều phối trong hệ thống NUN Express được cụ thể hóa thành thao tác Ghép chuyến (Batching). Thay vì giải quyết bài toán tĩnh (Static VRP) - nơi mọi thông tin được biết trước, nền tảng phải giải quyết bài toán VRP theo thời gian thực (Online VRP).
+Sự khác biệt trong việc mô hình hóa đồ thị:
+Depot động (Dynamic Depot): Trong hệ thống NUN Express, đỉnh xuất phát (Đỉnh 0) không phải là một nhà kho cố định, mà chính là tọa độ GPS hiện tại của tài xế ngay tại thời điểm bấm nút "Radar nhận đơn".
+Điểm đôi (Pickup & Delivery): Mỗi đơn hàng i thực chất là một cặp đỉnh \left(P_i,D_i\right)
+ trên đồ thị (Điểm lấy hàng và Điểm giao hàng). Thuật toán phải giải quyết một ràng buộc trình tự (Precedence Constraint) vô cùng khắt khe: Phương tiện bắt buộc phải đi qua đỉnh P_i trước khi có thể đi qua đỉnh D_i.
+Do CVRP là một bài toán thuộc lớp NP-Khó (NP-Hard), thời gian tính toán bằng phương pháp vét cạn (Brute-force) sẽ tăng theo cấp số nhân khi số lượng đơn hàng tăng lên. Do đó, hệ thống NUN Express không tự xây dựng thuật toán từ đầu mà ứng dụng sức mạnh của các thuật toán tìm kiếm xấp xỉ siêu tối ưu (Meta-heuristics) từ bộ thư viện mã nguồn mở Google OR-Tools. Bằng cách định nghĩa chính xác Ma trận chi phí C và các biến ràng buộc năng lực (Capacity Callbacks) như mô hình toán học đã nêu, AI của Google có thể tìm ra được cụm đơn hàng ghép tối ưu (Batches) trong khoảng thời gian lý tưởng (dưới 1 giây).
+
+	Nền tảng lập trình và Kiến trúc hệ thống
+	Ngôn ngữ lập trình PHP và mô hình kiến trúc MVC
+a) Ngôn ngữ kịch bản phía máy chủ (PHP) PHP (Hypertext Preprocessor) là một ngôn ngữ kịch bản mã nguồn mở đa mục đích, được thiết kế chuyên biệt để phát triển các ứng dụng Web và thực thi ở phía máy chủ (Server-side). Kể từ khi ra mắt, PHP đã khẳng định vị thế là một trong những ngôn ngữ lập trình Web phổ biến nhất thế giới nhờ vào hiệu năng xử lý chuỗi mạnh mẽ, cú pháp linh hoạt và khả năng tích hợp liền mạch với các hệ quản trị cơ sở dữ liệu quan hệ (như MySQL, PostgreSQL).
+Trong khuôn khổ của đề tài, PHP (phiên bản 8.x) được lựa chọn làm công nghệ lõi để xây dựng hệ thống Web Backend cho nền tảng NUN Express. Quyết định này không chỉ dựa trên tốc độ đáp ứng xuất sắc các luồng truy vấn (HTTP Requests) diễn ra liên tục từ phía Khách hàng và Tài xế, mà còn xuất phát từ khả năng giao tiếp ở cấp độ hệ điều hành của PHP. Cụ thể, thông qua các hàm thực thi tập lệnh hệ thống (như shell_exec()), ứng dụng Web bằng PHP có thể dễ dàng khởi tạo tiến trình và giao tiếp với Microservice Trí tuệ nhân tạo được viết bằng ngôn ngữ Python, tạo nên một kiến trúc đa ngôn ngữ (Polyglot Architecture) hoàn chỉnh.
+b) Nguyên lý của mô hình kiến trúc MVC (Model - View - Controller) 
+Để đảm bảo mã nguồn của dự án có tính cấu trúc cao, dễ dàng bảo trì và mở rộng, toàn bộ hệ thống lõi của nền tảng được thiết kế tuân thủ nghiêm ngặt theo mô hình kiến trúc MVC. Được giới thiệu lần đầu vào cuối những năm 1970 bởi Trygve Reenskaug, MVC là một mẫu kiến trúc phần mềm (Architectural Pattern) phân tách một ứng dụng thành ba thành phần lô-gic độc lập, nhằm thực hiện triết lý "Phân tách các mối quan tâm" (Separation of Concerns) [27]:
+	Model (Mô hình dữ liệu): Là thành phần trung tâm chịu trách nhiệm quản lý cấu trúc dữ liệu, trạng thái và các quy tắc nghiệp vụ (Business Logic). Mọi thao tác tương tác trực tiếp với cơ sở dữ liệu (Truy vấn, Thêm, Sửa, Xóa) và các thuật toán nội bộ đều được đóng gói tại đây. Trong hệ thống NUN Express, các lớp như Order hay Wallet (đóng vai trò là Model) sẽ đảm nhận các tác vụ phức tạp như kiểm tra điều kiện nhận đơn hoặc luồng xử lý trừ/cộng tiền an toàn cho ví điện tử.
+	View (Khung nhìn / Giao diện): Đảm nhiệm vai trò trình bày dữ liệu trực quan đến người dùng cuối. View hoàn toàn không chứa các logic truy vấn hay xử lý dữ liệu phức tạp. Tầng này chỉ nhận dữ liệu đã được tính toán từ Controller để kết xuất và hiển thị thông qua các mã HTML, CSS và JavaScript.
+	Controller (Bộ điều khiển): Đóng vai trò là người điều phối (Coordinator) giữa Model và View. Controller sẽ tiếp nhận các yêu cầu HTTP từ phía người dùng (thông qua luồng Router), tiến hành kiểm tra tính hợp lệ của dữ liệu đầu vào (Validation), gọi các Model tương ứng để xử lý nghiệp vụ, và cuối cùng quyết định sẽ trả về một giao diện HTML hay trả về dữ liệu thuần (JSON API) cho phía Client [28].
+c) Ứng dụng mô hình Custom MVC trong hệ thống NUN Express Điểm nổi bật về mặt kỹ thuật phần mềm của đề tài là việc không sử dụng các Framework thương mại có sẵn và đồ sộ (như Laravel, CodeIgniter hay Symfony). Thay vào đó, toàn bộ kiến trúc MVC của NUN Express đều được phân tích và xây dựng thủ công từ đầu (Custom MVC Framework).
+Hệ thống tự định nghĩa kiến trúc Front-Controller (với một điểm vào duy nhất tại index.php), tự xây dựng các luồng định tuyến (Router), bộ đóng gói Request/Response và lớp xác thực dữ liệu Validator hoàn toàn độc lập. Cách tiếp cận này mang lại hai lợi ích chiến lược cho hệ thống:
+	Tối ưu hóa hiệu năng: Ứng dụng chỉ nạp những thành phần thư viện thực sự cần thiết, loại bỏ hoàn toàn các tài nguyên dư thừa (bloatware), qua đó giúp tối ưu hóa dung lượng bộ nhớ và tăng tốc độ tải trang.
+	Khẳng định năng lực kỹ thuật: Việc tự xây dựng một bộ khung MVC minh chứng cho khả năng vận dụng và làm chủ sâu sắc tư duy thiết kế phần mềm cốt lõi, thay vì chỉ phụ thuộc vào các công cụ đóng gói tự động.
+
+	Hệ quản trị cơ sở dữ liệu quan hệ MySQL và kỹ thuật Database Transaction
+. a) Hệ quản trị cơ sở dữ liệu quan hệ (RDBMS) MySQL MySQL là một trong những Hệ quản trị cơ sở dữ liệu quan hệ (Relational Database Management System - RDBMS) mã nguồn mở phổ biến và mạnh mẽ nhất hiện nay. Nền tảng này hoạt động dựa trên Mô hình dữ liệu quan hệ do E.F. Codd đề xuất, trong đó dữ liệu được tổ chức thành các bảng (Tables) hai chiều bao gồm hàng (Rows) và cột (Columns). Mối liên hệ logic giữa các thực thể dữ liệu được đảm bảo thông qua hệ thống Khóa chính (Primary Key) và Khóa ngoại (Foreign Key) [29].
+Đối với nền tảng Logistics phức tạp như NUN Express, việc duy trì Tính toàn vẹn tham chiếu (Referential Integrity) là yêu cầu bắt buộc. Chẳng hạn, một phiên giao dịch đơn hàng (Entity: orders) phải liên kết chặt chẽ với dữ liệu định tuyến không gian (Entity: order_addresses), trạng thái vật lý (Entity: order_deliveries) và dòng tiền đối soát (Entity: order_finances). MySQL cung cấp cơ chế truy vấn hợp nhất (JOIN) với hiệu năng cao, cho phép hệ thống trích xuất trọn vẹn vòng đời của một đơn hàng trong thời gian thực để phục vụ công tác điều phối.
+b) Cơ sở lý thuyết về Kỹ thuật Giao dịch cơ sở dữ liệu (Database Transaction) Trong khoa học máy tính, một Giao dịch cơ sở dữ liệu (Transaction) được định nghĩa là một tập hợp bao gồm một hoặc nhiều thao tác thao tác dữ liệu (Insert, Update, Delete) được thực thi như một đơn vị công việc (Unit of work) duy nhất và không thể chia nhỏ [30]. Để một Transaction được coi là hợp lệ và an toàn, nó bắt buộc phải tuân thủ nghiêm ngặt hệ tiên đề gồm 4 tính chất cốt lõi (gọi tắt là ACID):
+	Atomicity (Tính nguyên tử): Đảm bảo nguyên tắc "Tất cả hoặc không có gì" (All-or-Nothing). Nghĩa là toàn bộ các câu lệnh trong Transaction phải được thực thi thành công hoàn toàn (Commit), hoặc nếu có bất kỳ lỗi nào xảy ra ở một khâu nhỏ nhất, toàn bộ dữ liệu phải được hoàn tác (Rollback) về trạng thái ban đầu.
+	Consistency (Tính nhất quán): Sau khi Transaction kết thúc, cơ sở dữ liệu phải chuyển từ một trạng thái hợp lệ này sang một trạng thái hợp lệ khác, không vi phạm các ràng buộc (Constraints) đã thiết lập.
+	Isolation (Tính cô lập): Khi có nhiều Transaction chạy song song, chúng phải độc lập với nhau. Một Transaction không được phép can thiệp hay nhìn thấy những dữ liệu đang bị chỉnh sửa dang dở của một Transaction khác.
+	Durability (Tính bền vững): Một khi Transaction đã được xác nhận (Commit) thành công, kết quả của nó phải được lưu trữ vĩnh viễn trên ổ cứng, bất chấp việc hệ thống có thể bị sập nguồn ngay sau đó.
+c) Ứng dụng Kỹ thuật Transaction giải quyết bài toán thực tiễn tại NUN Express Trong quá trình vận hành nền tảng điều phối giao nhận thời gian thực, có rất nhiều luồng nghiệp vụ nhạy cảm đòi hỏi tính toàn vẹn dữ liệu tuyệt đối. Nếu chỉ sử dụng các truy vấn SQL đơn lẻ, hệ thống sẽ đối mặt với rủi ro sai lệch dữ liệu vĩnh viễn. Đề tài đã ứng dụng triệt để kỹ thuật Transaction (thông qua lớp thư viện PDO trong PHP) vào hai bài toán cốt lõi sau:
+	Bài toán 1: Kiểm soát đồng thời (Concurrency Control) và Chống tranh chấp đơn hàng (Race Condition) Mô hình điều phối "Radar quét" tạo ra một thách thức lớn: Cùng một "Chuyến ghép" (Batch) do AI đề xuất có thể xuất hiện trên màn hình của hai tài xế khác nhau. Nếu cả hai tài xế cùng bấm nút "Nhận chuyến" vào cùng một phần ngàn giây (Mili-second), hiện tượng tranh chấp dữ liệu (Race condition) sẽ xảy ra. Để giải quyết, phương thức gán đơn (assignMultipleOrdersToDriver) được bọc hoàn toàn trong một khối Transaction. Thuật toán tiến hành cập nhật trạng thái đơn hàng (Sử dụng mệnh đề khắt khe: UPDATE orders SET status = 'accepted' WHERE id = ? AND status = 'pending'). Nếu số dòng bị tác động (rowCount) trả về 0, đồng nghĩa với việc đơn hàng đã bị tài xế khác nhanh tay chiếm mất. Ngay lập tức, lệnh rollBack() được kích hoạt để hủy bỏ toàn bộ tiến trình gán đơn của các mã vận đơn còn lại trong chuyến ghép, ngăn chặn triệt để tình trạng hai tài xế cùng đi lấy một kiện hàng.
+	Bài toán 2: Tính toàn vẹn của dòng tiền (Financial Data Integrity) Nghiệp vụ đối soát Ví điện tử (Wallet) liên quan trực tiếp đến sinh kế của tài xế và doanh thu của nền tảng. Khi một tài xế nhận đơn, hệ thống phải thực hiện đồng thời 4 tác vụ: (1) Cập nhật trạng thái đơn hàng, (2) Gán mã ID tài xế, (3) Trừ tiền phí nền tảng trong ví (deduct), và (4) Ghi log lịch sử biến động số dư (wallet_transactions). Nhờ áp dụng Transaction, nếu bước (1) và (2) thành công nhưng bước (3) thất bại do tài xế không đủ số dư ví, toàn bộ giao dịch sẽ bị hoàn tác. Ngược lại, đối với luồng khách hàng tự hủy đơn, hệ thống ứng dụng mô hình Giao dịch bù trừ (Compensating Transaction) để tự động gọi hàm hoàn trả (add) lại 100% mức phí nền tảng cho tài xế, loại bỏ hoàn toàn các sai sót có thể phát sinh do đối soát thủ công.
+
+	Ngôn ngữ Python và vai trò Microservice xử lý thuật toán
+a) Đặc thù của ngôn ngữ Python trong Khoa học tính toán Python là một ngôn ngữ lập trình bậc cao, mã nguồn mở, được thiết kế với triết lý nhấn mạnh vào khả năng đọc và sự tối giản của mã lệnh. Dù có thể sử dụng để phát triển Web, nhưng sức mạnh thực sự làm nên tên tuổi của Python trong kỷ nguyên công nghệ hiện đại nằm ở hệ sinh thái thư viện đồ sộ dành riêng cho Khoa học dữ liệu (Data Science), Trí tuệ nhân tạo (AI) và Tối ưu hóa toán học (Mathematical Optimization). Việc hỗ trợ các cấu trúc dữ liệu mạnh mẽ và các thư viện biên dịch chéo bằng C/C++ giúp Python trở thành lựa chọn hàng đầu, có hiệu năng vượt trội khi giải quyết các bài toán đòi hỏi khối lượng tính toán tổ hợp khổng lồ.
+b) Sự cần thiết của kiến trúc đa ngôn ngữ (Polyglot Microservice Architecture) Kiến trúc Vi dịch vụ (Microservices Architecture) là một phương pháp tiếp cận trong kỹ nghệ phần mềm, ở đó một ứng dụng nguyên khối (Monolithic) được chia tách thành các dịch vụ nhỏ, hoạt động độc lập và giao tiếp với nhau qua các giao thức tiêu chuẩn [31]. Trong bối cảnh nền tảng NUN Express, việc áp dụng kiến trúc đa ngôn ngữ (Polyglot Architecture) [32] giữa PHP và Python là một quyết định mang tính chiến lược nhằm giải quyết bài toán nút thắt cổ chai (Bottleneck) về hiệu năng.
+Ngôn ngữ PHP đóng vai trò là Máy chủ Web lõi (Core Web Server), được thiết kế tối ưu cho mô hình Request-Response để xử lý nhanh các giao dịch HTTP, thao tác với Cơ sở dữ liệu và quản lý phiên làm việc. Tuy nhiên, bài toán Định tuyến phương tiện (CVRP) lại là một bài toán thuộc lớp NP-Khó. Nếu ép buộc tiến trình (Thread) của PHP chạy các vòng lặp hoán vị ma trận khổng lồ của thuật toán, tiến trình đó sẽ bị nghẽn (Blocking), dẫn đến việc máy chủ Web bị treo và không thể phục vụ các người dùng khác. Do đó, việc tách riêng khối lượng tính toán này giao cho một Microservice viết bằng Python là giải pháp tối ưu nhất để cân bằng tải (Load balancing) cho hệ thống.
+c) Cơ chế giao tiếp liên tiến trình (IPC) giữa PHP và Python trong hệ thống Vì lõi Web (PHP) và Module Thuật toán (Python) hiện đang được triển khai trên cùng một máy chủ vật lý, nền tảng NUN Express thiết lập một cơ chế Giao tiếp liên tiến trình (Inter-Process Communication - IPC) vô cùng chặt chẽ thông qua Giao diện dòng lệnh (CLI - Command Line Interface) và chuẩn trao đổi dữ liệu JSON. Quá trình này được thực thi ngầm mỗi khi tài xế nhấn nút "Bật Radar", bao gồm các bước nghiêm ngặt sau:
+	Chuẩn bị và Tuần tự hóa dữ liệu (PHP): Hệ thống Web (thông qua OrderController) tiến hành truy vấn CSDL để lấy tọa độ GPS hiện tại của tài xế, các ràng buộc về năng lực (tải trọng tối đa, số đơn tối đa) và danh sách các đơn hàng đang chờ (Pending). Toàn bộ dữ liệu này được tuần tự hóa (Serialize) thành chuỗi định dạng JSON.
+	Khởi tạo bộ đệm an toàn (File System): Để tránh lỗi tràn bộ đệm hoặc giới hạn độ dài chuỗi của hệ điều hành khi truyền dữ liệu trực tiếp qua Command Line, hệ thống PHP sinh ra một tệp tin tạm thời (Temporary file) lưu trữ chuỗi JSON này vào ổ cứng (sử dụng hàm tempnam()).
+	Kích hoạt Tiến trình AI (Execution): PHP sử dụng hàm thực thi hệ thống shell_exec() để gọi trực tiếp trình thông dịch Python chạy tệp tin thuật toán (route_optimizer.py), đồng thời truyền đường dẫn của tệp JSON vừa tạo làm đối số đầu vào (Argument) thông qua cờ --batch-file.
+	Xử lý Tối ưu hóa (Python): Microservice Python được đánh thức, đọc cấu trúc JSON, lấp đầy các ma trận khoảng cách và khởi chạy bộ thư viện Google OR-Tools. Các thuật toán Meta-heuristics tiến hành phân tích và gom cụm các đơn hàng thành các "Chuyến ghép" (Batches) thỏa mãn ràng buộc sức chứa. Sau khi có nghiệm tối ưu, Python đóng gói kết quả thành JSON và xuất ra luồng đầu ra chuẩn (Standard Output - stdout).
+	Giải mã và Dọn dẹp (PHP): Tiến trình PHP (đang trong trạng thái chờ đồng bộ) sẽ bắt lấy chuỗi kết quả từ stdout của Python. Ngay lập tức, PHP thực thi lệnh unlink() để xóa bỏ tệp JSON tạm thời nhằm giải phóng dung lượng ổ cứng, sau đó giải mã (Deserialize) kết quả thành mảng dữ liệu (Array) và Render lên giao diện Radar cho tài xế.
+
+	Các thư viện phần mềm và API tích hợp
+	Bộ thư viện mã nguồn mở Google OR-Tools
+a) Giới thiệu chung về Google OR-Tools Google OR-Tools (Operations Research Tools) là một bộ thư viện mã nguồn mở được phát triển bởi nhóm nghiên cứu Trí tuệ nhân tạo của Google. Bộ công cụ này được thiết kế chuyên biệt để giải quyết các bài toán tối ưu hóa tổ hợp (Combinatorial Optimization) khổng lồ trong Vận trù học. Phần lõi (Core) của thư viện được viết bằng ngôn ngữ C++ nhằm đạt được tốc độ biên dịch và thực thi tối đa ở cấp độ phần cứng, nhưng đồng thời cung cấp các lớp bọc (Wrappers) hoàn chỉnh cho Python để tiện lợi trong việc thao tác với dữ liệu [33]. Trong lĩnh vực chuỗi cung ứng, sức mạnh cốt lõi của OR-Tools nằm ở module Routing Library, cho phép giải quyết triệt để bài toán Định tuyến phương tiện (VRP) và các biến thể đa ràng buộc của nó.
+b) Cách tiếp cận AI: Từ Thuật toán Heuristics đến Meta-heuristics Như đã phân tích ở các phần trước, bài toán Định tuyến phương tiện có ràng buộc sức chứa (CVRP) thuộc lớp bài toán NP-Khó. Nếu áp dụng các phương pháp tìm nghiệm chính xác tuyệt đối (Exact methods) như thuật toán Vét cạn (Brute-force) hay Nhánh và Cận (Branch and Bound), thời gian tính toán sẽ tăng theo cấp số nhân (Exponential time) khi số lượng đơn hàng tăng lên, gây treo hệ thống.
+Để giải quyết bài toán này trong thời gian thực, OR-Tools mô phỏng tư duy của Trí tuệ nhân tạo bằng cách áp dụng phương pháp tiếp cận hai giai đoạn (Two-phase approach) kết hợp giữa các thuật toán kinh nghiệm (Heuristics) và siêu kinh nghiệm (Meta-heuristics) [34]:
+	Giai đoạn 1: Xây dựng nghiệm khởi tạo (First Solution Strategy): Thay vì tìm kiếm mù quáng, OR-Tools sử dụng các thuật toán nội suy (Heuristics) để nhanh chóng "vẽ" ra một lộ trình hợp lệ ban đầu. Trong hệ thống NUN Express, chiến lược PATH_CHEAPEST_ARC được cấu hình sử dụng. Thuật toán này hoạt động theo nguyên lý "Tham lam" (Greedy), xuất phát từ vị trí tài xế, nó sẽ liên tục quét ma trận khoảng cách và luôn ưu tiên đi đến điểm giao/nhận gần nhất tiếp theo có chi phí thấp nhất, cho đến khi hoàn thành cụm đơn ghép.
+	Giai đoạn 2: Tối ưu hóa bằng Tìm kiếm cục bộ siêu kinh nghiệm (Local Search Meta-heuristics): Nghiệm khởi tạo ở Giai đoạn 1 thường chưa phải là lộ trình ngắn nhất, vì nó rất dễ bị mắc kẹt tại các "Cực tiểu cục bộ" (Local Optima). Để vượt qua rào cản này, OR-Tools áp dụng các chiến lược Meta-heuristics để hoán đổi liên tục các mắt xích trong lộ trình. Hệ thống NUN Express sử dụng thuật toán GUIDED_LOCAL_SEARCH (Tìm kiếm cục bộ có hướng). Thuật toán AI này sẽ tự động đánh giá các "cạnh" (đoạn đường) có chi phí quá cao trong lộ trình hiện tại, gán cho chúng một hàm phạt (Penalty) để ép buộc bộ giải (Solver) phải vứt bỏ đoạn đường đó và thử khám phá các nhánh không gian tìm kiếm (Search space) khác đột phá hơn.
+c) Ứng dụng tích hợp OR-Tools vào Hệ thống NUN Express Trong thực tiễn mã nguồn của hệ thống NUN Express (tại Microservice Python), quá trình AI giải quyết bài toán ghép chuyến diễn ra qua 3 bước kỹ thuật nghiêm ngặt:
+	Khởi tạo Ma trận Chi phí (Distance/Duration Matrix): Hệ thống không dùng đường chim bay (vì sai lệch thực tế rất lớn), mà gọi API của OSRM để lấy ma trận thời gian di chuyển thực tế (bằng giây) giữa tất cả các điểm tọa độ (Tài xế, Điểm lấy hàng, Điểm giao hàng). Ma trận này được nạp vào hàm transit_callback để OR-Tools hiểu được "chi phí" của từng bước đi.
+	Thiết lập Ràng buộc Sức chứa (Capacity Constraints): Trước khi chạy tìm đường, hệ thống đăng ký giới hạn vật lý của tài xế vào RoutingModel. Thuật toán sẽ tự động loại bỏ (Drop) các hoán vị làm tổng khối lượng (Weight) vượt quá max_total_weight hoặc làm số lượng điểm vượt quá max_orders_per_batch.
+	Đảm bảo tính thời gian thực (Time-limit Constraint): Đối với các ứng dụng điều phối di động, tốc độ phản hồi là yếu tố sống còn. Đề tài đã thiết lập một giới hạn cứng: search_parameters.time_limit.seconds = 1. Lệnh này mang ý nghĩa thực tiễn rất cao: Trí tuệ nhân tạo sẽ liên tục tối ưu hóa lộ trình bằng GUIDED_LOCAL_SEARCH, nhưng đúng sau 1 giây, nó buộc phải dừng lại và trả về lộ trình tốt nhất mà nó tìm được tính đến thời điểm đó (Best Known Solution). Điều này giúp thao tác bật Radar của tài xế luôn phản hồi ngay lập tức mà vẫn đảm bảo lộ trình đưa ra ưu việt hơn hẳn so với việc phân đơn thủ công.
+
+	Thư viện bản đồ LeafletJS và Nền tảng máy chủ định tuyến OSRM (Open Source Routing Machine)
+a) Thư viện bản đồ tương tác LeafletJS Trong phát triển ứng dụng Web GIS (Hệ thống Thông tin Địa lý), LeafletJS là một trong những thư viện JavaScript mã nguồn mở hàng đầu thế giới chuyên dùng để xây dựng các bản đồ tương tác (Interactive Maps). Điểm nổi bật của LeafletJS là dung lượng siêu nhẹ (chỉ khoảng 39KB), kiến trúc cốt lõi được tối ưu hóa hiệu năng phần cứng và sở hữu một hệ sinh thái tiện ích mở rộng (Plugins) vô cùng đồ sộ [35].
+Khác với Google Maps API yêu cầu khóa xác thực (API Key) và tính phí dựa trên lưu lượng truy cập (pay-as-you-go), Leaflet cung cấp một bộ khung (Framework) bản đồ độc lập. Nó cho phép các nhà phát triển dễ dàng tích hợp và nạp các lớp bản đồ tĩnh (TileLayer) từ nhiều nguồn dữ liệu không gian khác nhau (như OpenStreetMap, Mapbox), đồng thời cung cấp các giao diện lập trình (API) để thao tác tự do với các đối tượng hình học như Điểm đánh dấu (Marker) và Đường gấp khúc (Polyline).
+b) Nền tảng định tuyến Open Source Routing Machine (OSRM) Bài toán khó nhất trong việc điều phối giao thông không phải là vẽ bản đồ, mà là tính toán quãng đường và thời gian di chuyển thực tế. Open Source Routing Machine (OSRM) là một hệ thống máy chủ định tuyến mã nguồn mở hiệu năng cao, được thiết kế chuyên biệt bằng ngôn ngữ C++ để giải quyết bài toán tìm đường đi ngắn nhất trên mạng lưới đường bộ (Street network) [36]. OSRM hoạt động dựa trên cơ sở dữ liệu địa lý mở của dự án OpenStreetMap (OSM).
+Điểm mạnh vượt trội của OSRM là việc sử dụng thuật toán phân cấp Contraction Hierarchies (CH) kết hợp với Multi-Level Dijkstra (MLD). Kiến trúc này giúp OSRM có khả năng tính toán và phản hồi kết quả truy vấn đa điểm (Table API) và đường đi chính xác (Route API) với độ trễ chỉ tính bằng mili-giây.
+c) Ứng dụng tích hợp đồng bộ trong kiến trúc NUN Express Đối với các hệ thống gọi xe và giao hàng chặng cuối, chi phí sử dụng dịch vụ bản đồ thương mại (Map Services) luôn chiếm tỷ trọng khổng lồ trong ngân sách vận hành công nghệ. Để giải quyết bài toán này, hệ thống NUN Express đã ứng dụng tổ hợp mã nguồn mở LeafletJS và OSRM vào cả hai khía cạnh: Trực quan hóa Frontend và Tính toán Backend.
+	Tại phân hệ Frontend (Giao diện Web): Thông qua việc xây dựng một lớp xử lý trung gian MapHelper.js, hệ thống ứng dụng LeafletJS để kết xuất màn hình "Radar nhận đơn" của tài xế và chức năng theo dõi đơn hàng (Real-time Tracking) của Khách hàng. Để nâng cao tính thân thiện của giao diện (UX), hệ thống đã khéo léo cấu hình lớp TileLayer trỏ đến máy chủ gạch bản đồ của Google (google.com/vt/lyrs=m), mang lại cái nhìn trực quan và quen thuộc nhất cho người dùng nhưng hoàn toàn không phát sinh chi phí API. Khi cần vẽ lộ trình từ Tài xế đến Điểm giao hàng, hệ thống sử dụng plugin Leaflet Routing Machine để gọi đến máy chủ OSRM (router.project-osrm.org), từ đó vẽ ra một đường Polyline bám sát vào mạng lưới giao thông thực tế.
+	Tại phân hệ Backend (Microservice AI): Đây là nơi OSRM thể hiện vai trò quyết định. Để thuật toán AI (Google OR-Tools) có thể giải quyết được bài toán Định tuyến phương tiện (CVRP), nó cần biết thời gian di chuyển chính xác giữa tất cả các điểm giao nhận. Thay vì tính bằng đường chim bay (Haversine Formula) vốn gây sai số cực lớn trong môi trường đô thị, mã nguồn Python của hệ thống đã gọi trực tiếp đến hàm osrm_table(). Lệnh này truyền hàng loạt tọa độ GPS vào End-point /table/v1/driving/ của OSRM để trích xuất ra một Ma trận thời gian (Duration Matrix) hoàn chỉnh, làm cơ sở dữ liệu đầu vào cốt lõi cho thuật toán Trí tuệ nhân tạo hoán vị và tối ưu hóa chuyến ghép.
+
+Chương 2: Phân tích và thiết kế hệ thống NUN Express
+	Phân tích yêu cầu hệ thống
+
+Quá trình phân tích yêu cầu hệ thống đóng vai trò định hình kiến trúc phần mềm và thiết lập các giới hạn lô-gic (Logic boundaries) cho quá trình lập trình. Dựa trên việc khảo sát thực tiễn ngành Logistics đô thị và định hướng giải quyết bài toán bằng Trí tuệ nhân tạo, nền tảng NUN Express được đặc tả thông qua ba nhóm yêu cầu trọng tâm sau đây:
+2.1.1. Yêu cầu nghiệp vụ cốt lõi (Core Business Requirements)
+Để số hóa và tự động hóa toàn bộ vòng đời vận chuyển, hệ thống phải đáp ứng 4 quy trình nghiệp vụ khắt khe:
+a) Nghiệp vụ Định tuyến và Điều phối không gian (Spatial Routing & Dispatching)
+	Tính cước động (Dynamic Pricing): Khi khách hàng tạo đơn, hệ thống không tính cước theo khoảng cách đường chim bay mà phải gọi API để ước tính chiều dài mạng lưới giao thông thực tế. Cước phí được nội suy tự động dựa trên: Khoảng cách, khối lượng hàng hóa và hệ số nhân giờ cao điểm (Surge multiplier).
+	Ghép chuyến thời gian thực (Real-time Batching): Nghiệp vụ yêu cầu loại bỏ phương pháp tài xế tự chọn đơn lẻ. Khi tài xế bật Radar, hệ thống phải tự động thu thập các đơn hàng đang chờ trong khu vực và chuyển dữ liệu sang module Trí tuệ nhân tạo.
+	Kiểm soát ràng buộc năng lực (Capacity Constraints): AI chỉ được phép xuất ra các "Chuyến ghép" (Batches) thỏa mãn tuyệt đối hai giới hạn vật lý quy định trong hồ sơ tài xế: Tải trọng xe không bị vượt tải (max_total_weight) và Số lượng đơn không vượt quá giới hạn phục vụ cùng lúc (max_concurrent_orders).
+b) Nghiệp vụ Quản lý trạng thái và Minh chứng giao nhận (State Machine & Proof of Delivery)
+	Vòng đời một đơn hàng phải tuân thủ nghiêm ngặt máy trạng thái hữu hạn (Finite State Machine). Quy trình bắt đầu từ trạng thái Chờ xử lý (Pending) và phân nhánh dựa trên phương thức thanh toán:
+	Nếu thanh toán Chuyển khoản: Đơn hàng chuyển sang trạng thái Chờ thanh toán (Awaiting Payment) và điều hướng khách hàng đến trang quét mã QR. Sau khi hoàn tất, đơn mới chuyển sang Đang tìm tài xế (Searching Driver).
+	Nếu thanh toán Tiền mặt: Đơn hàng chuyển thẳng sang trạng thái Đang tìm tài xế (Searching Driver).
+	Các bước tiếp theo tuân theo trình tự: Đã nhận đơn (Accepted) → Đang lấy hàng (Picking up) →  Đang giao hàng (Shipping) → Hoàn thành / Chuyển hoàn / Đã hủy.
+	Minh chứng tính toàn vẹn (Proof Image): Để ngăn chặn gian lận và làm cơ sở giải quyết tranh chấp, nghiệp vụ bắt buộc tài xế phải tải lên hình ảnh chụp thực tế tại hiện trường. Thông tin này được hệ thống lưu trữ có cấu trúc vào trường proof_image thuộc bảng order_deliveries. Đây là điều kiện tiên quyết để tài xế có thể cập nhật đơn hàng sang các trạng thái mang tính quyết định như: Giao thành công, Giao thất bại, hoặc báo cáo Khách bom hàng.
+c) Nghiệp vụ Đối soát tài chính tập trung (Financial Reconciliation) Nền tảng vận hành hệ thống "Ví điện tử nội bộ" (Wallet) yêu cầu tính chính xác tuyệt đối ở cấp độ kế toán:
+	Thu phí nguyên tử (Atomic Deduction): Tài xế bắt buộc phải có số dư ví lớn hơn 0. Ngay tại khoảnh khắc bấm nhận chuyến, hệ thống phải tự động trích lập một tỷ lệ phần trăm "Phí nền tảng" (platform_fee_percent) tương ứng với các đơn hàng thanh toán tiền mặt.
+	Giao dịch bù trừ (Compensating Transaction): Trong trường hợp rủi ro khách quan (khách tự hủy đơn hoặc khách bom hàng), hệ thống phải tự động hoàn trả (Refund) 100% số tiền phí nền tảng đã thu trước đó vào ví tài xế nhằm bảo vệ quyền lợi người lao động.
+	Giải ngân tự động: Đối với các đơn hàng khách đã chuyển khoản trước cho hệ thống, khi tài xế giao hàng thành công, hệ thống phải tự động tính toán tiền công thực nhận và cộng thẳng vào ví điện tử của tài xế.
+d) Nghiệp vụ Quản lý rủi ro và Kiểm soát vi phạm (Risk & Penalty Management)
+	Trừng phạt hành vi "Bom hàng" (No-show Penalty): Khi tài xế cung cấp đủ minh chứng khách hàng từ chối nhận, hệ thống sẽ ghi nhận vi phạm (no_show_count). Nếu vượt quá ngưỡng cấu hình, tài khoản khách hàng sẽ tự động bị khóa (Auto-ban).
+	Phòng chống giam đơn (Auto-Reassignment & Expiration): Hệ thống có cơ chế tiến trình nền (Cron-jobs) để tự động thu hồi đơn hàng nếu tài xế đã nhận nhưng quá thời gian quy định không đi lấy. Đồng thời, tự động hủy bỏ các đơn hàng bị treo vô thời hạn (quá 24 giờ không có tài xế nhận).
+2.1.2. Yêu cầu chức năng theo từng tác nhân (Functional Requirements)
+Hệ thống cấp phát 3 phân hệ độc lập tương ứng với 3 nhóm người dùng (Actors):
+a) Tác nhân Khách hàng (User/Customer)
+	Quản lý giao dịch: Khởi tạo yêu cầu vận chuyển với điểm lấy/giao hàng chính xác qua tọa độ GPS kèm theo các ô địa chỉ bổ sung chi tiết. Khách hàng thực hiện khai báo khối lượng (weight), thời gian hẹn lịch (scheduled_at), lựa chọn gói giao hàng (standard, fast, hoặc express), và bắt buộc chọn phương thức thanh toán (payment_method) một lần duy nhất tại form tạo đơn này.
+	Theo dõi trực tuyến (Tracking): Tra cứu vị trí cập nhật liên tục của tài xế trên bản đồ số thông qua kỹ thuật truy vấn luân phiên (AJAX Polling). Tại giao diện chi tiết và theo dõi này, hệ thống không cho phép khách hàng thay đổi lại phương thức thanh toán.
+	Tương tác dịch vụ: Thực hiện thanh toán trực tuyến qua mã QR (Banking) tại một trang thanh toán độc lập (chỉ hiển thị khi đơn hàng chọn hình thức chuyển khoản và đang ở trạng thái awaiting_payment). Khách hàng có thể thực hiện đánh giá sao (Review) tài xế sau chuyến đi, hoặc khởi tạo phiếu khiếu nại (Dispute) bằng cách nhập trực tiếp nội dung phản ánh tự do vào hệ thống (nội dung này sẽ được lưu trực tiếp vào trường issue_type thay vì danh mục mã sự cố có sẵn).
+b) Tác nhân Tài xế (Driver)
+	Xác thực hồ sơ (KYC): Bắt buộc cung cấp biển số và hình ảnh đăng ký xe để Quản trị viên phê duyệt (cờ is_verified) trước khi được phép hành nghề.
+	Radar & Nhận chuyến ghép: Kích hoạt thuật toán AI phân tích để nhận một "Cụm đơn hàng" thay vì nhận lẻ tẻ. Thao tác nhận chuyến là thao tác một chạm (One-tap acceptance).
+	Kiểm soát thu nhập: Quản lý số dư ví, nạp tiền (Top-up), và xem thống kê dòng tiền chi tiết trên từng mã vận đơn.
+	Báo cáo hiện trường: Cập nhật trạng thái giao nhận trực tiếp tại điểm dừng, báo cáo khách bom hàng kèm tệp tin hình ảnh tải lên.
+c) Tác nhân Quản trị viên (Admin)
+	Bảng điều khiển (Dashboard): Giám sát tổng quan các chỉ số vận hành và doanh thu thời gian thực.
+	Quản lý Người dùng & Tài xế: Phân quyền, duyệt hồ sơ. Admin có quyền cấp phát giới hạn AI cá nhân hóa cho từng tài xế (VD: Ép tài xế xe máy nhỏ chỉ được ghép tối đa 2 đơn).
+	Can thiệp luồng vận chuyển: Theo dõi và ép buộc thay đổi trạng thái đơn hàng khi xảy ra tình huống ngoại lệ trên đường.
+	Hành pháp & Giải quyết khiếu nại: Đóng vai trò trọng tài phân xử các báo cáo sự cố. Admin có quyền lập biên bản phạt tiền (penalizeDriver), hệ thống cho phép ép số dư ví tài xế xuống âm, và lập tức khóa tài khoản tài xế nếu phát hiện gian lận nghiêm trọng.
+	Cấu hình hệ thống linh hoạt: Điều chỉnh các biến số cốt lõi (Settings) như % phí nền tảng, tải trọng mặc định mà không cần can thiệp vào mã nguồn.
+2.1.3. Yêu cầu phi chức năng (Non-functional Requirements)
+Để đảm bảo nền tảng chịu tải tốt và vận hành an toàn, hệ thống NUN Express phải đáp ứng các tiêu chuẩn kỹ thuật sau:
+	Tính toàn vẹn dữ liệu (Data Integrity & ACID): Đây là yêu cầu sinh tử của hệ thống. Trong thao tác "Nhận chuyến ghép", khi 2 tài xế cùng bấm nhận một đơn hàng tại một phần ngàn giây (Mili-second), hệ thống bắt buộc phải áp dụng kỹ thuật Khóa giao dịch (Database Transaction). Nếu phát hiện tranh chấp (Race Condition), hệ thống phải tự động hoàn tác (Rollback) toàn bộ quá trình trừ tiền và gán đơn, tuyệt đối không để xảy ra tình trạng âm tiền oan hoặc một đơn hàng có hai tài xế đi lấy.
+	Hiệu năng xử lý AI (AI Bottleneck Prevention): Trí tuệ nhân tạo phải được cô lập (Isolation) ở một Microservice bằng ngôn ngữ Python. Việc tính toán hàng nghìn hoán vị VRP không được phép làm treo (blocking) máy chủ Web PHP. Tốc độ phản hồi của bộ giải (Solver) phải được khống chế bằng tham số thời gian trần (time_limit.seconds = 1) để đảm bảo trải nghiệm ứng dụng di động không bị gián đoạn.
+	Tối ưu hóa băng thông (Network Optimization): Việc tài xế và khách hàng liên tục gọi API để lấy tọa độ/kiểm tra đơn mới phải được thiết kế tối ưu ở cấp độ SQL (Sử dụng các hàm COUNT() trực tiếp trên Database thay vì tải toàn bộ mảng dữ liệu về RAM của PHP) nhằm giảm tải cho bộ nhớ máy chủ.
+	Trải nghiệm người dùng (UX/UI): Giao diện phải tương thích đa nền tảng (Responsive). Đặc biệt, phân hệ Driver phải tuân thủ chuẩn thiết kế Mobile-First, với các nút bấm thao tác lớn, giúp tài xế dễ dàng sử dụng bằng một tay khi đang lưu thông.
+	Mô hình hóa yêu cầu (Biểu đồ Use Case)
+	Biểu đồ Use Case tổng quát toàn hệ thống
+ 
+Hình 1: Sơ đồ usecase tổng quát
+	Phân rã Use Case phân hệ Khách hàng: 
+ 
+Hình 2: Sơ đồ usecase Phân hệ Khách Hàng
+	 Đặc tả Use Case: Tạo đơn hàng
+Tên Use Case	Tạo đơn hàng mới.
+Tác nhân	Khách hàng.
+Mô tả	Cho phép khách hàng thiết lập một yêu cầu vận chuyển mới, khai báo thông tin, tính toán cước phí bằng AI và tiến hành thanh toán.
+Tiền điều kiện	Khách hàng đã đăng nhập vào hệ thống.
+Luồng sự kiện chính
+		Khách hàng chọn chức năng "Tạo đơn hàng". Hệ thống hiển thị form nhập liệu và bản đồ tương tác (LeafletJS).
+	Khách hàng nhập thông tin địa chỉ lấy/giao hàng, thông tin người nhận và trọng lượng hàng hóa.
+	(Include – Chọn gói giao hàng): Khách hàng bắt buộc lựa chọn gói giao hàng (Tiêu chuẩn, Giao nhanh, hoặc Siêu tốc).
+	(Include – Tính cước tự động): Hệ thống tự động tính toán khoảng cách qua API Bản đồ, kết hợp với trọng lượng và gói giao hàng để hiển thị Cước phí tạm tính.
+	(Include – Chọn phương thức thanh toán): Khách hàng bắt buộc lựa chọn phương thức thanh toán (Tiền mặt hoặc Chuyển khoản).
+	Khách hàng kiểm tra thông tin và bấm "Xác nhận tạo đơn".
+	(Extend – Thanh Toán QR): Nếu khách hàng chọn "Chuyển khoản", hệ thống chuyển hướng sang màn hình mã QR. Khách hàng thực hiện quét mã để thanh toán. Trạng thái đơn được lưu là awaiting_payment.
+	Nếu chọn "Tiền mặt", hệ thống lưu đơn hàng với trạng thái searching_driver (Đang tìm tài xế) và chuyển về danh sách đơn.
+Luồng ngoại lệ		Nếu khách hàng nhập thiếu thông tin hoặc trọng lượng không hợp lệ, hệ thống báo lỗi (Validation Error) và yêu cầu nhập lại.
+Bảng 1: Đặc tả Usecase Tạo Đơn Hàng
+	Đặc tả Use Case: Theo dõi lộ trình
+Tên Use Case	Theo dõi lộ trình di chuyển (Tracking).
+Tác nhân	Khách hàng.
+Mô tả	Cho phép khách hàng xem vị trí hiện tại của tài xế và hành trình giao hàng theo thời gian thực trên bản đồ số.
+Tiền điều kiện	Đơn hàng đã được tài xế nhận.
+Luồng sự kiện chính	Khách hàng truy cập vào Chi tiết đơn hàng đang chạy.
+Hệ thống gọi API (AJAX Polling) để liên tục lấy tọa độ GPS mới nhất từ thiết bị của Tài xế.
+Hệ thống sử dụng OSRM API để vẽ đường đi (Polyline) trên bản đồ LeafletJS từ vị trí hiện tại của tài xế đến điểm lấy/giao hàng.
+Khách hàng có thể quan sát khoảng cách, thời gian ước tính (ETA) và sử dụng chức năng "Chat với tài xế".
+Luồng ngoại lệ	
+Bảng 2: Đặc tả Usecase Theo dõi lộ trình
+	 Đặc tả Use Case: Đánh giá tài xế và Gửi khiếu nại
+Tên Use Case	Xử lý sau giao hàng (Đánh giá / Khiếu nại).
+Tác nhân	Khách hàng.
+Mô tả	Khách hàng đánh giá chất lượng chuyến đi hoặc báo cáo sự cố (hư hỏng, thái độ) lên Quản trị viên.
+Tiền điều kiện	Đơn hàng đã chuyển sang trạng thái completed (Hoàn thành) hoặc cancelled (Đã hủy).
+Luồng sự kiện chính	Đánh giá: Sau khi nhận hàng thành công, hệ thống hiển thị form Đánh giá. Khách hàng chọn số sao (1-5), chọn các thẻ nhận xét nhanh và bấm Lưu. Hệ thống cập nhật điểm tín nhiệm cho tài xế.
+Khiếu nại: Nếu có sự cố, khách hàng chọn "Báo cáo sự cố". Khách hàng điền lý do chi tiết và gửi.
+Hệ thống cập nhật trạng thái đơn hàng thành disputed (Đang khiếu nại) và tạo thông báo đẩy (Notification) gửi đến Quản trị viên để chờ giải quyết.
+Luồng ngoại lệ	
+Bảng 3: Đặc tả Usecase  Đánh giá tài xế và Gửi khiếu nại
+
+	Phân rã Use Case phân hệ Tài xế: 
+ 
+Hình 3: Biểu đồ Usecase Phân hệ Tài Xế
+	 Đặc tả Use Case: Bật Radar & Nhận chuyến ghép AI 
+
+Tên Use Case	Bật Radar và Nhận chuyến ghép do AI đề xuất.
+Tác nhân	Tài xế.
+Mô tả	Ứng dụng liên tục gửi GPS lên máy chủ, gọi Microservice Python chạy thuật toán OR-Tools để gom các đơn hàng lẻ thành cụm (Batch) phù hợp với giới hạn của phương tiện và đề xuất cho tài xế.
+Tiền điều kiện	Tài khoản đã được duyệt hồ sơ xe (is_verified = 1) và số dư Ví lớn hơn 0.
+Luồng sự kiện chính		Tài xế truy cập màn hình "Radar nhận đơn".
+	Ứng dụng tự động lấy tọa độ GPS hiện tại và gửi yêu cầu định kỳ (AJAX Polling) lên máy chủ PHP.
+	Hệ thống PHP thu thập danh sách đơn hàng chờ, đóng gói thành file JSON và gọi sang luồng Python.
+	Thuật toán AI phân tích ma trận khoảng cách, sức chứa còn lại (max_total_weight) và số đơn tối đa (max_concurrent_orders) để tạo ra các lộ trình tối ưu.
+	Hệ thống trả về giao diện các thẻ "Chuyến ghép" (Batches) tối ưu nhất kèm tổng quãng đường, cước phí và Điểm hiệu quả (Efficiency Score).
+	Tài xế bấm "Nhận chuyến ghép".
+	(Include – Trừ phí nền tảng): Kích hoạt Use Case "Trừ phí nền tảng". Hệ thống sử dụng Transaction trừ trước số tiền phí nền tảng tương ứng với các đơn thanh toán tiền mặt trong chuyến ghép đó.
+	Hệ thống cập nhật trạng thái các đơn hàng thành accepted, gán mã tài xế và điều hướng sang trang "Đơn đang chạy".
+Luồng ngoại lệ		Nếu trong lúc bấm nhận, một đơn hàng trong chuyến ghép đã bị tài xế khác nhận (sai lệch mili-giây), Khóa giao dịch (Transaction) sẽ bị Rollback. Hệ thống báo lỗi, hoàn lại tiền và yêu cầu quét lại.
+	Nếu số dư ví không đủ, hệ thống chặn thao tác và yêu cầu nạp thêm.
+Bảng 4: Đặc tả Usecase Bật Radar và Nhận chuyến ghép do AI đề xuất.
+	Đặc tả Usecase Cập nhật trạng thái
+Tên Use Case	Cập nhật tiến trình đơn hàng.
+Tác nhân	Tài xế.
+Mô tả	Chuyển đổi trạng thái thực tế của đơn hàng (Đang lấy → Đang giao → Hoàn thành) và bắt buộc tải lên hình ảnh minh chứng.
+Tiền điều kiện	Tài xế đang thực hiện một đơn hàng đã nhận.
+Luồng sự kiện chính		Trong màn hình chi tiết chuyến đi, tài xế bấm chọn cập nhật sang trạng thái quyết định (Ví dụ: "Giao hàng thành công").
+	(Include – Tải bằng chứng): Hệ thống chặn thao tác và bắt buộc yêu cầu tài xế mở camera chụp lại hình ảnh minh chứng tại hiện trường (Proof Image).
+	Hệ thống lưu ảnh vào thư mục máy chủ, đồng thời lưu đường dẫn vào CSDL.
+	Cập nhật trạng thái đơn hàng thành completed và ghi vào Nhật ký (History).
+	(Nghiệp vụ đối soát): Nếu đơn hàng có phương thức "Thanh toán chuyển khoản", hệ thống lập tức tính toán tiền công cước vận chuyển (đã trừ chiết khấu) và cộng trực tiếp vào Ví điện tử cho tài xế.
+Luồng ngoại lệ	
+Bảng 5: Đặc tả Usecase Cập nhật trạng thái
+
+	Đặc tả Use Case: Báo cáo vắng mặt / No-show 
+Tên Use Case	Báo cáo khách hàng Bom hàng.
+Tác nhân	Tài xế.
+Mô tả	Báo cáo sự cố khi không thể liên lạc hoặc khách từ chối nhận hàng để bảo vệ quyền lợi của tài xế và nhận lại khoản phí nền tảng đã cọc.
+Tiền điều kiện	
+Luồng sự kiện chính		Tài xế chọn chức năng "Báo cáo khách bom hàng" trên đơn đang giao.
+	(Include – Tải bằng chứng): Bắt buộc chụp và tải lên ảnh minh chứng (Ví dụ: Ảnh cửa nhà đóng kín, ảnh lịch sử gọi nhỡ).
+	Nhập lý do chi tiết và bấm "Gửi báo cáo".
+	Hệ thống đổi trạng thái đơn sang returning (Chuyển hoàn) hoặc cancelled (Đã hủy).
+	(Bảo vệ Tài xế): Hệ thống kích hoạt Database Transaction, thực hiện cộng hoàn lại (Refund) 100% số tiền "Phí nền tảng" của đơn đó vào Ví của tài xế.
+	(Phạt Khách hàng): Hệ thống cộng 1 điểm vi phạm (no_show_count) cho Khách hàng. Nếu vượt ngưỡng cho phép, Khách sẽ bị khóa tài khoản tự động (Auto-ban).
+	Gửi Thông báo (Notification) kết quả cho cả hai bên.
+Luồng ngoại lệ	
+Bảng 6: Đặc tả Use Case: Báo cáo vắng mặt / No-show
+	Phân rã Use Case phân hệ Quản trị viên: 
+ 
+Hình 4: Biểu đồ Usecase Phân hệ Quản Trị Viên
+	 Đặc tả Use Case: Xử lý khiếu nại & Phạt tài xế 
+Tên Use Case	Giải quyết khiếu nại và Xử lý vi phạm.
+Tác nhân	Quản trị viên (Admin).
+Mô tả	Tiếp nhận báo cáo sự cố từ khách hàng (hàng hỏng, thất lạc, thái độ phục vụ), xem xét minh chứng và đưa ra phán quyết cuối cùng (hoàn tiền, phạt tài xế, hoặc đóng khiếu nại).
+Tiền điều kiện	Có khiếu nại đang ở trạng thái open (Mới tạo).
+Luồng sự kiện chính		Admin truy cập trang "Quản lý khiếu nại", chọn một khiếu nại để xem chi tiết.
+	Hệ thống hiển thị song song nội dung phản ánh của Khách hàng và Hình ảnh minh chứng (Proof Image) do Tài xế tải lên tại thời điểm giao hàng.
+	Admin đưa ra phán quyết, nhập "Ghi chú xử lý" (Resolution Note) và cập nhật trạng thái khiếu nại thành resolved (Đã giải quyết).
+	Admin có quyền định đoạt lại Trạng thái của đơn hàng gốc (Ví dụ: Đơn đang là completed nhưng Admin ép chuyển sang cancelled để hoàn tiền cho khách).
+	(Extend - Phạt tài xế): Nếu xác định lỗi hoàn toàn thuộc về tài xế, Admin cấu hình chức năng "Phạt tài xế" và nhập số tiền phạt (Ví dụ: 50.000đ).
+	Hệ thống kích hoạt Database Transaction: Trừ tiền trực tiếp từ Ví điện tử của tài xế. Nếu số dư ví không đủ, hệ thống ép số dư xuống âm, đồng thời tự động kích hoạt Use Case "Khóa tài khoản" đối với tài xế đó.
+	Gửi thông báo (Notification) kết quả giải quyết cho cả Khách hàng và Tài xế.
+Luồng ngoại lệ	
+Bảng 7: Đặc tả Use Case Xử lý khiếu nại & Phạt tài xế.
+	Đặc tả Use Case: Quản lý Người dùng & Phê duyệt KYC 
+Tên Use Case	Quản lý thông tin Người dùng và Xác thực danh tính.
+Tác nhân	Quản trị viên.
+Mô tả	Admin kiểm soát danh sách người dùng, phê duyệt hồ sơ phương tiện để tài xế được phép hoạt động, và áp dụng hình phạt cấm truy cập.
+Tiền điều kiện	
+Luồng sự kiện chính		Admin truy cập menu "Quản lý người dùng", hệ thống hiển thị danh sách người dùng kèm bộ lọc phân loại Vai trò (Role).
+	Admin chọn xem chi tiết một hồ sơ.
+	(Include- Phê duyệt KYC): Đối với tài xế mới đăng ký, Admin kiểm tra tính hợp lệ của Giấy đăng ký xe (Cà vẹt) và Biển số. Nếu hợp lệ, Admin cập nhật cờ is_verified = 1. Từ lúc này, tài xế mới được phép bật Radar nhận đơn từ AI.
+	Admin có quyền thiết lập các tham số AI cá nhân hóa cho từng tài xế: Tải trọng tối đa (max_total_weight) và Số đơn ghép tối đa (max_concurrent_orders).
+	(Include- Phạt tài xế): Nếu phát hiện tài khoản có hành vi gian lận hoặc vi phạm chính sách, Admin nhấn nút "Khóa". Hệ thống chuyển trạng thái is_blocked = 1, lập tức vô hiệu hóa phiên đăng nhập của người dùng đó.
+Luồng ngoại lệ	Để đảm bảo an toàn nền tảng, hệ thống chặn không cho phép Admin tự ý khóa tài khoản của chính mình hoặc khóa tài khoản của một Admin khác.
+Bảng 8: Đặc tả Use Case: Quản lý Người dùng & Phê duyệt KYC 
+	Đặc tả Use Case: Quản lý và Can thiệp Đơn hàng 
+Tên Use Case	Theo dõi tổng quát và Can thiệp trạng thái đơn hàng.
+Tác nhân	Quản trị viên.
+Mô tả	Giám sát toàn bộ lưu lượng giao nhận trên hệ thống và xử lý các tình huống ngoại lệ khi quy trình tự động gặp sự cố (như tài xế gặp tai nạn, khách gọi hotline xin hủy đơn).
+Tiền điều kiện	
+Luồng sự kiện chính		Admin truy cập "Quản lý đơn hàng", sử dụng thanh tìm kiếm (nhập Mã vận đơn hoặc số điện thoại) để truy xuất dữ liệu.
+	Hệ thống hiển thị chi tiết tiến trình di chuyển, thông tin tài xế/khách hàng, và trạng thái thanh toán tài chính.
+	(Include- Can thiệt trạng thái đơn): Admin bấm "Chỉnh sửa đơn hàng". Tại đây, Admin có quyền lực cao nhất: ép thay đổi Trạng thái vận chuyển (Ví dụ: Từ in_transit sang returning), hoặc cập nhật lại Cước phí thực tế.
+	Admin nhấn "Lưu thay đổi".
+	Hệ thống cập nhật bảng orders và tự động ghi nhận một dòng log vào bảng order_status_history với nội dung minh bạch: "Admin đã can thiệp cập nhật trạng thái đơn hàng", nhằm phục vụ công tác truy vết sau này.
+Luồng ngoại lệ	
+Bảng 9: Đặc tả Use Case: Quản lý và Can thiệp Đơn hàng
+
+	Thiết kế kiến trúc tổng thể
+	Kiến trúc hệ thống lõi (Core System): 
+ 
+Hình 5: Sơ đồ KIẾN TRÚC CORE MVC
+	Mô hình giao tiếp liên dịch vụ (Microservice Communication):
+ 
+Hình 6: Sơ đồ mô hình giao tiếp.
+
+	Thiết kế luồng xử lý (Biểu đồ Hoạt động & Biểu đồ Tuần tự) 
+	Luồng xử lý vòng đời một đơn hàng (Order Lifecycle): 
+ 
+Hình 7: Luồng xử lý của đơn hàng
+	Luồng xử lý Radar và Ghép chuyến bằng AI: 
+
+ 
+Hình 8: Luồng xử lý Radar và Ghép chuyến bằng AI
+	Luồng xử lý giao dịch tài chính an toàn
+ 
+Hình 9: Luồng xử lý giao dịch tài chính an toàn
+	Luồng xử lý báo cáo sự cố
+ 
+Hình 10: Luồng xử lý báo cáo sự cố
+	Thiết kế cơ sở dữ liệu
+	Sơ đồ Mô hình thực thể liên kết (ERD - Entity Relationship Diaram)
+ 
+Hình 11: Biểu đồ lớp cơ sở dữ liệu
+	Đặc tả chi tiết các lớp:
+1.Bảng users:
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+id	BIGINT(20)	PK, AUTO_INC	Mã định danh người dùng.
+name	VARCHAR(120)	NOT NULL	Họ và tên.
+email	VARCHAR(190)	UNIQUE, NULL	Địa chỉ email (có thể rỗng).
+phone	VARCHAR(30)	UNIQUE, NOT NULL	Số điện thoại (dùng làm tài khoản đăng nhập).
+password	VARCHAR(255)	NOT NULL	Mật khẩu (đã mã hóa bcrypt).
+avatar	VARCHAR(500)	NULL	Đường dẫn ảnh đại diện.
+address	VARCHAR(255)	NULL	Địa chỉ mặc định.
+role	ENUM	Mặc định: 'user'	Vai trò trong hệ thống ('user', 'driver', 'admin').
+is_verified	TINYINT(1)	Mặc định: 1	Trạng thái đã xác thực tài khoản.
+verification_token	VARCHAR(20)	NULL	Mã xác thực OTP (nếu cần).
+is_blocked	TINYINT(1)	Mặc định: 0	Đánh dấu tài khoản bị khóa (1 = Khóa).
+blocked_reason	VARCHAR(255)	NULL	Lý do khóa tài khoản.
+blocked_by	BIGINT(20)	FK (users.id)	ID Admin thực hiện khóa tài khoản.
+blocked_at	DATETIME	NULL	Thời gian khóa.
+failed_delivery_
+count	INT(10)	Mặc định: 0	Số lần giao hàng thất bại (dành cho tài xế).
+trust_score	DECIMAL(5,2)	Mặc định: 100.00	Điểm tín nhiệm của tài khoản.
+violation_count	INT(10)	Mặc định: 0	Tổng số lần vi phạm nội quy của tài xế.
+penalty_amount	DECIMAL(12,2)	Mặc định: 0.00	Tổng số tiền phạt tích lũy.
+no_show_count	INT(10)	Mặc định: 0	Số lần khách hàng "Bom hàng" (không nhận).
+created_at	DATETIME	CURRENT_
+TIMESTAMP	Thời gian tạo tài khoản.
+updated_at	DATETIME	ON UPDATE	Thời gian cập nhật gần nhất.
+Bảng 10: Đặc tả lớp user.
+2.Bảng driver_profiles:
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+user_id	BIGINT(20)	PK, FK (users.id)	Mã tài xế.
+vehicle_type	ENUM	Mặc định: 'motorbike'	Loại phương tiện (bike, motorbike, car, van).
+license_plate	VARCHAR(30)	NULL	Biển số xe.
+vehicle_registration_
+image	VARCHAR(255)	NULL	Ảnh chụp giấy đăng ký xe (Cà vẹt).
+current_lat	DECIMAL(10,7)	NULL	Vĩ độ hiện tại (Tọa độ Radar).
+current_lng	DECIMAL(10,7)	NULL	Kinh độ hiện tại (Tọa độ Radar).
+is_online	TINYINT(1)	Mặc định: 0	Trạng thái Radar bật/tắt (1 = Đang trực).
+status	ENUM	Mặc định: 'approved'	Trạng thái duyệt hồ sơ (pending, approved, rejected).
+rating_avg	DECIMAL(3,2)	Mặc định: 0.00	Điểm đánh giá trung bình (Số sao).
+balance	DECIMAL(12,2)	Mặc định: 0.00	Số dư Ví điện tử hiện tại của tài xế.
+max_concurrent_
+orders	TINYINT(3)	Mặc định: 3	Số đơn ghép tối đa được nhận cùng lúc.
+max_total_weight	DECIMAL(8,2)	Mặc định: 100.00	Tải trọng tối đa của xe (kg).
+current_load	DECIMAL(8,2)	Mặc định: 0.00	Tổng khối lượng hàng đang chở hiện tại (kg).
+is_verified	TINYINT(1)	Mặc định: 0	Đã xác minh giấy tờ xe (1 = Đã xác minh).
+created_at	DATETIME	CURRENT_
+TIMESTAMP	Thời điểm tạo hồ sơ.
+updated_at	DATETIME	ON UPDATE	Thời điểm cập nhật gần nhất.
+ Bảng 11:Đặc tả lớp driver_profiles:
+3.Bảng  password_reset_tokens (Khôi phục mật khẩu)
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+id	BIGINT(20)	PK, AUTO_INC	Khóa chính.
+user_id	BIGINT(20)	FK (users.id)	Mã người dùng yêu cầu khôi phục.
+otp_code	VARCHAR(10)	NOT NULL	Mã OTP.
+otp_expires_at	DATETIME	NOT NULL	Thời gian mã OTP hết hạn.
+reset_token	VARCHAR(100)	NULL	Token khôi phục mật khẩu.
+token_expires_at	DATETIME	NULL	Thời gian token hết hạn.
+is_used	TINYINT(1)	Mặc định: 0	Trạng thái đã sử dụng (1 = Đã dùng).
+used_at	DATETIME	NULL	Thời điểm sử dụng.
+created_at	DATETIME	CURRENT_
+TIMESTAMP	Thời điểm tạo yêu cầu.
+Bảng 12: Đặc tả lớp password_reset_tokens.
+4. Bảng orders (Thông tin tổng quan đơn hàng)
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+id	BIGINT(20)	PK, AUTO_INC	Khóa chính.
+customer_id	BIGINT(20)	FK (users.id)	Mã khách hàng đặt đơn.
+tracking_code	VARCHAR(40)	UNIQUE, NOT NULL	Mã vận đơn dùng để tra cứu (VD: NUN1234...).
+status	ENUM	Mặc định: 'pending'	Trạng thái (pending, accepted, picking_up, completed...).
+weight	DECIMAL(8,2)	Mặc định: 1.00	Khối lượng kiện hàng (kg).
+shipping_method	VARCHAR(50)	Mặc định: 'standard'	Gói giao hàng (standard, fast, express).
+note	TEXT	NULL	Ghi chú của khách hàng.
+scheduled_at	DATETIME	NULL	Thời gian hẹn lấy hàng (Nếu là đơn đặt lịch).
+is_archived	TINYINT(1)	Mặc định: 0	Trạng thái lưu trữ (Ẩn khỏi danh sách hiển thị).
+created_at	DATETIME	CURRENT_
+TIMESTAMP	Thời điểm tạo đơn.
+updated_at	DATETIME	ON UPDATE	Thời điểm cập nhật gần nhất.
+Bảng 13:Đặc tả lớp orders.
+5. Bảng order_addresses (Dữ liệu không gian GPS & Địa chỉ)
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+order_id	BIGINT(20)	PK, FK (orders.id)	Khóa ngoại liên kết 1-1 với đơn hàng.
+sender_name	VARCHAR(120)	NOT NULL	Tên người gửi.
+sender_phone	VARCHAR(30)	NOT NULL	SĐT người gửi.
+sender_address	VARCHAR(500)	NOT NULL	Địa chỉ nơi lấy hàng.
+sender_lat	DECIMAL(10,7)	NULL	Vĩ độ điểm lấy hàng.
+sender_lng	DECIMAL(10,7)	NULL	Kinh độ điểm lấy hàng.
+receiver_name	VARCHAR(120)	NOT NULL	Tên người nhận.
+receiver_phone	VARCHAR(30)	NOT NULL	SĐT người nhận.
+receiver_address	VARCHAR(500)	NOT NULL	Địa chỉ nơi giao hàng.
+receiver_lat	DECIMAL(10,7)	NULL	Vĩ độ điểm giao hàng.
+receiver_lng	DECIMAL(10,7)	NULL	Kinh độ điểm giao hàng.
+created_at	DATETIME	CURRENT_
+TIMESTAMP	Thời điểm tạo.
+updated_at	DATETIME	ON UPDATE	Thời điểm cập nhật gần nhất.
+Bảng 14: Đặc tả lớp order_addresses.
+6. Bảng order_deliveries (Tiến trình thực thi của Tài xế)
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+order_id	BIGINT(20)	PK, FK (orders.id)	Khóa ngoại liên kết 1-1 với đơn hàng.
+driver_id	BIGINT(20)	FK (users.id), NULL	Mã tài xế đang nhận chở đơn này.
+batch_code	VARCHAR(50)	NULL	Mã chuyến ghép do Thuật toán AI tạo ra.
+accepted_at	DATETIME	NULL	Mốc thời gian tài xế nhận đơn.
+picked_up_at	DATETIME	NULL	Mốc thời gian tài xế lấy hàng thành công.
+delivered_at	DATETIME	NULL	Mốc thời gian giao hàng thành công.
+cancelled_at	DATETIME	NULL	Mốc thời gian hủy đơn.
+proof_image	VARCHAR(500)	NULL	URL Ảnh chụp minh chứng giao hàng/sự cố.
+cancel_reason	TEXT	NULL	Lý do hủy đơn (nếu có).
+created_at	DATETIME	CURRENT_
+TIMESTAMP	Thời điểm tạo.
+updated_at	DATETIME	ON UPDATE	Thời điểm cập nhật.
+Bảng 15: Đặc tả lớp order_deliveries.
+7. Bảng order_finances (Tài chính đơn hàng)
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+order_id	BIGINT(20)	PK, FK (orders.id)	Khóa ngoại liên kết 1-1 với đơn hàng.
+shipping_fee	DECIMAL(12,2)	Mặc định: 0.00	Tổng cước phí vận chuyển.
+payment_method	ENUM	Mặc định: 'cash'	Hình thức (cash, transfer, bank_transfer, wallet).
+payment_status	ENUM	Mặc định: 'pending'	Trạng thái thanh toán (pending, unpaid, paid, refunded).
+paid_at	DATETIME	NULL	Thời điểm thanh toán thành công.
+refunded_at	DATETIME	NULL	Thời điểm hoàn tiền.
+created_at	DATETIME	CURRENT_
+TIMESTAMP	Thời điểm tạo.
+updated_at	DATETIME	ON UPDATE	Thời điểm cập nhật.
+Bảng 16: Đặc tả lớp order_finances.
+8. Bảng order_status_history (Nhật ký theo dõi - Tracking)
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+id	BIGINT(20)	PK, AUTO_INC	Khóa chính.
+order_id	BIGINT(20)	FK (orders.id)	Đơn hàng.
+status	ENUM	NOT NULL	Trạng thái tại thời điểm ghi nhận nhật ký.
+description	TEXT	NULL	Lời mô tả chi tiết hiển thị cho khách xem.
+created_at	DATETIME	CURRENT_
+TIMESTAMP	Thời điểm ghi nhận.
+Bảng 17: Đặc tả lớp order_status_history.
+9. Bảng order_disputes (Quản lý khiếu nại)
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+id	BIGINT(20)	PK, AUTO_INC	Khóa chính.
+order_id	BIGINT(20)	FK (orders.id)	Đơn hàng bị khiếu nại.
+reported_by	BIGINT(20)	FK (users.id)	ID người tạo khiếu nại.
+issue_type	VARCHAR(255)	NOT NULL	Lý do / Nội dung phản ánh chi tiết của khách hàng.
+status	ENUM	Mặc định: 'open'	Trạng thái (open, in_review, resolved, rejected, closed).
+resolution_note	TEXT	NULL	Ghi chú cách giải quyết của Admin.
+resolved_by	BIGINT(20)	FK (users.id)	ID Admin xử lý khiếu nại.
+resolved_at	DATETIME	NULL	Thời điểm xử lý xong.
+created_at	DATETIME	CURRENT_
+TIMESTAMP	Thời điểm báo cáo.
+updated_at	DATETIME	ON UPDATE	Thời điểm cập nhật.
+Bảng 18: Đặc tả lớp order_disputes.
+10. Bảng driver_penalties (Quản lý mức phạt tài xế)
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+id	BIGINT(20)	PK, AUTO_INC	Khóa chính.
+driver_id	BIGINT(20)	FK (users.id)	ID tài xế bị phạt.
+penalty_type	ENUM	NOT NULL	Loại vi phạm (cancellation, late_delivery...).
+amount	DECIMAL(12,2)	NOT NULL	Số tiền phạt.
+reason	VARCHAR(500)	NOT NULL	Lý do phạt chi tiết.
+created_by	BIGINT(20)	FK (users.id)	ID Admin tạo biên bản phạt.
+is_paid	TINYINT(1)	Mặc định: 0	Trạng thái đã đóng phạt hay chưa.
+paid_at	DATETIME	NULL	Thời gian đóng phạt.
+created_at	DATETIME	CURRENT_
+TIMESTAMP	Thời điểm tạo biên bản.
+Bảng 19: Đặc tả lớp driver_penalties.
+11. Bảng driver_reviews (Đánh giá tài xế)
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+id	BIGINT(20)	PK, AUTO_INC	Khóa chính.
+order_id	BIGINT(20)	UNIQUE, FK	Đơn hàng được đánh giá.
+customer_id	BIGINT(20)	FK (users.id)	ID khách hàng đánh giá.
+driver_id	BIGINT(20)	FK (users.id)	ID tài xế nhận đánh giá.
+rating	TINYINT(3)	NOT NULL	Số sao đánh giá (1-5).
+comment	TEXT	NULL	Nội dung nhận xét.
+created_at	DATETIME	CURRENT_TIMESTAMP	Thời điểm đánh giá.
+Bảng 20: Đặc tả lớp driver_reviews.
+12. Bảng order_chats (Tin nhắn nội bộ)
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+id	BIGINT(20)	PK, AUTO_INC	Khóa chính.
+order_id	BIGINT(20)	FK (orders.id)	Tin nhắn thuộc đơn hàng nào.
+sender_id	BIGINT(20)	FK (users.id)	ID người gửi.
+receiver_id	BIGINT(20)	FK (users.id)	ID người nhận.
+message	TEXT	NOT NULL	Nội dung tin nhắn.
+is_read	TINYINT(1)	Mặc định: 0	Trạng thái đã đọc (1 = Đã đọc).
+created_at	DATETIME	CURRENT_TIMESTAMP	Thời điểm gửi.
+Bảng 21: Đặc tả lớp order_chats.
+13. Bảng wallet_transactions (Lịch sử giao dịch Ví điện tử)
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+id	BIGINT(20)	PK, AUTO_INC	Khóa chính.
+user_id	BIGINT(20)	FK (users.id)	Mã chủ sở hữu ví.
+order_id	BIGINT(20)	FK (orders.id), NULL	Giao dịch phát sinh từ đơn hàng nào (Nếu có).
+amount	DECIMAL(12,2)	NOT NULL	Số tiền biến động (+ Nạp/Hoàn, - Trừ phí/Phạt).
+type	ENUM	NOT NULL	Loại giao dịch (deposit, platform_fee, refund, adjustment, penalty).
+description	VARCHAR(255)	NULL	Nội dung diễn giải giao dịch.
+balance_after	DECIMAL(12,2)	Mặc định: 0.00	Số dư ví lưu lại ngay sau khi thực hiện giao dịch (Snapshot).
+created_at	DATETIME	CURRENT_
+TIMESTAMP	Thời điểm phát sinh giao dịch.
+Bảng 22: Đặc tả lớp wallet_transactions.
+14. Bảng notifications (Hệ thống Thông báo)
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+id	BIGINT(20)	PK, AUTO_INC	Khóa chính.
+user_id	BIGINT(20)	FK (users.id)	Người nhận thông báo.
+title	VARCHAR(190)	NOT NULL	Tiêu đề thông báo.
+message	TEXT	NOT NULL	Nội dung.
+type	VARCHAR(40)	Mặc định: 'system'	Phân loại thông báo (system, wallet, order).
+link	VARCHAR(500)	NULL	Đường dẫn điều hướng khi click vào thông báo.
+is_read	TINYINT(1)	Mặc định: 0	Đã đọc hay chưa.
+created_at	DATETIME	CURRENT_TIMESTAMP	Thời điểm tạo thông báo.
+Bảng 23: Đặc tả lớp notifications.
+15. Bảng settings (Cấu hình tham số hệ thống)
+Tên cột	Kiểu dữ liệu	Ràng buộc	Mô tả
+setting_key	VARCHAR(100)	PK	Khóa cấu hình (Ví dụ: platform_fee_percent, violation_fine_amount).
+setting_value	TEXT	NULL	Giá trị của cấu hình.
+updated_at	DATETIME	ON UPDATE	Lần cập nhật cấu hình cuối cùng.
+Bảng 24: Đặc tả lớp settings.
+	Thiết kế giao diện (UI/UX Design)
+	Nguyên tắc thiết kế: (Design Principles)
+Hệ thống NUN Express được thiết kế giao diện theo hướng hiện đại, tối giản (Minimalism) và tập trung vào trải nghiệm người dùng (UX). Các nguyên tắc cốt lõi bao gồm:
+Tính nhất quán (Consistency): Sử dụng hệ thống biến CSS (CSS Variables) để đồng bộ màu sắc. Màu Xanh lam (#2563eb) làm màu chủ đạo (Primary) thể hiện sự tin cậy của dịch vụ giao hàng; màu Đỏ (#ef4444) cho các cảnh báo/hủy đơn; màu Xanh ngọc (#10b981) cho trạng thái thành công.
+Thiết kế đáp ứng (Responsive Design): Sử dụng CSS Grid và Flexbox linh hoạt. Hệ thống có khả năng tự động thu gọn Sidebar (Sidebar Toggle) và sắp xếp lại các cột (Grid layout) để hiển thị hoàn hảo trên cả thiết bị di động (Mobile) và máy tính bàn (Desktop).
+Tính trực quan (Visual Hierarchy): Sử dụng các thẻ (Cards) với độ nổi (Box-shadow) nhẹ và viền (Border-radius 4px) giúp phân chia thông tin rõ ràng. Các nút bấm (Call to Action) được làm nổi bật để định hướng thao tác người dùng.
+	Thiết kế giao diện: 
+Để minh họa cho kết quả của quá trình xây dựng hệ thống, dưới đây là danh sách các màn hình giao diện (Screenshots) tiêu biểu trải dài trên cả 3 phân hệ:
+	Giao diện dùng chung (Public & Auth)
+Hình : Giao diện Trang chủ (Landing Page) của nền tảng NUN Express.
+
+ 
+Mục đích: Giới thiệu dịch vụ và cho phép người dùng (kể cả khách vãng lai) tra cứu nhanh trạng thái đơn hàng.
+2. Giao diện Đăng nhập / Đăng ký (Auth / Register)
+ 
+ 
+ 
+Mục đích: Xác thực người dùng truy cập vào hệ thống.
+
+
+B. Phân hệ Khách hàng (Customer Web App)
+Giao diện Quản lý Đơn hàng
+ 
+
+
+Mục đích: Liệt kê toàn bộ lịch sử gửi hàng của người dùng.
+Giao diện Tạo Đơn hàng mới
+ 
+Mục đích: Khởi tạo yêu cầu vận chuyển, tính cước bằng AI.
+Giao diện Thanh toán trực tuyến (Online Payment / QR Code)
+ 
+	Mục đích: Xử lý thanh toán cho các đơn hàng chọn hình thức "Chuyển khoản".
+
+Giao diện Theo dõi Lộ trình trực tuyến (Real-time Order Tracking)
+ 
+Mục đích: Tra cứu tiến trình và vị trí tài xế theo thời gian thực.
+7. Giao diện Đánh giá & Khiếu nại (Review & Dispute)
+
+ 
+Mục đích: Đo lường sự hài lòng sau chuyến đi.
+Giao diện Hồ sơ cá nhân (Profile Management)
+ 
+Mục đích: Quản lý thông tin tài khoản.
+9. Giao diện Radar & Nhận chuyến ghép AI (Receive Orders)
+ 
+Mục đích: Đây là màn hình cốt lõi ứng dụng AI để phân bổ đơn hàng.
+10. Giao diện Lộ trình công việc đang chạy (Active Orders)
+ 
+Mục đích: Hướng dẫn tài xế thực hiện các đơn hàng đã nhận.
+11. Giao diện Báo cáo sự cố & Khách bom hàng (Report No-show)
+Mục đích: Xử lý ngoại lệ tại hiện trường.
+12. Giao diện Ví điện tử & Nạp tiền (Wallet Top-up)
+
+  
+Mục đích: Quản lý số dư để duy trì khả năng nhận đơn.
+ 
+Mục đích: Đối soát thu nhập.
+d) Phân hệ Quản trị viên (Admin) 
+ 
+10. Hình 2.x: Giao diện Tổng quan (Admin Dashboard): * Mô tả: Chụp toàn cảnh màn hình Admin với Sidebar bên trái. Phần nội dung chính hiển thị các thẻ thống kê nổi bật (Stat Cards: Tổng đơn, Doanh thu) và biểu đồ (Chart box) doanh thu 7 ngày/tháng. 
+ 
+ 
+ 
+ 
+ 11. Hình 2.x: Giao diện Chi tiết Đơn hàng & Phạt vi phạm (Admin Order View): * Mô tả: Chụp phần xem chi tiết tiến trình một đơn hàng. Đặc biệt chụp phần Form/Nút chức năng "Phạt tài xế" (penalize-driver) thể hiện quyền lực can thiệp của Quản trị viên. 
+12. Hình 2.x: Giao diện Quản lý Cài đặt Hệ thống & AI (Settings): * Mô tả: Chụp Form thiết lập các tham số cốt lõi. Chú ý các ô nhập liệu có hậu tố (Suffix) như % cho Phí nền tảng, hay kg cho Tải trọng mặc định của xe. 
+ 
+13. Hình 2.x: Giao diện Xử lý Khiếu nại (Disputes Management): * Mô tả: Chụp danh sách các thẻ khiếu nại (Dispute Cards) hiển thị tên khách hàng, nội dung báo cáo sự cố và các nút "Giải quyết" (Action buttons).
+
+CHƯƠNG 3: PHÂN TÍCH VÀ XÂY DỰNG THUẬT TOÁN AI GHÉP CHUYẾN
+	Đặt vấn đề và Lựa chọn công nghệ
+	 Bài toán Định tuyến phương tiện (VRP - Vehicle Routing Problem) 
+a) Đặt vấn đề bài toán trong thực tiễn hệ thống Bài toán cốt lõi đặt ra cho nền tảng NUN Express khi tài xế kích hoạt tính năng "Radar nhận đơn" là: Từ một danh sách bao gồm hàng chục đơn hàng đang ở trạng thái chờ xử lý (pending) phân bố rải rác trong khu vực nội thành và tọa độ GPS hiện tại của tài xế, làm thế nào để hệ thống tự động trích xuất và gom nhóm (Batching) các đơn hàng này thành những chuyến đi tối ưu nhất?
+Mục tiêu của quá trình gom nhóm này là phải tìm ra một lộ trình di chuyển xuyên suốt (từ điểm lấy hàng đầu tiên đến điểm giao hàng cuối cùng) sao cho tổng thời gian và quãng đường di chuyển là cực tiểu. Tuy nhiên, bài toán không dừng lại ở việc tìm đường đi đơn thuần (Traveling Salesman Problem - TSP) mà được mở rộng thành mô hình Định tuyến phương tiện có ràng buộc sức chứa đa chiều (Multi-Capacity Vehicle Routing Problem). Cụ thể, mỗi "Chuyến ghép" được thuật toán đề xuất bắt buộc phải tuân thủ nghiêm ngặt hai giới hạn vật lý của phương tiện:
+	Ràng buộc về Tải trọng (max_weight_capacity): Tổng khối lượng của tất cả các kiện hàng trên xe tại bất kỳ thời điểm nào không được phép vượt quá tải trọng tối đa mà tài xế đã đăng ký trong hồ sơ năng lực.
+	Ràng buộc về Năng lực phục vụ (max_orders_per_batch): Để đảm bảo chất lượng dịch vụ (Service Level Agreement), tránh tình trạng om đơn làm khách hàng cuối cùng phải đợi quá lâu, số lượng đơn hàng được phép ghép trên cùng một chuyến không được vượt quá giới hạn quy định.
+	"- Ràng buộc về Loại hình dịch vụ (Service Type Constraint - Mutual Exclusion): Nhằm đảm bảo cam kết thời gian phục vụ (SLA) khắt khe nhất, hệ thống thiết lập cơ chế phân luồng độc quyền giữa đơn Siêu tốc và đơn ghép Tiêu chuẩn. Một phương tiện không được phép thực hiện song song hai loại hình dịch vụ này để tránh rủi ro trễ hẹn dây chuyền."
+b) Đặc thù và độ phức tạp của bài toán Theo lý thuyết Vận trù học và Khoa học máy tính, VRP và các biến thể đa ràng buộc của nó đều thuộc lớp bài toán NP-Khó (NP-Hard). Khác với các bài toán cơ bản có thể giải quyết trong thời gian đa thức, độ phức tạp tính toán của VRP tăng theo cấp số nhân (Exponential time) khi số lượng đơn hàng (số lượng nút trên đồ thị) tăng lên.
+Giả sử trong khu vực có N đơn hàng đang chờ (tương đương 2N điểm lấy và giao hàng), số lượng hoán vị lộ trình có thể xảy ra là vô cùng khổng lồ. Hơn nữa, với mỗi một hoán vị, hệ thống còn phải giải quyết một ràng buộc về trình tự (Precedence Constraint) rất khắt khe: Tài xế bắt buộc phải đi qua tọa độ lấy hàng (Pickup Location) trước khi có thể đi đến tọa độ giao hàng (Delivery Location) của cùng một mã vận đơn.
+Nếu sử dụng các phương pháp tìm nghiệm chính xác tuyệt đối (Exact Methods) như thuật toán Vét cạn (Brute-force) hoặc Nhánh và Cận (Branch and Bound), máy chủ Web sẽ mất hàng giờ đồng hồ, thậm chí là vài ngày để phân tích xong một ma trận gồm vài chục đơn hàng. Điều này hoàn toàn vi phạm yêu cầu về Tính thời gian thực (Real-time) của một ứng dụng điều phối di động – nơi mà thao tác quét Radar của tài xế đòi hỏi hệ thống phải trả về kết quả gợi ý chỉ trong vòng 1 đến 2 giây.
+Chính vì tính chất khốc liệt của các ràng buộc kể trên, việc tự xây dựng thuật toán từ đầu hoặc sử dụng các giải thuật tìm kiếm truyền thống là không khả thi. Bài toán bắt buộc phải được giải quyết bằng các thuật toán siêu xấp xỉ (Meta-heuristics) thông qua một nền tảng Trí tuệ nhân tạo và Tối ưu hóa chuyên biệt.
+	 Lựa chọn công nghệ lõi Để xử lý bài toán này trong thời gian thực (Real-time) khi tài xế bật Radar, hệ thống lựa chọn các công nghệ sau:
+Để đáp ứng được hai yêu cầu khắt khe của hệ thống là Độ chính xác cao (tuân thủ đa ràng buộc) và Thời gian thực (phản hồi Radar trong 1-2 giây), việc lựa chọn công nghệ và thiết kế kiến trúc thuật toán đóng vai trò quyết định. Đề tài đã xây dựng một Microservice AI dựa trên "Kiềng ba chân" công nghệ: Python, Google OR-Tools và OSRM.
+a) Ngôn ngữ Python (Môi trường thực thi độc lập) Như đã đề cập ở Chương 1, việc xử lý bài toán NP-Khó bằng ngôn ngữ PHP sẽ làm treo (block) máy chủ Web. Do đó, toàn bộ logic gom cụm (Clustering) và tối ưu lộ trình (Routing) được lập trình hoàn toàn bằng ngôn ngữ Python (thông qua tệp route_optimizer.py).
+	Cơ chế giao tiếp an toàn: Thay vì giao tiếp trực tiếp qua Command Line dễ gặp lỗi giới hạn độ dài chuỗi (character limit), hệ thống PHP được thiết kế để tuần tự hóa (serialize) dữ liệu thành một tệp JSON tạm thời (tempnam), sau đó truyền đường dẫn tệp cho Python xử lý (thông qua cờ --batch-file).
+	Hiệu năng xử lý mảng: Khả năng thao tác với ma trận, danh sách (List/Dictionary) của Python giúp việc phân tích và bóc tách các điều kiện tải trọng, thời gian lấy hàng của tài xế diễn ra với độ trễ cực thấp.
+b) Nền tảng OSRM và Phương án dự phòng Haversine (Dữ liệu không gian) Để thuật toán AI có thể tìm ra đường đi ngắn nhất, nó cần một "Ma trận chi phí" (Cost Matrix) đầu vào.
+	Tối ưu hóa gọi API (OSRM Table): Trong thực tế giao thông nội thành, đường chim bay thường gây sai số rất lớn so với đường bộ. Hệ thống gọi đến máy chủ mã nguồn mở OSRM. Thay vì gọi API N^2 lần cho từng cặp điểm (gây thắt nút cổ chai mạng), mã nguồn Python được tối ưu hóa để gửi một mảng chuỗi tọa độ (String join) duy nhất vào End-point osrm_table() (/table/v1/driving/...). Trả về là một ma trận thời gian di chuyển thực tế (Duration Matrix).
+	Cơ chế Dự phòng (Fallback Mechanism): Điểm sáng giá trong kiến trúc tính toán của NUN Express là tính bền bỉ (Fault tolerance). Trong trường hợp API OSRM bị nghẽn mạng hoặc quá thời gian chờ (timeout), thuật toán sẽ không bị sập. Hệ thống được lập trình tự động chuyển đổi (fallback) sang sử dụng công thức toán học Haversine (tính khoảng cách trên bề mặt hình cầu) và nội suy thời gian di chuyển với vận tốc trung bình giả định của xe máy là 28km/h, đảm bảo tài xế luôn nhận được kết quả gợi ý.
+c) Bộ giải Google OR-Tools (Trái tim tối ưu hóa) Đây là bộ thư viện mã nguồn mở lõi C++ của Google, chịu trách nhiệm chính trong việc hoán vị và tìm đường đi (Routing Model). Dựa trên thực tiễn mã nguồn, thuật toán AI được áp dụng theo các chiến lược sâu sắc sau:
+	Loại bỏ tính toán dư thừa: Thuật toán AI được lập trình để tự đánh giá độ phức tạp. Nếu một nhóm đơn hàng chỉ có đúng 2 điểm (1 điểm lấy, 1 điểm giao), hệ thống bỏ qua việc khởi tạo bộ giải (Solver) nặng nề của OR-Tools và trả về tuyến đường thẳng để tiết kiệm tài nguyên máy chủ.
+	Chiến lược khởi tạo (First Solution Strategy): Đối với các cụm đơn hàng phức tạp, hệ thống cấu hình sử dụng chiến lược PATH_CHEAPEST_ARC. Đây là một thuật toán Heuristic dựa trên nguyên lý tham lam (Greedy), liên tục nối các mắt xích có chi phí thấp nhất để tạo ra một lộ trình hợp lệ ban đầu.
+	Chiến lược siêu kinh nghiệm (Meta-heuristics): Đối với các cụm giao hàng lớn (lớn hơn 5 điểm), lộ trình ban đầu rất dễ rơi vào cực tiểu cục bộ (Local Optima). Lúc này, hệ thống kích hoạt cấu hình GUIDED_LOCAL_SEARCH (Tìm kiếm cục bộ có hướng). Thuật toán sẽ chủ động hoán vị, phá vỡ các chặng đường kém hiệu quả để tìm ra lộ trình mới xuất sắc hơn.
+	Kiểm soát thời gian thực (Time-limit constraints): Mặc dù việc tối ưu hóa sâu là cần thiết, nhưng Radar của tài xế không thể chờ đợi vô tận. Do đó, hệ thống thiết lập giới hạn cứng time_limit.seconds = 1. Lệnh này đảm bảo Trí tuệ nhân tạo sẽ luôn dừng lại và trả về kết quả lộ trình xuất sắc nhất mà nó tìm được đúng trong vòng 1 giây, cân bằng hoàn hảo giữa chất lượng định tuyến và trải nghiệm người dùng.
+
+	 Xây dựng Giải thuật Gom cụm không gian (Spatial Clustering Heuristic)
+	Đặt vấn đề và Phương pháp tiếp cận
+Trong môi trường điều phối giao nhận thực tế, nếu đưa toàn bộ danh sách hàng chục đơn hàng đang chờ vào bộ giải (Solver) của Google OR-Tools cùng một lúc, không gian tìm kiếm (Search space) sẽ phình to quá mức, dẫn đến thời gian tính toán vượt quá ngưỡng cho phép của một ứng dụng thời gian thực.
+Do đó, đề tài áp dụng chiến lược phân tách bài toán theo nguyên lý "Cluster first, Route second" (Gom cụm trước, Tìm đường sau). Trước khi giải quyết bài toán tìm đường (Routing), hệ thống sẽ chạy một giải thuật nội suy (Heuristic) để phân tách tập hợp các đơn hàng chờ thành các cụm (Batches) nhỏ hơn. Phương pháp được áp dụng trong nền tảng NUN Express là giải thuật Gom cụm dựa trên hạt giống (Seed-based Clustering Heuristic). Giải thuật này được đóng gói trong hàm batch_orders() của Microservice Python.
+	Chi tiết các bước thực thi của Giải thuật Gom cụm
+Giải thuật được thiết kế để quét và gom cụm theo các bước lô-gic nghiêm ngặt như sau:
+Bước 1: Đánh giá mức độ cấp bách (Priority Sorting) Hệ thống không gom cụm một cách ngẫu nhiên mà tuân thủ nghiêm ngặt Cam kết dịch vụ (SLA). Giải thuật duyệt qua toàn bộ danh sách đơn chờ và trích xuất ra một khóa ưu tiên (urgency_key). Khóa này được phân tầng theo hai cấp độ: Cấp 1 là Loại hình dịch vụ (ưu tiên tuyệt đối cho các đơn có nhãn Siêu tốc/Hỏa tốc); Cấp 2 là Thời gian hẹn lấy hàng (scheduled_at). Toàn bộ danh sách được sắp xếp sao cho những đơn Siêu tốc hoặc sắp trễ giờ nhất sẽ luôn được đẩy lên đỉnh danh sách để trở thành Hạt giống không gian đầu tiên.
+Bước 2: Khởi tạo Hạt giống không gian (Seed Initialization) Tại mỗi vòng lặp tạo cụm mới, hệ thống sẽ rút (pop) đơn hàng đứng đầu danh sách (đơn hàng cấp bách nhất) ra làm "Đơn hàng Hạt giống" (seed_order_data). Tọa độ GPS (Vĩ độ, Kinh độ) của đơn hàng hạt giống này ngay lập tức được lấy làm "Tọa độ trung tâm" (center_lat, center_lng) cho toàn bộ chuyến ghép sắp được hình thành.
+Bước 3: Lan truyền cụm và Kiểm soát đa ràng buộc (Expansion & Capacity Constraints) Sau khi có tâm điểm, thuật toán tiến hành quét các đơn hàng còn lại trong danh sách chờ để thử ghép vào cụm. Một đơn hàng ứng viên (Candidate) chỉ được phép ghép chung với Hạt giống nếu thỏa mãn đồng thời cả 3 ràng buộc khắt khe sau:
+	Ràng buộc Không gian (Distance Constraint): Sử dụng công thức Haversine để tính khoảng cách đường chim bay từ đơn ứng viên đến tâm điểm. Khoảng cách này bắt buộc phải nhỏ hơn hoặc bằng bán kính cho phép (MAX_PICKUP_DISTANCE_KM = 3.0 km).
+	Ràng buộc Số lượng (Count Constraint): Số lượng đơn hàng hiện tại trong cụm không được phép vượt quá giới hạn năng lực phục vụ của tài xế (MAX_ORDERS_PER_BATCH).
+	Ràng buộc Tải trọng (Weight Constraint): Tổng khối lượng hiện tại của cụm cộng thêm khối lượng của đơn ứng viên (candidate_weight) tuyệt đối không được lớn hơn tải trọng tối đa của xe (max_weight_capacity).
+	Ràng buộc Độc quyền trạng thái (Mutual Exclusion Constraint): Thuật toán Python (route_optimizer.py) tiến hành kiểm tra chéo loại hình dịch vụ.
+	Nếu "Đơn hàng Hạt giống" là đơn Siêu tốc, cụm này ngay lập tức bị đóng lại (chỉ chứa 1 đơn duy nhất) và bỏ qua khâu tìm ứng viên ghép chuyến.
+	Ngược lại, nếu cụm đang chứa các đơn Tiêu chuẩn, mọi đơn hàng ứng viên có nhãn "Siêu tốc" sẽ bị thuật toán loại bỏ hoàn toàn khỏi tập hợp xét duyệt, đảm bảo tính thuần nhất của chuyến ghép.
+Bước 4: Chiến lược Chống trôi tâm (Anti-Drift Strategy) Trong các thuật toán gom cụm truyền thống như K-Means, mỗi khi có một phần tử mới được thêm vào cụm, tọa độ trung tâm (Centroid) sẽ bị tính toán lại và dịch chuyển. Tuy nhiên, điểm sáng tạo trong mã nguồn hệ thống NUN Express là áp dụng Chiến lược không cập nhật lại trung tâm. Xuyên suốt quá trình lan truyền cụm, tọa độ tâm được neo cứng vào "Đơn hàng Hạt giống". Quyết định kỹ thuật này nhằm giải quyết một rủi ro trong thực tiễn giao hàng: Tránh hiện tượng "Trôi tâm" khiến chuyến ghép bị kéo dài thành một vệt dài vô tận, qua đó đảm bảo tuyệt đối mọi đơn hàng được ghép vào đều nằm gọn trong bán kính 3 km xung quanh đơn hàng đang cần lấy gấp nhất.
+Bước 5: Chuyển giao Tối ưu hóa lộ trình (Handover to TSP Solver) Sau khi cụm đơn hàng đã được lấp đầy (hoặc duyệt hết danh sách), thuật toán loại bỏ các đơn này khỏi hàng đợi. Lúc này, danh sách các đơn hàng trong cụm (current_batch_data) mới được chính thức chuyển giao cho hàm solve_tsp_for_batch() để gọi bộ thư viện C++ của Google OR-Tools. OR-Tools sẽ đảm nhiệm bước "Route second", tiến hành tính toán ma trận khoảng cách OSRM thực tế và hoán vị thứ tự đi lấy hàng sao cho tổng thời gian là ngắn nhất.
+Bước 6: Tính toán thời gian tiếp cận (Access Duration) Để tài xế có cái nhìn trực quan nhất, thuật toán tính toán thêm một tham số là access_duration_s. Đây là thời gian dự kiến tài xế phải chạy xe rỗng từ vị trí GPS hiện tại của mình (driver_location) đến tọa độ của điểm lấy hàng đầu tiên trong lộ trình vừa được tối ưu.
+Toàn bộ thông tin cụm (bao gồm danh sách ID đơn hàng, lộ trình thứ tự điểm đi, tổng khối lượng, tổng thời gian và thời gian tiếp cận) được đóng gói thành một đối tượng Batch hoàn chỉnh và trả về cho hệ thống PHP Web Server. Vòng lặp tiếp tục với các đơn hàng còn lại cho đến khi không còn đơn nào thỏa mãn điều kiện.
+
+	 Thuật toán Tối ưu Lộ trình (Routing Optimization với OR-Tools)
+	Đặt vấn đề và Vai trò của OR-Tools
+Sau khi giải thuật Gom cụm không gian (Spatial Clustering) hoàn tất, hệ thống thu được các cụm đơn hàng (Batches) độc lập. Tuy nhiên, các điểm giao/nhận bên trong mỗi cụm hiện tại chỉ đang được sắp xếp thô theo thời gian ưu tiên. Để tài xế có thể thực hiện chuyến ghép một cách mượt mà nhất, hệ thống cần giải quyết bước thứ hai trong nguyên lý "Cluster first, Route second": Bài toán Người chào hàng (Traveling Salesman Problem - TSP).
+Nhiệm vụ của module này là xác định một hoán vị trình tự các điểm dừng (stops) sao cho tổng thời gian di chuyển qua tất cả các điểm trong cụm là cực tiểu. Quá trình này được thực thi thông qua hàm solve_tsp_for_batch bằng việc nhúng (embed) thư viện lõi C++ của Google OR-Tools.
+	Tiền xử lý và Khởi tạo Ma trận Chi phí (Cost Matrix)
+Trước khi đưa bài toán vào bộ giải (Solver), mã nguồn thực hiện các bước tiền xử lý nhằm tối ưu hóa tài nguyên phần cứng và băng thông mạng:
+a) Chiến lược rẽ nhánh sớm (Early Exit Bypass) Đối với các cụm đơn hàng siêu nhỏ (chỉ chứa 1 hoặc 2 đơn vị), việc khởi tạo bộ máy tính toán (Engine) của OR-Tools là một sự lãng phí tài nguyên RAM và CPU không cần thiết. Mã nguồn được thiết kế để nhận diện và bắt nhánh: Nếu cụm chỉ có đúng 2 điểm (Điểm A và Điểm B), hệ thống bỏ qua OR-Tools và gọi thẳng API định tuyến OSRM (osrm_route) để trả về kết quả ngay lập tức. Chiến lược này đặc biệt phát huy tác dụng tối đa khi xử lý các Đơn hàng Siêu tốc. Do bị ràng buộc bởi Cơ chế độc quyền (không ghép chuyến), các đơn Siêu tốc sẽ luôn đi qua nhánh Bypass này, giúp hệ thống đạt độ trễ gần như bằng 0 (Zero-latency) cho các yêu cầu giao hàng khẩn cấp.
+b) Tối ưu hóa truy vấn mạng (Table API thay vì Route API) Để OR-Tools có thể tìm ra đường đi ngắn nhất, nó cần một Ma trận thời gian (Duration Matrix) biểu thị chi phí di chuyển giữa tất cả các cặp điểm. Nếu hệ thống gọi API tìm đường cho từng cặp điểm rời rạc, số lượng Request sẽ là N^2, gây thắt nút cổ chai (Bottleneck) mạng. Thay vào đó, giải thuật trích xuất toàn bộ mảng tọa độ và gửi một truy vấn duy nhất đến End-point osrm_table. Máy chủ OSRM sẽ tính toán song song và trả về một ma trận hoàn chỉnh chỉ trong một lần phản hồi (Response).
+c) Cơ chế dự phòng không gian (Haversine Fallback) Trong trường hợp máy chủ OSRM bị quá tải hoặc tọa độ nằm ở vùng mù không có dữ liệu đường bộ, mảng dữ liệu có thể bị rỗng (None). Để đảm bảo tính bền bỉ (Fault-tolerance), mã nguồn tự động kích hoạt cơ chế dự phòng: Sử dụng công thức toán học Haversine để tính khoảng cách bề mặt hình cầu và nội suy ra thời gian di chuyển dựa trên vận tốc xe máy giả định là 28km/h, đảm bảo Ma trận chi phí (dist_matrix) luôn được lấp đầy.
+	Xây dựng Mô hình Định tuyến (Routing Model)
+Khi ma trận chi phí đã sẵn sàng, hệ thống tiến hành nạp dữ liệu vào mô hình toán học của Google OR-Tools:
+	Khởi tạo Index Manager: Hệ thống khởi tạo đối tượng pywrapcp.RoutingIndexManager với số lượng Nút (Node) bằng số điểm trong cụm, cấu hình 1 phương tiện duy nhất (vì đã gom cụm cho 1 tài xế) và thiết lập điểm xuất phát tại Index 0 (Tọa độ hiện tại của tài xế).
+	Đăng ký hàm Callback: Hệ thống tạo một hàm distance_callback để làm cầu nối (Adapter) giữa các Index trừu tượng của OR-Tools và Ma trận thời gian (dist_matrix) thực tế. Hàm này được đăng ký thông qua lệnh RegisterTransitCallback để trở thành cơ sở đánh giá chi phí (Cost Evaluator) cho mọi nhánh di chuyển của phương tiện.
+	Khởi tạo Chiều thời gian (Time Dimension): Không chỉ tìm đường ngắn nhất, hệ thống nạp thêm AddDimension cho thời gian di chuyển. Bằng cách thiết lập giới hạn trên (Upper bound) cho từng Node dựa trên khung giờ hẹn của khách hàng, bộ giải OR-Tools sẽ chủ động cắt bỏ (Pruning) bất kỳ nhánh lộ trình nào vi phạm Cửa sổ thời gian, thay vì chỉ tối ưu khoảng cách đơn thuần."
+	Cấu hình Chiến lược Tìm kiếm (Search Strategies)
+Bài toán TSP vẫn là bài toán NP-Khó. Để giải quyết nhanh gọn, hệ thống cấu hình bộ giải sử dụng phương pháp tiếp cận hai giai đoạn của AI:
+Giai đoạn 1: Chiến lược Khởi tạo (First Solution Strategy) Hệ thống thiết lập tham số first_solution_strategy sử dụng thuật toán PATH_CHEAPEST_ARC. Đây là một thuật toán nội suy (Heuristic) dựa trên nguyên lý "Tham lam" (Greedy). Bắt đầu từ vị trí tài xế, thuật toán liên tục phân tích ma trận và nối các cung (Arc) có chi phí thời gian thấp nhất để nhanh chóng dựng lên một lộ trình hợp lệ ban đầu.
+Giai đoạn 2: Tối ưu hóa siêu kinh nghiệm (Metaheuristic Local Search) Lộ trình tạo ra từ bước Tham lam thường chưa phải là tối ưu nhất vì nó rất dễ bị kẹt tại một "Cực tiểu cục bộ" (Local Optima). Lúc này, mã nguồn hệ thống áp dụng một logic phân rã thông minh:
+	Với cụm nhỏ (≤ 5 điểm): Không gian tìm kiếm rất nhỏ, kết quả từ Giai đoạn 1 thường đã là kết quả tốt nhất. Hệ thống dừng lại và xuất lộ trình để tiết kiệm mili-giây.
+	Với cụm phức tạp (> 5 điểm): Hệ thống kích hoạt thuật toán Tìm kiếm cục bộ có hướng (GUIDED_LOCAL_SEARCH). Trí tuệ nhân tạo sẽ chủ động tự gán các hàm phạt (Penalties) vào các cung đường dài để ép bộ giải phải phá vỡ lộ trình cũ và khám phá các hoán vị đột phá hơn.
+	Giới hạn Thời gian thực (Real-time limit): Đặc biệt, để đảm bảo tài xế không phải chờ đợi màn hình Radar quá lâu, một tham số giới hạn cứng được thiết lập: search_parameters.time_limit.seconds = 1. Lệnh này ép buộc AI phải liên tục hoán vị nhưng đúng sau 1 giây, nó phải lập tức ngắt tiến trình và trả về kết quả lộ trình xuất sắc nhất mà nó đã tìm được (Best Known Solution).
+	Kết xuất dữ liệu (Output Extraction)
+Sau khi hàm SolveWithParameters thực thi xong, hệ thống tiến hành duyệt qua bộ giải (bằng lệnh routing.NextVar) để trích xuất ra mảng thứ tự các điểm dừng đã được tối ưu. Lộ trình này cùng với total_duration_s (tổng thời gian ước tính hoàn thành chuyến đi) được trả về cho hệ thống PHP, làm cơ sở để phân tích "Điểm hiệu quả" (Efficiency Score) và đề xuất lên giao diện thiết bị di động của tài xế.
+	 Chỉ số Đánh giá và Phân loại Lộ trình (Efficiency Scoring)
+	Đặt vấn đề về Bài toán Kinh tế trong Điều phối
+Sau khi Microservice Python và thư viện Google OR-Tools giải quyết xong bài toán Định tuyến phương tiện (CVRP), hệ thống trả về cho máy chủ Web một danh sách các "Chuyến ghép" (Batches) hợp lệ. Tuy nhiên, đứng từ góc độ của một người tài xế công nghệ, mục tiêu lớn nhất của họ khi bật "Radar nhận đơn" không chỉ là tuân thủ giới hạn tải trọng, mà là tối đa hóa thu nhập trên mỗi giờ làm việc.
+Nếu hệ thống chỉ hiển thị danh sách các chuyến ghép một cách ngẫu nhiên, tài xế sẽ mất thời gian nhẩm tính xem chuyến nào "ngon" hơn (được nhiều tiền hơn nhưng đi quãng đường ngắn hơn). Để giải quyết bài toán kinh tế này, hệ thống NUN Express được thiết kế thêm một lớp xử lý hậu kỳ (Post-processing) tại Controller của PHP nhằm chấm điểm và xếp hạng các chuyến đi.
+	Xây dựng công thức tính Điểm hiệu quả (Efficiency Score)
+Mã nguồn hệ thống thiết lập một công thức đo lường tỷ suất lợi nhuận trên thời gian (Return on Time Invested), được gọi là Điểm hiệu quả (Efficiency Score). Điểm số này đo lường xem: Cứ mỗi một phút tài xế bỏ ra để chạy chuyến ghép này, họ sẽ thu về được bao nhiêu VNĐ?
+Công thức toán học áp dụng trong hệ thống như sau: Efficiency_Score=\frac{\sum_{i=1}^{n}{Shipping_Fee_i}}{T_{access}+T_{route}}
+Trong đó:
+	\sum_{i=1}^{n}{Shipping_Fee_i}: Tổng cước phí vận chuyển mà tài xế sẽ thu được từ tất cả $n$ đơn hàng có trong chuyến ghép.
+	T_{route} (Total Duration): Tổng thời gian (tính bằng phút) tài xế cần để di chuyển qua tất cả các điểm dừng trong lộ trình mà OR-Tools đã hoán vị.
+	T_{access} (Access Duration - Thời gian tiếp cận): Đây là biến số cực kỳ quan trọng được hệ thống tính toán bổ sung bằng API của OSRM. Nó là thời gian tài xế phải chạy xe rỗng từ vị trí GPS hiện tại đến điểm lấy hàng đầu tiên của chuyến ghép. Việc cộng thêm T_{access} vào mẫu số giúp trừng phạt (Penalize) các chuyến ghép tuy có cước phí cao nhưng lại nằm quá xa vị trí hiện tại của tài xế.
+Chuyến ghép nào có Điểm hiệu quả càng cao, chứng tỏ chuyến ghép đó mang lại giá trị kinh tế càng lớn cho tài xế. Đặc biệt đối với đơn hàng Siêu tốc: Mặc dù bị giới hạn bởi Cơ chế phân luồng độc quyền (không được phép ghép thêm đơn làm tăng mẫu số thời gian), hệ thống sẽ tự động kích hoạt Hệ số phụ phí (Surge Multiplier). Cước phí nền tảng (R_{total}) của đơn Siêu tốc sẽ được nhân hệ số cao hơn đáng kể, đảm bảo Điểm hiệu quả (Efficiency Score) của chuyến đi độc quyền này vẫn đủ sức cạnh tranh trên Radar để thu hút tài xế tiếp nhận.
+	Thuật toán Sắp xếp Đa tầng (Multi-level Sorting Algorithm)
+Sau khi đã tính toán xong Điểm hiệu quả cho từng cụm đơn hàng, hệ thống tiến hành phân loại và sắp xếp (Sorting) danh sách trước khi hiển thị lên giao diện Radar. Nhằm cân bằng giữa Cam kết chất lượng dịch vụ (SLA) đối với khách hàng và Lợi ích kinh tế đối với tài xế, nền tảng NUN Express áp dụng chiến lược hoán vị mảng đa tầng (sử dụng hàm usort trong PHP) theo 2 cấp độ ưu tiên nghiêm ngặt:
+	Ưu tiên Cấp 1 (Ràng buộc Thời gian - Urgency Key): Hệ thống so sánh thời gian cấp bách nhất (most_urgent_time) của các chuyến ghép. Chuyến ghép nào chứa đơn hàng có lịch hẹn lấy (Scheduled Time) sát với hiện tại nhất, hoặc đơn hàng bị ngâm lâu nhất trên hệ thống, sẽ bị ép buộc đẩy lên vị trí trên cùng. Điều này đảm bảo nền tảng không bao giờ bị "cháy" thời gian phục vụ của khách hàng.
+	Ưu tiên Cấp 2 (Tối ưu Kinh tế - Efficiency Score): Trong trường hợp có nhiều chuyến ghép cùng mức độ cấp bách về thời gian (hoặc tất cả đều là đơn giao tiêu chuẩn không hẹn giờ), hệ thống sẽ chuyển sang so sánh Điểm hiệu quả. Chuyến ghép có Điểm hiệu quả cao hơn sẽ được xếp trên.
+Kết quả cuối cùng của thuật toán này là màn hình "Radar" của tài xế. Chuyến ghép đứng ở vị trí số 1 trong danh sách sẽ được hệ thống gắn huy hiệu "Lựa chọn tốt nhất do AI đề xuất" (Best Choice). Nhờ vậy, tài xế chỉ cần một chạm (One-tap) để nhận ngay cuốc xe mang lại lợi nhuận cao nhất cho mình mà không cần phải tính toán thủ công.
+3.4.4. Cơ chế Kiểm soát ngược và Khóa trạng thái động trên Radar
+Để bảo vệ nguyên tắc Phân luồng độc quyền trong thời gian thực, hệ thống áp dụng cơ chế Khóa trạng thái động (Dynamic State Locking) tại tầng Controller thay vì chỉ phụ thuộc vào AI:
+	Khóa độc quyền (Exclusive Lock): Khi tài xế xác nhận tiếp nhận một đơn Siêu tốc, một cờ trạng thái (flag) sẽ được cập nhật vào cơ sở dữ liệu. Từ thời điểm này cho đến khi đơn Siêu tốc được hoàn thành (completed), tài xế bị cô lập khỏi luồng tính toán của module Batching AI, ngăn chặn tuyệt đối việc hệ thống đề xuất thêm đơn ghép làm ảnh hưởng đến thời gian giao hàng.
+	Lọc ngược (Inverse Filtering): Đối với các tài xế đang giữ từ 02 đơn Tiêu chuẩn trở lên, thuật toán xử lý Radar áp dụng quy tắc lọc ngược. Hệ thống sẽ tự động ẩn các đơn Siêu tốc khỏi tầm nhìn của những tài xế này. Quyết định kỹ thuật này nhằm chủ động ngăn chặn rủi ro tài xế vì mục tiêu tối đa hóa lợi nhuận mà tiếp nhận thêm đơn gấp, dẫn đến hệ quả phá vỡ cam kết thời gian (SLA) của toàn bộ cụm đơn hàng đang vận chuyển.
+
+CHƯƠNG 4: CÀI ĐẶT HỆ THỐNG, KIỂM THỬ VÀ ĐÁNH GIÁ KẾT 
+	 Môi trường và công cụ phát triển
+Để đảm bảo hệ thống có thể vận hành trơn tru kiến trúc đa ngôn ngữ (Polyglot Architecture) giữa Web Server và Microservice AI, đề tài được phát triển, cài đặt và kiểm thử cục bộ (Localhost) trên môi trường với các thông số kỹ thuật sau:
+	Môi trường Phần cứng (Hardware Environment)
+	Bộ vi xử lý (CPU): Intel Core i5 / AMD Ryzen 5 (hoặc tương đương) với xung nhịp tối thiểu 2.5 GHz nhằm đáp ứng khả năng tính toán hoán vị đa luồng của module OR-Tools.
+	Bộ nhớ trong (RAM): 16GB. Mức dung lượng này đảm bảo máy chủ Web và trình thông dịch Python có thể chạy song song mà không xảy ra hiện tượng tràn bộ đệm (Memory Leak) khi phân tích các ma trận khoảng cách lớn.
+	Ổ cứng lưu trữ: SSD 512GB giúp tối ưu tốc độ đọc/ghi (I/O) tệp tin JSON tạm thời trong quá trình giao tiếp liên tiến trình (IPC) giữa PHP và Python.
+	Môi trường Phần mềm và Hệ quản trị Cơ sở dữ liệu (Software & DBMS)
+	Hệ điều hành: Microsoft Windows 10/11 hoặc macOS.
+	Web Server Environment: Gói phần mềm XAMPP (bao gồm máy chủ Apache 2.4.x).
+	Hệ quản trị Cơ sở dữ liệu: MySQL 8.0 (hoặc MariaDB 10.4+). Hệ quản trị này được cấu hình mặc định sử dụng Engine InnoDB để hỗ trợ toàn diện các tính năng Khóa bản ghi (Row-level locking) và Giao dịch cơ sở dữ liệu (Database Transactions). Công cụ quản lý trực quan được sử dụng là phpMyAdmin.
+	 Ngôn ngữ lập trình và Nền tảng (Programming Languages)
+	Ngôn ngữ Backend (Web Core): PHP 8.x. Hệ thống không sử dụng các Framework thương mại mà tự xây dựng bộ khung MVC tùy biến (Custom MVC Framework) kết hợp với chuẩn Autoloading (PSR-4) của Composer. Lớp bảo mật dữ liệu được tương tác thông qua PHP Data Objects (PDO).
+	Ngôn ngữ Thuật toán (AI Microservice): Python 3.x. Đóng vai trò là ngôn ngữ kịch bản xử lý phân rã cấu trúc dữ liệu, chạy độc lập và giao tiếp với PHP thông qua shell_exec.
+	Ngôn ngữ Frontend (Giao diện):
+	HTML5 & CSS3: Xây dựng giao diện tương thích đa nền tảng (Responsive). Hệ thống tự định nghĩa hệ thống biến (CSS Variables), sử dụng CSS Grid và Flexbox để dàn trang thay vì phụ thuộc vào thư viện Bootstrap nhằm tối ưu tốc độ tải.
+	JavaScript (ES6): Xây dựng các luồng tương tác phía Client, điển hình là kỹ thuật AJAX Polling bằng fetch API để liên tục lắng nghe đơn hàng mới trên Radar.
+	Các Thư viện và Dịch vụ API Tích hợp (Libraries & APIs) 
+Để giải quyết các bài toán đặc thù của ngành Logistics mà không tiêu tốn quá nhiều tài nguyên máy chủ, hệ thống tích hợp các nền tảng sau:
+	Google OR-Tools (ortools): Bộ thư viện C++ (được bọc bởi Python) dùng để thiết lập mô hình và giải quyết bài toán Định tuyến phương tiện (Routing Model) thông qua các thuật toán Meta-heuristics.
+	LeafletJS: Thư viện bản đồ mã nguồn mở cực nhẹ dùng để trực quan hóa giao diện Radar và màn hình theo dõi đơn hàng (Tracking) trên Web.
+	OSRM (Open Source Routing Machine): Dịch vụ API định tuyến cung cấp khoảng cách và thời gian di chuyển thực tế trên mạng lưới đường bộ (thông qua end-point /table/v1/driving và /route/v1/driving).
+	Cloudinary SDK: Dịch vụ lưu trữ đám mây chuyên biệt. Thay vì lưu trữ hình ảnh vật lý trên máy chủ gây nghẽn băng thông, hệ thống tích hợp Cloudinary API để tự động tải lên, nén (crop/fill) và lưu trữ ảnh đại diện (Avatar) cũng như ảnh minh chứng giao hàng (Proof Image) của tài xế.
+	Công cụ hỗ trợ Lập trình (IDE)
+	Visual Studio Code (VS Code): Môi trường phát triển tích hợp (IDE) chính được sử dụng để soạn thảo mã nguồn PHP, Python và Frontend.
+
+
+	Cài đặt hệ thống
+Để hiện thực hóa mô hình thiết kế đã phân tích ở Chương 2, mã nguồn của hệ thống NUN Express được tổ chức và phân tầng nghiêm ngặt. Việc không sử dụng các Web Framework có sẵn đòi hỏi hệ thống phải tự định nghĩa một cấu trúc thư mục logic nhằm đảm bảo nguyên lý "Phân tách các mối quan tâm" (Separation of Concerns) và tạo nền tảng cho kiến trúc đa ngôn ngữ (Polyglot Architecture) kết hợp giữa PHP và Python.
+4.2.1. Cấu trúc thư mục tổng thể (Directory Structure)
+Mã nguồn toàn bộ dự án được triển khai với cấu trúc cây thư mục như sau:
+NUN_EXPRESS_ROOT/
+├── ai/                         # [Microservice Python] Chứa các thuật toán AI
+│   └── route_optimizer.py      # Kịch bản chính giải quyết bài toán CVRP
+├── app/                        # [Core MVC] Logic nghiệp vụ lõi của hệ thống PHP
+│   ├── Controllers/            # Lớp Điều khiển (Xử lý Request, gọi Model)
+│   │   ├── Admin/              # Các Controller cho phân hệ Quản trị viên
+│   │   ├── Driver/             # Các Controller cho phân hệ Tài xế
+│   │   └── ProfileController.php 
+│   ├── Core/                   # Các lớp nền tảng hệ thống tự xây dựng
+│   │   ├── Database.php        # Kết nối PDO (Singleton Pattern)
+│   │   ├── Request.php         # Đóng gói HTTP Request
+│   │   ├── Response.php        # Trả về giao diện (Render) hoặc JSON
+│   │   └── Router.php          # Bộ định tuyến hệ thống
+│   ├── Helpers/                # Các hàm tiện ích dùng chung
+│   └── Models/                 # Lớp Mô hình (Tương tác Database)
+│       ├── Order.php           # Logic đơn hàng và Transaction
+│       └── User.php            # Logic tài khoản, ví điện tử
+├── public/                     # Thư mục gốc trên Web (Web Root)
+│   ├── index.php               # Điểm vào duy nhất (Front-Controller)
+│   ├── assets/                 # Tài nguyên tĩnh (CSS, JS, Images)
+│   │   ├── css/style.css
+│   │   └── js/map-helper.js    # Lớp xử lý bản đồ LeafletJS
+│   └── uploads/                # Nơi lưu trữ file vật lý (Proof Images)
+├── routes/
+│   └── web.php                 # File đăng ký các tuyến đường (URL Routes)
+├── views/                      # Lớp Giao diện (HTML/PHP Templates)
+│   ├── admin/                  # Giao diện Bảng điều khiển Admin
+│   ├── driver/                 # Giao diện Radar, Cập nhật trạng thái
+│   └── layouts/                # Các thành phần tái sử dụng (Header, Sidebar)
+├── vendor/                     # Thư viện bên thứ 3 quản lý bởi Composer
+└── .env                        # Biến môi trường (Mật khẩu DB, API Keys)
+4.2.2. Phân tích chi tiết mô hình Custom MVC (Web Core)
+Hệ thống Web lõi được vận hành hoàn toàn bằng PHP 8.x thông qua kiến trúc MVC tự xây dựng. Các thành phần được cài đặt với các nhiệm vụ chuyên biệt:
+	Public & Front-Controller (public/index.php): Để tăng cường tính bảo mật, máy chủ Web (Apache) được cấu hình chỉ trỏ thư mục gốc (Document Root) vào thư mục public/. Người dùng bên ngoài không thể truy cập trực tiếp vào các file logic trong thư mục app/. Mọi luồng truy cập đều phải đi qua điểm vào duy nhất là index.php. Tại đây, hệ thống nạp các biến môi trường (.env), khởi tạo bộ nạp tự động spl_autoload_register theo chuẩn PSR-4 và kích hoạt bộ Định tuyến (Router).
+	Routing & Core (app/Core & routes/web.php): Bộ định tuyến tự xây dựng có nhiệm vụ đối chiếu (matching) URL do người dùng yêu cầu với các Controller tương ứng. Lớp Request và Response hỗ trợ việc phân tích dữ liệu đầu vào (GET, POST, JSON Body) và trả về kết quả chuẩn xác.
+	Controllers (app/Controllers): Các Controller được phân tách theo từng Role người dùng (Admin, Driver, User). Chúng làm nhiệm vụ kiểm tra quyền truy cập (Middleware), xác thực dữ liệu và gọi đến Models.
+	Models (app/Models): Đây là nơi dày đặc các logic nghiệp vụ nhất. Điển hình như Order.php chứa các hàm phức tạp (ví dụ: assignMultipleOrdersToDriver) có nhiệm vụ mở Khóa giao dịch (Transaction), kiểm tra tính toàn vẹn và cập nhật dữ liệu vào MySQL thông qua thư viện PDO an toàn chống SQL Injection.
+	Views (views/): Chứa các giao diện HTML. Hệ thống cài đặt một cơ chế Template Engine nội bộ cho phép sử dụng chung các Layouts (Header, Sidebar) và nhúng dữ liệu từ Controller vào giao diện một cách an toàn.
+4.2.3. Cài đặt Microservice Trí tuệ nhân tạo (Python)
+Điểm nhấn kiến trúc của nền tảng nằm ở thư mục ai/ – nơi cô lập hoàn toàn khối lượng tính toán thuật toán Định tuyến xe (VRP) ra khỏi hệ thống Web lõi.
+	Tệp tin route_optimizer.py: Đây là trái tim của Microservice. Script này khai báo import các thư viện cốt lõi ortools.constraint_solver của Google và các hàm tính toán khoảng cách toán học.
+	Sự độc lập mã nguồn: Thư mục ai/ hoạt động hoàn toàn độc lập, không kết nối trực tiếp vào Cơ sở dữ liệu MySQL của hệ thống để tránh tình trạng khóa bảng (Table lock) do chờ đợi. Thay vào đó, mọi dữ liệu đầu vào (Tọa độ, Danh sách đơn hàng) đều được truyền từ PHP thông qua đối số dòng lệnh --batch-file dưới định dạng JSON.
+	Cài đặt Giao tiếp: Lớp OrderController.php của PHP được cài đặt để gọi hàm hệ thống shell_exec("python ai/route_optimizer.py --batch-file ..."). Sau khi thuật toán OR-Tools chạy xong và hoán vị lộ trình thành công, Python sẽ xuất chuỗi JSON kết quả ra luồng xuất chuẩn (sys.stdout). PHP bắt lấy luồng này, giải mã và hiển thị màn hình Radar nhận đơn trực quan cho tài xế.
+Việc cài đặt cấu trúc thư mục như trên đã tuân thủ chặt chẽ mô hình phân tán, giúp hệ thống NUN Express hoạt động mượt mà, dễ dàng dò lỗi (debug) và hoàn toàn có thể mở rộng (Scale) để đẩy riêng thư mục ai/ sang một máy chủ vật lý khác trong tương lai.
+
+	 Kịch bản Kiểm thử hệ thống (Testing)
+
+Để đảm bảo tính đúng đắn của thuật toán Trí tuệ nhân tạo và sự toàn vẹn của các luồng nghiệp vụ nhạy cảm (giao dịch ví điện tử, phân bổ đơn hàng), hệ thống NUN Express được đưa qua quá trình kiểm thử nghiêm ngặt. Phương pháp được áp dụng chủ yếu là Kiểm thử hộp đen (Black-box Testing) kết hợp với Kiểm thử các trường hợp ngoại lệ (Edge-case Testing).
+Dưới đây là các kịch bản kiểm thử trọng tâm đã được thực hiện:
+4.3.1. Kịch bản 1: Kiểm thử kiểm soát năng lực vật lý của Tài xế (Capacity Constraints)
+Kịch bản này nhằm đảm bảo thuật toán phân bổ và API nhận đơn tuân thủ tuyệt đối giới hạn của phương tiện theo mô hình bài toán CVRP.
+	Mục tiêu: Hệ thống phải chặn đứng việc tài xế nhận một chuyến đi vượt quá tải trọng hoặc số lượng đơn quy định trong hồ sơ.
+	Dữ liệu đầu vào (Input):
+	Tài xế A có hồ sơ (driver_profiles) được cài đặt giới hạn: max_total_weight = 100kg và max_concurrent_orders = 3.
+	Tài xế A đang có 2 đơn hàng đang giao (active).
+	Trên Radar xuất hiện một "Chuyến ghép" gồm 2 đơn hàng mới có tổng trọng lượng 15kg.
+	Thao tác thực thi: Tài xế A bấm nút "Nhận chuyến ghép".
+	Kết quả thực tế (Actual Result):
+	Hệ thống gọi phương thức canDriverAcceptMultipleOrders() trong Model Order.php.
+	Thuật toán tính toán số lượng đơn (2 đơn đang chạy + 2 đơn mới = 4 đơn) > giới hạn (3 đơn).
+	Thao tác lập tức bị từ chối và trả về giao diện lỗi: "Không thể nhận chuyến ghép này. Đã đạt giới hạn (2/3 đơn)".
+	Đánh giá (Status): ĐẠT (PASS).
+4.3.2. Kịch bản 2: Kiểm thử xử lý tranh chấp dữ liệu (Race Condition & Transaction)
+Đây là kịch bản khắc nghiệt nhất đối với các ứng dụng điều phối thời gian thực, nhằm kiểm tra tính Nguyên tử (Atomicity) của hệ thống Cơ sở dữ liệu.
+	Mục tiêu: Đảm bảo tuyệt đối không xảy ra tình trạng "Một kiện hàng có hai tài xế cùng đến lấy", và không bị trừ tiền oan trong Ví điện tử.
+	Dữ liệu đầu vào (Input):
+	Một cụm đơn ghép (Batch) gồm 3 đơn hàng (Tổng phí nền tảng phải thu là 15.000đ) xuất hiện trên màn hình Radar của cả Tài xế X và Tài xế Y.
+	Thao tác thực thi: Sử dụng công cụ (như Postman) giả lập việc Tài xế X và Tài xế Y cùng gửi Request API POST /driver/receive-orders vào cùng một phần ngàn giây (Mili-second).
+	Kết quả thực tế (Actual Result):
+	Tiến trình của Tài xế X đến trước (chỉ vài mili-giây). Khối beginTransaction() mở ra, trừ 15.000đ trong ví của X và cập nhật thành công 3 mã đơn hàng. Tiến trình được commit().
+	Tiến trình của Tài xế Y đến sau. Mặc dù hệ thống đã trừ 15.000đ trong ví của Y ở bước 1, nhưng ở bước 2 khi thực thi câu lệnh UPDATE orders ..., hàm $stmtOrder->rowCount() trả về 0 (vì đơn đã bị X lấy mất). Logic ALL-OR-NOTHING được kích hoạt, tiến trình bị rollBack().
+	Hệ thống lập tức gọi WalletModel->add() để hoàn trả ngay 15.000đ vào ví của Y và báo lỗi: "Nhận chuyến ghép thất bại! Một đơn hàng trong cụm ghép này đã bị tài xế khác nhận trước".
+	Đánh giá (Status): ĐẠT (PASS).
+4.3.3. Kịch bản 3: Kiểm thử toàn vẹn tài chính khi hủy đơn (Compensating Transaction)
+Kịch bản này kiểm tra dòng chảy của dòng tiền trong "Ví điện tử nội bộ" khi có sự can thiệp từ người dùng (Khách hủy đơn).
+	Mục tiêu: Nếu tài xế đã cọc Phí nền tảng để nhận đơn, nhưng giao dịch không thể thực hiện do lỗi từ phía Khách hàng, hệ thống phải tự động đối soát và hoàn tiền.
+	Dữ liệu đầu vào (Input):
+	Đơn hàng thanh toán tiền mặt mã #NUN8888. Tài xế Z đã bấm nhận đơn và hệ thống đã trừ 10.000đ phí nền tảng.
+	Đơn hàng đang ở trạng thái picking_up (Đang đi lấy).
+	Thao tác thực thi: Khách hàng chủ động bấm "Hủy đơn" trên giao diện Web.
+	Kết quả thực tế (Actual Result):
+	Trong User/OrderController.php, luồng hủy đơn xác định trạng thái picking_up là hợp lệ để hủy.
+	Đơn hàng chuyển thành cancelled.
+	Hệ thống lập tức gọi hành động Bù trừ tài chính, cộng trả lại đúng 10.000đ vào ví của Tài xế Z kèm lịch sử giao dịch: "Hoàn phí nền tảng do khách tự hủy đơn".
+	Một Thông báo đẩy (Notification) được gửi đến Tài xế Z.
+	Đánh giá (Status): ĐẠT (PASS).
+4.3.4. Kịch bản 4: Kiểm thử quy trình hành pháp - Báo cáo bom hàng & Auto-ban
+Kịch bản kiểm tra các tính năng kiểm soát chất lượng dịch vụ và bảo vệ an toàn cho cả hai phía.
+	Mục tiêu: Hệ thống bắt buộc phải có bằng chứng vật lý khi báo cáo sự cố và phải tự động có biện pháp răn đe người dùng xấu.
+	Dữ liệu đầu vào (Input): Khách hàng K (Đã có 2 lần vi phạm bom hàng, no_show_threshold_for_ban = 3).
+	Thao tác thực thi:
+	Lần 1: Tài xế bấm "Báo cáo bom hàng" đối với Khách hàng K nhưng cố tình không đính kèm ảnh chụp.
+	Lần 2: Tài xế tải lên đầy đủ ảnh chụp trước cửa nhà Khách K và bấm Gửi.
+	Kết quả thực tế (Actual Result):
+	Lần 1: Hàm uploadProofImage() quăng ngoại lệ (Exception), hệ thống chặn luồng và báo lỗi: "Lỗi: Bạn bắt buộc phải chụp và tải lên ảnh minh chứng tại địa điểm...".
+	Lần 2: Báo cáo thành công. CSDL gọi hàm recordNoShow(), điểm vi phạm của Khách K tăng lên 3. Hệ thống kiểm tra đạt ngưỡng, tự động cập nhật cờ is_blocked = 1. Tài khoản của Khách K lập tức bị vô hiệu hóa.
+	Đánh giá (Status): ĐẠT (PASS).
+4.3.5. Kịch bản 5: Kiểm thử Cơ chế dự phòng của AI (API Fallback Mechanism)
+Đánh giá độ bền bỉ (Fault-tolerance) của Microservice Python khi môi trường mạng ngoại tuyến gặp sự cố.
+	Mục tiêu: Nếu máy chủ OSRM sập hoặc mất kết nối, hệ thống AI không được phép treo mà phải tự động xoay sở bằng phương pháp thay thế để Radar của tài xế vẫn tiếp tục hoạt động.
+	Thao tác thực thi: Chủ động ngắt kết nối mạng tại hàm osrm_table() hoặc nhập một bộ tọa độ GPS giả nằm ở giữa đại dương (nơi không có mạng lưới đường bộ).
+	Kết quả thực tế (Actual Result):
+	API OSRM trả về lỗi hoặc timeout. Khối except Exception: trong route_optimizer.py bắt được lỗi và trả về None.
+	Thuật toán AI tự động chuyển sang nhánh dự phòng (Fallback). Nó kích hoạt hàm haversine_distance() để tính khoảng cách đường chim bay, và chia cho vận tốc giả định (28km/h) để lấp đầy Ma trận thời gian (duration_matrix).
+	Bộ giải Google OR-Tools vẫn nhận được tham số đầy đủ, tiếp tục giải quyết bài toán và trả về chuyến ghép bình thường cho ứng dụng Web.
+	Đánh giá (Status): ĐẠT (PASS).
+
+	 Đánh giá kết quả thực nghiệm Thuật toán AI Ghép chuyến
+Điểm nhấn quan trọng nhất của hệ thống NUN Express là việc ứng dụng Trí tuệ nhân tạo (AI) vào quá trình phân bổ đơn hàng. Để chứng minh tính khả thi và hiệu quả của giải thuật Gom cụm dựa trên hạt giống (Seed-based Clustering) kết hợp với Tối ưu hóa lộ trình (Google OR-Tools), một môi trường thực nghiệm mô phỏng (Simulation) đã được thiết lập.
+4.4.1. Thiết lập môi trường và Dữ liệu thực nghiệm (Experimental Setup)
+Thực nghiệm được chạy trên môi trường phần cứng máy chủ cục bộ (CPU Intel Core i5, RAM 16GB). Dữ liệu đầu vào (Mock Data) được khởi tạo ngẫu nhiên nhưng bám sát các điều kiện giao thông thực tế tại khu vực nội thành, bao gồm:
+	Tập khách hàng (Pending Orders): Khởi tạo 20 đơn hàng đang ở trạng thái chờ (pending). Các điểm lấy hàng (Pick-up) và giao hàng (Drop-off) nằm phân tán trong bán kính 10 km.
+	Trọng lượng đơn hàng: Thay đổi ngẫu nhiên từ 2kg đến 25kg cho mỗi kiện hàng.
+	Tham số năng lực Tài xế (Capacity Constraints): Một tài xế đang trực Radar với giới hạn thiết lập: max_total_weight = 100 kg và max_concurrent_orders = 5 đơn. Vận tốc di chuyển trung bình giả định để tính toán nội suy là 28 km/h.
+4.4.2. Các kịch bản so sánh
+Để có cơ sở đánh giá, thực nghiệm tiến hành so sánh hệ thống điều phối giữa hai phương pháp:
+	Phương pháp 1 (Truyền thống - Point-to-Point): Trình diễn cách hoạt động của các nền tảng cũ, nơi tài xế tự do chọn từng đơn lẻ. Tài xế nhận đơn 1 → đi lấy →  đi giao → quay lại tìm đơn 2. Quá trình lặp lại 20 lần.
+	Phương pháp 2 (NUN Express AI Batching): Tài xế bật Radar. Hệ thống gọi API OSRM lấy ma trận thời gian thực và đẩy vào bộ giải OR-Tools. Hệ thống tự động tạo ra các cụm chuyến ghép (Batches), tài xế đi lấy nhiều điểm cùng lúc rồi đi giao theo lộ trình hoán vị tối ưu.
+4.4.3. Phân tích và So sánh kết quả
+Bảng dưới đây trình bày kết quả đo lường được sau khi chạy thực nghiệm cho 20 đơn hàng:
+Tiêu chí đánh giá (Metrics)	Phương pháp Truyền thống (Đơn lẻ)	Phương pháp AI (NUN Express)	Mức độ cải thiện (%)
+Tổng số chuyến xe (Số lượt đi)	20 chuyến	4 chuyến ghép	Giảm 80% số chuyến
+Mật độ đơn hàng (Drop density)	1 đơn / chuyến	Trung bình 5 đơn / chuyến	Tăng 400% năng suất
+Tổng quãng đường di chuyển	~ 145.5 km	~ 78.2 km	Giảm 46.2% quãng đường
+Tỷ lệ vi phạm tải trọng (< 100kg)	Không vi phạm	0% (Tuân thủ tuyệt đối)	Đáp ứng điều kiện vật lý
+Thời gian phản hồi Radar của AI	N/A (Tài xế nhẩm tính bằng mắt)	1.05 giây	Đáp ứng tính Thời gian thực
+4.4.4. Đánh giá tổng quan
+Từ các kết quả đo lường thực nghiệm, có thể rút ra 3 kết luận quan trọng về giá trị của thuật toán:
+a) Đánh giá về Hiệu năng tính toán (Performance & Real-time) Mặc dù bài toán Định tuyến phương tiện đa ràng buộc (CVRP) là một bài toán NP-Khó với không gian tìm kiếm khổng lồ, việc hệ thống NUN Express thiết lập cấu trúc rẽ nhánh thông minh đã mang lại hiệu quả vượt trội. Đối với cụm nhỏ, hệ thống gọi thẳng thuật toán Tham lam (PATH_CHEAPEST_ARC); với cụm lớn, hệ thống áp dụng Meta-heuristics (GUIDED_LOCAL_SEARCH) nhưng áp đặt giới hạn cứng time_limit.seconds = 1. Nhờ vậy, tốc độ phản hồi từ máy chủ Python về PHP luôn ổn định ở mức ~1 giây, hoàn toàn đáp ứng được tính thời gian thực (Real-time) và không gây treo ứng dụng di động của tài xế.
+b) Đánh giá về Hiệu quả Kinh tế (Cost Optimization) Với thuật toán AI, tổng quãng đường mà đội xe phải di chuyển để giải quyết xong 20 đơn hàng đã giảm gần 50% (từ 145.5 km xuống còn 78.2 km).
+	Đối với nền tảng: Giảm lượng xe lưu thông trên đường, tăng khả năng đáp ứng đơn hàng trong giờ cao điểm.
+	Đối với tài xế: Việc giảm thiểu tỷ lệ "chạy xe rỗng" (khoảng cách từ điểm giao xong đơn trước đến điểm lấy đơn sau) giúp tài xế tiết kiệm một khoản lớn chi phí xăng xe và hao mòn phương tiện. Cước phí thu được trên một đơn vị khoảng cách (VND/km) tăng lên đáng kể nhờ chỉ số Điểm hiệu quả (Efficiency Score).
+c) Đánh giá về Chất lượng dịch vụ (SLA Compliance) Cấu trúc thuật toán Gom cụm theo Hạt giống ưu tiên (Seed-based Clustering) chứng minh được sự đúng đắn. Thay vì gom cụm một cách ngẫu nhiên, hệ thống luôn chọn đơn hàng có scheduled_at (thời gian hẹn) sát nhất làm Tâm điểm (Center Point) và không cho phép trôi tâm. Kết quả là mọi chuyến ghép đều bám sát xung quanh đơn hàng khẩn cấp nhất, hạn chế triệt để tình trạng khách hàng bị trễ giờ nhận hàng do tài xế ôm quá nhiều đơn không cùng tuyến đường.
+
+KẾT LUẬN VÀ HƯỚNG PHÁT TRIỂN TƯƠNG LAI
+1. Kết luận
+Sau quá trình nghiêm túc nghiên cứu, phân tích và tiến hành cài đặt, đề tài "Xây dựng hệ thống đặt lịch giao hàng NUN Express và tối ưu hóa ghép chuyến bằng Trí tuệ nhân tạo" đã hoàn thành xuất sắc các mục tiêu đề ra ban đầu cả về mặt lý thuyết lẫn thực tiễn. Đề tài đã xây dựng thành công một nền tảng điều phối giao nhận chặng cuối (Last-mile delivery) khép kín, hoạt động ổn định và mang tính ứng dụng thực tiễn cao.
+Những kết quả nổi bật mà đề tài đã đạt được bao gồm:
+	Về mặt Kiến trúc và Nền tảng lõi: Khẳng định năng lực kỹ nghệ phần mềm thông qua việc tự xây dựng hệ thống Web dựa trên kiến trúc MVC tùy biến (Custom MVC) bằng ngôn ngữ PHP 8.x, loại bỏ hoàn toàn sự phụ thuộc vào các framework thương mại. Cơ sở dữ liệu MySQL được chuẩn hóa, vận dụng triệt để kỹ thuật Database Transaction để xử lý an toàn tuyệt đối các bài toán tranh chấp dữ liệu (Race Condition) và bảo vệ toàn vẹn dòng tiền trong Ví điện tử.
+	Về mặt Ứng dụng Trí tuệ nhân tạo (Điểm nhấn của đề tài): Giải quyết thành công bài toán Định tuyến phương tiện có ràng buộc đa chiều (CVRP) trong thời gian thực. Bằng việc áp dụng kiến trúc Microservice, cô lập khối lượng tính toán thuật toán sang ngôn ngữ Python và tích hợp bộ thư viện Google OR-Tools, hệ thống có khả năng tự động phân tích và gom nhóm (Batching) các đơn hàng. Thực nghiệm cho thấy AI giúp giảm gần 50% tổng quãng đường di chuyển của đội xe, tuân thủ tuyệt đối giới hạn tải trọng, qua đó giúp tối ưu hóa chi phí vận hành.
+	Về mặt Nghiệp vụ thực tiễn & Trực quan hóa: Số hóa trọn vẹn vòng đời đơn hàng phục vụ 3 nhóm đối tượng (Khách hàng, Tài xế, Quản trị viên). Các nghiệp vụ thực tế như: trừ phí nền tảng tự động, hoàn tiền khi khách hủy đơn, bắt buộc tải ảnh minh chứng (Proof Image) và tự động khóa tài khoản khi "bom hàng" đều vận hành trơn tru. Hệ thống tích hợp thành công bản đồ mã nguồn mở LeafletJS và API định tuyến OSRM để theo dõi lộ trình trực quan mà không phát sinh chi phí thương mại.
+Những mặt còn hạn chế: Bên cạnh những kết quả đạt được, do giới hạn về nguồn lực và thời gian thực hiện Khóa luận, hệ thống vẫn còn tồn tại một số hạn chế:
+	Phân hệ dành cho Tài xế hiện tại hoạt động dưới dạng Web thích ứng (Responsive Web) thay vì Ứng dụng di động gốc (Native App), làm hạn chế khả năng chạy ngầm để lấy tọa độ GPS liên tục khi tắt màn hình điện thoại.
+	Phương thức cập nhật dữ liệu thời gian thực (Radar, Tracking) hiện đang sử dụng kỹ thuật HTTP AJAX Polling, có thể gây áp lực lên máy chủ Web nếu số lượng người dùng đồng thời tăng vọt.
+	Luồng thanh toán trực tuyến mới dừng ở mức mô phỏng qua "Ví điện tử nội bộ", chưa kết nối trực tiếp với API của các ngân hàng.
+2. Hướng phát triển tương lai
+Từ những hạn chế trên và bám sát xu hướng công nghệ của ngành Logistics, hệ thống NUN Express có thể được tiếp tục nghiên cứu và mở rộng theo các định hướng chiến lược sau:
+	Phát triển Ứng dụng Di động (Mobile App): Chuyển đổi giao diện dành cho Khách hàng và Tài xế sang nền tảng di động (sử dụng React Native hoặc Flutter) để tận dụng tối đa phần cứng thiết bị (Truy cập GPS nền, Gửi Push Notifications tức thời).
+	Nâng cấp Công nghệ Thời gian thực: Chuyển đổi công nghệ giao tiếp từ AJAX Polling sang giao thức WebSockets (như Socket.io) để tính năng Radar và Theo dõi bản đồ hoạt động mượt mà, tức thời với độ trễ (latency) gần như bằng không.
+	Tích hợp Cổng thanh toán: Kết nối hệ thống với các Cổng thanh toán điện tử nội địa (MoMo, VNPay, ZaloPay) để tự động hóa hoàn toàn quy trình nạp tiền vào Ví tài xế và thanh toán cước phí.
+	Mở rộng Mô hình Trí tuệ nhân tạo (Advanced AI/ML):
+	Ràng buộc không gian 3D: Nâng cấp thuật toán AI để giải quyết bài toán Đóng gói không gian (3D Bin Packing) – sử dụng kích thước Dài x Rộng x Cao của kiện hàng để tối ưu hóa thể tích thùng xe.
+	Dự đoán thời gian (ETA Prediction): Ứng dụng Học máy (Machine Learning) để phân tích dữ liệu lịch sử giao thông, từ đó dự đoán thời gian tài xế đến nơi chính xác hơn dựa trên tình trạng kẹt xe theo từng khung giờ trong ngày.
+
+
+
+
+
+
+
+
+
+
+
+TÀI LIỆU THAM KHẢO
+[1]. Hiệp hội Thương mại điện tử Việt Nam - VECOM (2023). Báo cáo Chỉ số Thương mại điện tử Việt Nam 2023, https://vecom.vn/bao-cao-chi-so-thuong-mai-dien-tu-viet-nam-2023 (truy cập 15/05/2024). 
+[2]. Boysen, N., Fedtke, S., & Schwerdfeger, S. (2021). Last-mile delivery concepts: a survey from an operational research perspective. OR Spectrum, Tập 43, Số 1, trang 1-58. 
+[3]. Capgemini Research Institute (2019). The last-mile delivery challenge: Giving retail and consumer product customers a superior delivery experience without impacting profitability, https://www.capgemini.com/insights/research-library/the-last-mile-delivery-challenge/ (truy cập 15/05/2024).
+[4]. Toth P. và Vigo D. (2014). Vehicle Routing: Problems, Methods, and Applications, Tập 18. Nhà xuất bản SIAM, Philadelphia, trang 1-25. 
+[5]. Bộ Công Thương (2022). Báo cáo Logistics Việt Nam 2022. Nhà xuất bản Công Thương, Hà Nội, trang 45-52.
+[6]. Macioszek, D. (2018). First and last mile delivery – problems and issues. Scientific Journal of Silesian University of Technology. Series Transport, Tập 98, trang 147-154. 
+[7]. Elmasri, R., và Navathe, S. B. (2015). Fundamentals of Database Systems (Tái bản lần thứ 7). Nhà xuất bản Pearson, trang 723-730. 
+[8]. Newman, S. (2015). Building Microservices: Designing Fine-Grained Systems. Nhà xuất bản O'Reilly Media, trang 1-15.
+[9]. Savelsbergh, M., và Van Woensel, T. (2016). City Logistics: Challenges and Opportunities. Transportation Science, Tập 50, Số 2, trang 579-590.
+[10]. Ries, E. (2011). The Lean Startup: How Today's Entrepreneurs Use Continuous Innovation to Create Radically Successful Businesses. Crown Business, New York, trang 75-80. 
+[11]. Pollaris, H., Braekers, K., Caris, A., Janssens, G. K., và Ramaekers, K. (2015). Vehicle routing problems with loading constraints: state-of-the-art and future directions. Computers & Operations Research, Tập 42, trang 256-271. 
+[12]. Luxen, D., và Vetter, C. (2011). Real-time routing with OpenStreetMap data. Kỷ yếu Hội nghị ACM SIGSPATIAL lần thứ 19, Chicago, 1-4/11/2011, trang 513-516.
+[13]. Larman, C. (2004). Applying UML and Patterns: An Introduction to Object-Oriented Analysis and Design and Iterative Development (Tái bản lần thứ 3). Nhà xuất bản Prentice Hall, New Jersey, trang 15-30. 
+[14]. Sommerville, I. (2015). Software Engineering (Tái bản lần thứ 10). Nhà xuất bản Pearson, Boston, trang 46-55. 
+[15]. Myers, G. J., Sandler, C., và Badgett, T. (2011). The Art of Software Testing (Tái bản lần thứ 3). Nhà xuất bản John Wiley & Sons, New Jersey, trang 52-65.
+[16]. Vakulenko, Y., Shams, P., Hellström, D., và Hjort, K. (2019). Service innovation in e-commerce last mile delivery: Mapping the e-customer journey. Journal of Business Research, Tập 101, trang 461-468. 
+[17]. Laporte, G. (2009). Fifty years of vehicle routing. Transportation Science, Tập 43, Số 4, trang 408-416. 
+[18]. Garay-Rondero, T. X., Martinez-Flores, J. L., Smith, N. R., Caballero Morales, S. O., và Aldrette-Malacara, A. (2019). Digital supply chain model in Industry 4.0. Journal of Manufacturing Technology Management, Tập 31, Số 5, trang 887-933.
+[19]. Gevaers, R., Van de Voorde, E., và Vanelslander, T. (2011). Characteristics and typology of last-mile logistics from an innovation perspective in an urban context. City Distribution and Urban Freight Transport, Tập 1, trang 56-71. 
+[20]. Lim, S. F. W., Jin, X., và Srai, R. S. (2018). Consumer-driven e-commerce: A literature review, design framework, and research agenda on last-mile logistics models. International Journal of Physical Distribution & Logistics Management, Tập 48, Số 4, trang 308-332. 
+[21]. Nguyen, D. H., de Leeuw, S., và Dullaert, W. (2018). Consumer behaviour and order fulfilment in online retailing: A systematic review. International Journal of Management Reviews, Tập 20, Số 2, trang 255-276.
+[22]. Ranieri, L., Digiesi, S., Silvestri, B., & Roccotelli, M. (2018). A review of last mile logistics innovations in an externalities cost reduction vision. Sustainability, Tập 10, Số 3, trang 782-801. 
+[23]. Snoeck, A., Winkenbach, M., & Melo, E. (2020). The impact of time window length on the routing cost of an urban local delivery system. Transportation Research Part E: Logistics and Transportation Review, Tập 136, trang 101865. 
+[24]. Alnaggar, A., Gzara, F., & Bookbinder, J. H. (2021). Crowdsourced delivery: A review of platforms and academic literature. Omega, Tập 98, trang 102133.
+[25]. Dantzig, G. B., và Ramser, J. H. (1959). The truck dispatching problem. Management Science, Tập 6, Số 1, trang 80-91. 
+[26]. Toth, P., và Vigo, D. (Biên tập). (2014). Vehicle routing: problems, methods, and applications, Tập 18. Nhà xuất bản SIAM, Philadelphia, trang 10-15.
+[27]. Fowler, M. (2002). Patterns of Enterprise Application Architecture. Nhà xuất bản Addison-Wesley Professional, Boston, trang 330-332. 
+[28]. Freeman, E., Robson, E., Bates, B., và Sierra, K. (2004). Head First Design Patterns. Nhà xuất bản O'Reilly Media, California, trang 525-535.
+[29]. Silberschatz, A., Korth, H. F., và Sudarshan, S. (2019). Database System Concepts (Tái bản lần thứ 7). Nhà xuất bản McGraw-Hill Education, New York, trang 45-52. 
+[30]. Garcia-Molina, H., Ullman, J. D., và Widom, J. (2008). Database Systems: The Complete Book (Tái bản lần thứ 2). Nhà xuất bản Pearson Prentice Hall, New Jersey, trang 865-875.
+[31]. Newman, S. (2015). Building Microservices: Designing Fine-Grained Systems. Nhà xuất bản O'Reilly Media, California, trang 2-10. 
+[32]. Fowler, M., và Lewis, J. (2014). Microservices: a definition of this new architectural term. Tạp chí IEEE Software, https://martinfowler.com/articles/microservices.html (truy cập 15/05/2024).
+[33]. Perron, L., và Furnon, V. (2024). OR-Tools: Google Optimization Tools. Google Developers, https://developers.google.com/optimization (truy cập 15/05/2024). 
+[34]. Gendreau, M., và Tarantilis, C. D. (2010). Solving large-scale vehicle routing problems with heuristics. Trong Fleet management and logistics (trang 65-98). Nhà xuất bản Springer, Boston.
+[35]. Agafonkin, V. (2024). Leaflet: an open-source JavaScript library for mobile-friendly interactive maps. https://leafletjs.com/ (truy cập 15/05/2024). 
+[36]. Luxen, D., và Vetter, C. (2011). Real-time routing with OpenStreetMap data. Kỷ yếu Hội nghị 19th ACM SIGSPATIAL International Conference on Advances in Geographic Information Systems, Chicago, trang 513-516.
+
+
+
+
+
+
+
+
