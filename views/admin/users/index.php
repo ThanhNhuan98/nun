@@ -136,6 +136,9 @@ $users = $users ?? [];
                                     <?php if ($user['role'] === 'driver' && !empty($user['is_driver_verified'])): ?>
                                         <span class="material-symbols-outlined" style="color: var(--success); font-size: 16px; vertical-align: -3px; margin-left: 4px;" title="Tài xế đã xác thực">verified</span>
                                     <?php endif; ?>
+                                    <?php if ($user['role'] === 'user' && !empty($user['license_plate']) && empty($user['is_driver_verified'])): ?>
+                                        <br><span style="display: inline-block; background: #f59e0b; color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-top: 4px;">Chờ duyệt tài xế</span>
+                                    <?php endif; ?>
                                 </td>
 
                                 <td>

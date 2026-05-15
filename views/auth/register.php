@@ -68,39 +68,6 @@
             </div>
 
             <div class="input-group">
-                <label class="auth-label">Loại tài khoản:</label>
-                <div class="radio-group">
-                    <label class="radio-label">
-                        <input type="radio" name="role" value="user" <?= app_checked($old['role'] ?? 'user', 'user') ?>>
-                        Khách hàng
-                    </label>
-                    <label class="radio-label">
-                        <input type="radio" name="role" value="driver" <?= app_checked($old['role'] ?? '', 'driver') ?>>
-                        Tài xế giao hàng
-                    </label>
-                </div>
-            </div>
-
-            <div id="driver_fields_wrapper" style="display: none;">
-                <div class="input-group">
-                    <label class="auth-label" for="license_plate">Biển số xe <span class="text-danger">*</span></label>
-                    <div class="input-wrapper">
-                        <span class="material-symbols-outlined input-icon-prefix">directions_car</span>
-                        <input type="text" id="license_plate" name="license_plate" class="auth-input" placeholder="VD: 59A-123.45" value="<?= app_e($old['license_plate'] ?? '') ?>">
-                    </div>
-                </div>
-                
-                <div class="input-group">
-                    <label class="auth-label">Ảnh Giấy đăng ký xe (Cà vẹt) <span class="text-danger">*</span></label>
-                    <div class="input-wrapper">
-                        <span class="material-symbols-outlined input-icon-prefix">image</span>
-                        <input type="file" name="vehicle_registration" accept="image/*" class="auth-input" style="padding-top: 9px; padding-bottom: 9px;">
-                    </div>
-                    <small style="color: #6B7280; font-size: 12px; margin-top: 4px; display: block;">Admin sẽ kiểm tra hình ảnh này để duyệt tài khoản.</small>
-                </div>
-            </div>
-
-            <div class="input-group">
                 <label class="auth-label" for="password">Mật khẩu <span class="text-danger">*</span></label>
                 <div class="input-wrapper">
                     <span class="material-symbols-outlined input-icon-prefix">lock_outline</span>
@@ -143,21 +110,6 @@
                     }
                 });
             });
-
-            const roleInputs = document.querySelectorAll('input[name="role"]');
-            const driverFieldsWrapper = document.getElementById('driver_fields_wrapper');
-
-            function toggleDriverFields() {
-                const selectedRole = document.querySelector('input[name="role"]:checked')?.value;
-                if (selectedRole === 'driver') {
-                    driverFieldsWrapper.style.display = 'block';
-                } else {
-                    driverFieldsWrapper.style.display = 'none';
-                }
-            }
-
-            toggleDriverFields();
-            roleInputs.forEach(input => input.addEventListener('change', toggleDriverFields));
         });
     </script>
 </body>

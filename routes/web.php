@@ -58,10 +58,13 @@ $router->post('/user/orders/dispute/{code}', [OrderController::class, 'dispute']
 $router->post('/user/orders/withdraw-dispute/{code}', [OrderController::class, 'withdrawDispute']);
 
 // --- DRIVER ROUTES ---
+$router->post('/profile/register-driver', [\App\Controllers\ProfileController::class, 'registerDriver']);
 $router->get('/driver/receive-orders', [DriverOrderController::class, 'receiveOrders']);
 $router->post('/driver/receive-orders', [DriverOrderController::class, 'acceptOrder']);
 $router->get('/driver/wallet/topup', [\App\Controllers\Driver\WalletController::class, 'topup']);
 $router->post('/driver/wallet/topup', [\App\Controllers\Driver\WalletController::class, 'topup']);
+$router->get('/driver/wallet/withdraw', [\App\Controllers\Driver\WithdrawalController::class, 'index']);
+$router->post('/driver/wallet/withdraw', [\App\Controllers\Driver\WithdrawalController::class, 'store']);
 $router->get('/driver/history', [DriverOrderController::class, 'history']);
 $router->get('/driver/active-orders', [DriverOrderController::class, 'activeOrders']);
 $router->get('/driver/orders/view/{id}', [DriverOrderController::class, 'viewOrder']);

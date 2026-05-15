@@ -1400,6 +1400,30 @@ a { text-decoration: none; color: inherit; }
     gap: 6px;
     transition: 0.2s;
 }
+.wallet-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+.btn-withdraw-outline {
+    background: #fff;
+    color: var(--text-main);
+    border: 1px solid var(--border-color);
+    padding: 8px 16px;
+    border-radius: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: 0.2s;
+}
+.btn-withdraw-outline:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: var(--primary);
+}
 
 /* Hiệu ứng Radar Quét */
 .radar-scan-wrapper {
@@ -3430,4 +3454,3 @@ body {
     .tracking-search-box { flex-direction: column; }
     .tracking-search-btn { padding: 16px; justify-content: center; }
 }
-

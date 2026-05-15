@@ -36,6 +36,8 @@ class ProfileController extends BaseController
             $reviews = $userModel->getDriverReviews($targetId);
         }
 
+        $driverProfile = $userModel->getDriverProfile($targetId);
+
         // Lấy role của người dùng đang đăng nhập để hiển thị sidebar phù hợp
         $currentUserRole = $this->currentUser('role', 'user');
 
@@ -44,6 +46,7 @@ class ProfileController extends BaseController
             'targetUser' => $targetUser,
             'ratingInfo' => $ratingInfo,
             'reviews' => $reviews,
+            'driverProfile' => $driverProfile,
             'currentUserRole' => $currentUserRole
         ]);
     }
@@ -218,5 +221,78 @@ class ProfileController extends BaseController
         // Trở lại trang hiện tại sau khi đánh dấu
         $referer = $_SERVER['HTTP_REFERER'] ?? '/';
         return $response->redirect($referer);
+    }
+
+    /**
+     * Khách hàng đăng ký nâng cấp lên tài xế
+     * Route: POST /profile/register-driver
+     */
+    public function registerDriver(Request $request, Response $response)
+    {
+        if ($redirect = $this->requireAuth($response)) {
+            return $redirect;
+        }
+
+        $userId = $this->userId();
+        $userModel = new User();
+        $currentUser = $userModel->findById($userId);
+
+        // Chỉ cho phép "user" đăng ký
+        if ($currentUser['role'] !== 'user') {
+            $_SESSION['flash_error'] = 'Tài khoản của bạn đã là tài xế hoặc không được phép đăng ký.';
+            return $response->redirect('/profile/' . $userId);
+        }
+
+        $data = $request->getBody();
+        $licensePlate = trim($data['license_plate'] ?? '');
+
+        if (empty($licensePlate)) {
+            $_SESSION['flash_error'] = 'Vui lòng nhập biển số xe.';
+            return $response->redirect('/profile/' . $userId);
+        }
+
+        try {
+            $vehicleImage = $this->uploadVehicleImage();
+
+            if ($userModel->upgradeToDriver($userId, $licensePlate, $vehicleImage)) {
+                $_SESSION['flash_success'] = 'Đã gửi yêu cầu đăng ký làm tài xế! Vui lòng đợi Quản trị viên xét duyệt.';
+
+                // Gửi thông báo Push cho tất cả Admin
+                (new Notification())->notifyAdmins(
+                    'Yêu cầu đăng ký tài xế mới',
+                    "Khách hàng {$currentUser['name']} vừa gửi yêu cầu nâng cấp lên Tài xế (Biển số: {$licensePlate}).",
+                    'system',
+                    "/admin/users/edit/{$userId}"
+                );
+            } else {
+                $_SESSION['flash_error'] = 'Có lỗi xảy ra trong quá trình đăng ký.';
+            }
+        } catch (\RuntimeException $e) {
+            $_SESSION['flash_error'] = $e->getMessage();
+        }
+
+        return $response->redirect('/profile/' . $userId);
+    }
+
+    private function uploadVehicleImage(): string
+    {
+        if (isset($_FILES['vehicle_registration']) && $_FILES['vehicle_registration']['error'] === UPLOAD_ERR_OK) {
+            $validation = app_validate_uploaded_image($_FILES['vehicle_registration']);
+            if (!$validation['valid']) {
+                throw new \RuntimeException($validation['error'] ?? 'Ảnh giấy đăng ký xe không hợp lệ.');
+            }
+            
+            try {
+                Configuration::instance($_ENV['CLOUDINARY_URL']);
+                $uploadApi = new UploadApi();
+                $result = $uploadApi->upload($_FILES['vehicle_registration']['tmp_name'], [
+                    'folder' => 'nun_express/vehicles',
+                ]);
+                return $result['secure_url'];
+            } catch (\Exception $e) {
+                throw new \RuntimeException('Lỗi upload ảnh lên Cloudinary: ' . $e->getMessage());
+            }
+        }
+        throw new \RuntimeException('Vui lòng tải lên ảnh giấy đăng ký xe (Cavet).');
     }
 }

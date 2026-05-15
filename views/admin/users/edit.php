@@ -1,4 +1,11 @@
-<?php require_once __DIR__ . '/../../layouts/user_header.php'; ?>
+<?php require_once __DIR__ . '/../../layouts/user_header.php'; 
+
+// Lấy thông tin hồ sơ tài xế nếu Controller chưa truyền sang
+if (!isset($driverProfile) && isset($user['id'])) {
+    $userModel = new \App\Models\User();
+    $driverProfile = $userModel->getDriverProfile($user['id']) ?: [];
+}
+?>
 
 <div class="admin-container">
     
@@ -50,39 +57,29 @@
 
         <form method="POST" action="" enctype="multipart/form-data">
             
+            <?php if (($user['role'] ?? '') === 'user' && !empty($driverProfile['license_plate']) && empty($driverProfile['is_verified'])): ?>
+                <div style="background: #fffbeb; border-left: 4px solid #f59e0b; padding: 15px; margin-bottom: 20px; border-radius: 4px;">
+                    <h4 style="margin-top: 0; color: #b45309; display: flex; align-items: center; gap: 8px;">
+                        <span class="material-symbols-outlined">info</span> Yêu cầu nâng cấp Tài xế
+                    </h4>
+                    <p style="margin-bottom: 10px;">Khách hàng này đã gửi yêu cầu nâng cấp lên Tài xế.</p>
+                    <p><strong>Biển số xe:</strong> <?= app_e($driverProfile['license_plate']) ?></p>
+                    <?php if (!empty($driverProfile['vehicle_registration_image'])): ?>
+                        <p><strong>Ảnh Cà vẹt xe:</strong></p>
+                        <a href="<?= app_e($driverProfile['vehicle_registration_image']) ?>" target="_blank">
+                            <img src="<?= app_e($driverProfile['vehicle_registration_image']) ?>" alt="Cà vẹt" style="max-height: 150px; border-radius: 4px; border: 1px solid #cbd5e1;">
+                        </a>
+                    <?php endif; ?>
+                    <p style="margin-bottom: 0; margin-top: 10px; font-size: 13px; color: #64748b;">* Để duyệt, hãy đổi "Vai trò" thành <strong>Tài xế</strong> và tích chọn <strong>Xác nhận tài xế đã cung cấp giấy tờ hợp lệ</strong> ở bên dưới.</p>
+                </div>
+            <?php endif; ?>
+
             <div class="form-row">
                 <div class="form-group">
                     <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 8px;">Họ tên <span class="text-danger">*</span></label>
                     <div class="form-input-with-icon">
                         <span class="material-symbols-outlined icon-left">person</span>
                         <input type="text" name="name" class="form-control" value="<?= app_e($user['name'] ?? '') ?>" required>
-                    </div>
-                </div>
-                
-                <div class="form-row" style="margin-top: 15px;">
-                    <div class="form-group" style="width: 100%;">
-                        <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 8px;">Ảnh Giấy chứng nhận đăng ký xe (Cà vẹt)</label>
-                        <?php if (!empty($driverProfile['vehicle_registration_image'])): ?>
-                            <div style="margin-bottom: 12px;">
-                                <a href="<?= app_e($driverProfile['vehicle_registration_image']) ?>" target="_blank" style="display: inline-block;" title="Nhấn để xem ảnh gốc">
-                                    <img src="<?= app_e($driverProfile['vehicle_registration_image']) ?>" style="max-height: 200px; max-width: 100%; border-radius: 6px; border: 1px solid var(--border-color); object-fit: contain; background: #f8fafc; padding: 4px;">
-                                </a>
-                            </div>
-                        <?php else: ?>
-                            <div style="padding: 12px; background: var(--danger-light); color: var(--danger); border-radius: 4px; font-size: 13px; margin-bottom: 12px; border: 1px solid #fecaca;">
-                                Tài xế này chưa tải lên ảnh giấy chứng nhận đăng ký xe.
-                            </div>
-                        <?php endif; ?>
-                        <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">Tải lên ảnh mới (nếu muốn thay đổi)</label>
-                        <input type="file" name="vehicle_registration" accept="image/*" class="form-control">
-                    </div>
-
-                    <div class="form-group" style="width: 100%; margin-top: 15px; padding: 15px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px;">
-                        <label class="form-label" style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #166534; margin: 0; cursor: pointer;">
-                            <input type="checkbox" name="is_driver_verified" value="1" <?= !empty($driverProfile['is_verified']) ? 'checked' : '' ?> style="width: 18px; height: 18px; accent-color: #16a34a;">
-                            Xác nhận tài xế đã cung cấp giấy tờ hợp lệ (Verified)
-                        </label>
-                        <p style="font-size: 12px; color: #15803d; margin: 6px 0 0 26px;">Tài khoản sẽ được gắn huy hiệu xác thực trên hệ thống.</p>
                     </div>
                 </div>
                 <div class="form-group">
@@ -149,8 +146,38 @@
                 <?php endif; ?>
             </div>
 
-            <?php if (($user['role'] ?? '') === 'driver'): ?>
+            <div id="driver-fields" style="display: <?= ($user['role'] ?? '') === 'driver' || !empty($driverProfile['license_plate']) ? 'block' : 'none' ?>;">
+                
                 <div class="form-row" style="margin-top: 24px; padding-top: 24px; border-top: 1px dashed var(--border-color);">
+                    <div class="form-group" style="width: 100%;">
+                        <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 8px;">Ảnh Giấy chứng nhận đăng ký xe (Cà vẹt)</label>
+                        <?php if (!empty($driverProfile['vehicle_registration_image'])): ?>
+                            <div style="margin-bottom: 12px;">
+                                <a href="<?= app_e($driverProfile['vehicle_registration_image']) ?>" target="_blank" style="display: inline-block;" title="Nhấn để xem ảnh gốc">
+                                    <img src="<?= app_e($driverProfile['vehicle_registration_image']) ?>" style="max-height: 200px; max-width: 100%; border-radius: 6px; border: 1px solid var(--border-color); object-fit: contain; background: #f8fafc; padding: 4px;">
+                                </a>
+                            </div>
+                        <?php else: ?>
+                            <div style="padding: 12px; background: var(--danger-light); color: var(--danger); border-radius: 4px; font-size: 13px; margin-bottom: 12px; border: 1px solid #fecaca;">
+                                Tài xế này chưa tải lên ảnh giấy chứng nhận đăng ký xe.
+                            </div>
+                        <?php endif; ?>
+                        <label class="form-label" style="font-size: 12px; margin-bottom: 4px;">Tải lên ảnh mới (nếu muốn thay đổi)</label>
+                        <input type="file" name="vehicle_registration" accept="image/*" class="form-control">
+                    </div>
+                </div>
+
+                <div class="form-row" style="margin-bottom: 15px;">
+                    <div class="form-group" style="width: 100%; padding: 15px; background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: 4px;">
+                        <label class="form-label" style="display: flex; align-items: center; gap: 8px; font-weight: 600; color: #166534; margin: 0; cursor: pointer;">
+                            <input type="checkbox" name="is_driver_verified" value="1" <?= !empty($driverProfile['is_verified']) ? 'checked' : '' ?> style="width: 18px; height: 18px; accent-color: #16a34a;">
+                            Xác nhận tài xế đã cung cấp giấy tờ hợp lệ (Verified)
+                        </label>
+                        <p style="font-size: 12px; color: #15803d; margin: 6px 0 0 26px;">Tài khoản sẽ được gắn huy hiệu xác thực trên hệ thống.</p>
+                    </div>
+                </div>
+
+                <div class="form-row">
                     <div class="form-group">
                         <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 8px;">Số đơn ghép tối đa</label>
                         <div class="form-input-with-icon">
@@ -180,7 +207,7 @@
                         </div>
                     </div>
                 </div>
-            <?php endif; ?>
+            </div>
 
             <div class="form-actions" style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px;">
                 <a href="/admin/users" class="btn-cancel">Hủy bỏ</a>
@@ -193,4 +220,20 @@
 
 </div>
 
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const roleRadios = document.querySelectorAll('input[name="role"]');
+    const driverFields = document.getElementById('driver-fields');
+    
+    roleRadios.forEach(radio => {
+        radio.addEventListener('change', function() {
+            if (this.value === 'driver') {
+                driverFields.style.display = 'block';
+            } else {
+                driverFields.style.display = 'none';
+            }
+        });
+    });
+});
+</script>
 <?php require_once __DIR__ . '/../../layouts/user_footer.php'; ?>

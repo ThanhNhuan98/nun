@@ -169,6 +169,31 @@ class User
     }
 
     /**
+     * Nâng cấp người dùng từ Khách hàng lên Tài xế
+     */
+    public function upgradeToDriver(int $userId, string $licensePlate, string $vehicleImage): bool
+    {
+        $this->db->beginTransaction();
+        try {
+            // Lấy thông số mặc định cho tài xế mới
+            $settingModel = new Setting();
+            $maxOrders = (int) $settingModel->get('default_max_concurrent_orders', 10);
+            $maxWeight = (float) $settingModel->get('default_max_total_weight', 100);
+
+            // Tạo hồ sơ tài xế (với is_verified = 0 để chờ Admin duyệt)
+            $stmtDriver = $this->db->prepare("INSERT INTO driver_profiles (user_id, max_concurrent_orders, max_total_weight, license_plate, vehicle_registration_image, is_verified) VALUES (?, ?, ?, ?, ?, 0) ON DUPLICATE KEY UPDATE license_plate = VALUES(license_plate), vehicle_registration_image = VALUES(vehicle_registration_image), is_verified = 0");
+            $stmtDriver->execute([$userId, $maxOrders, $maxWeight, $licensePlate, $vehicleImage]);
+
+            $this->db->commit();
+            return true;
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            error_log("Lỗi nâng cấp tài xế: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    /**
      * Helper: Xây dựng mệnh đề WHERE và tham số cho việc lọc người dùng.
      */
     private function _buildUserFilter(string $roleFilter = '', string $search = ''): array

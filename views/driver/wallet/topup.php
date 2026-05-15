@@ -18,10 +18,15 @@
     <!-- BƯỚC 1: NHẬP SỐ TIỀN -->
     <div id="step-1" class="topup-wrapper">
         
-        <a href="/driver/receive-orders" class="topup-header-nav">
-            <span class="material-symbols-outlined" style="font-size: 20px;">arrow_back</span>
-            Ví tài xế
-        </a>
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+            <a href="/driver/receive-orders" class="topup-header-nav" style="margin-bottom: 0;">
+                <span class="material-symbols-outlined" style="font-size: 20px;">arrow_back</span>
+                Ví tài xế
+            </a>
+            <a href="/driver/wallet/withdraw" class="btn-withdraw-outline">
+                <span class="material-symbols-outlined" style="font-size: 18px;">payments</span> Rút tiền
+            </a>
+        </div>
 
         <!-- HIỂN THỊ SỐ DƯ HIỆN TẠI -->
         <div style="background: linear-gradient(135deg, var(--primary), #1e40af); color: white; padding: 24px; border-radius: 8px; margin-bottom: 24px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">

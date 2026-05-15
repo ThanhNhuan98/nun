@@ -19,7 +19,7 @@ class UserController extends BaseController
 
         $validation = app_validate_uploaded_image($_FILES['vehicle_registration']);
         if (!$validation['valid']) {
-            throw new \RuntimeException($validation['error'] ?? 'Anh giay dang ky xe khong hop le.');
+            throw new \RuntimeException($validation['error'] ?? 'Ảnh giấy đăng ký xe không hợp lệ.');
         }
 
         $uploadDir = dirname(__DIR__, 3) . '/public/uploads/vehicles/';
@@ -31,7 +31,7 @@ class UserController extends BaseController
         $filename = 'reg_' . time() . '_' . uniqid('', true) . '.' . $ext;
 
         if (!move_uploaded_file($_FILES['vehicle_registration']['tmp_name'], $uploadDir . $filename)) {
-            throw new \RuntimeException('Khong the luu anh giay dang ky xe.');
+            throw new \RuntimeException('Không thể lưu ảnh giấy đăng ký xe.');
         }
 
         return '/uploads/vehicles/' . $filename;
@@ -77,12 +77,12 @@ class UserController extends BaseController
         $user = $userModel->findById($id);
 
         if (!$user) {
-            $_SESSION['flash_error'] = 'Khong tim thay nguoi dung nay tren he thong.';
+            $_SESSION['flash_error'] = 'Không tìm thấy người dùng này trên hệ thống.';
             return $response->redirect('/admin/users');
         }
 
         if ($user['role'] === 'admin' && (int) $user['id'] !== $this->userId()) {
-            $_SESSION['flash_error'] = 'Ban khong co quyen chinh sua tai khoan quan tri vien khac.';
+            $_SESSION['flash_error'] = 'Bạn không có quyền chỉnh sửa tài khoản quản trị viên khác.';
             return $response->redirect('/admin/users');
         }
 
@@ -91,7 +91,7 @@ class UserController extends BaseController
             $role = $data['role'] ?? 'user';
 
             if ($role === 'admin' && $user['role'] !== 'admin') {
-                $_SESSION['flash_error'] = 'Ban khong the cap quyen quan tri vien cho nguoi dung nay.';
+                $_SESSION['flash_error'] = 'Bạn không có quyền chỉnh sửa tài khoản quản trị viên.';
                 return $response->redirect("/admin/users/edit/{$id}");
             }
 
@@ -147,11 +147,11 @@ class UserController extends BaseController
                 }
 
                 if ($userModel->update($id, $updateData)) {
-                    $_SESSION['flash_success'] = 'Cap nhat thong tin nguoi dung thanh cong.';
+                    $_SESSION['flash_success'] = 'Cập nhật thông tin người dùng thành công.';
                     return $response->redirect('/admin/users');
                 }
 
-                $_SESSION['flash_error'] = 'Co loi xay ra khi luu vao co so du lieu. Vui long thu lai.';
+                $_SESSION['flash_error'] = 'Có lỗi xảy ra khi lưu vào cơ sở dữ liệu. Vui lòng thử lại.';
             } catch (ValidationException $e) {
                 $_SESSION['flash_error'] = implode('. ', $e->errors);
                 $user = array_merge($user, $data);
@@ -167,7 +167,7 @@ class UserController extends BaseController
         }
 
         return $response->render('admin/users/edit', [
-            'pageTitle' => 'Chinh sua nguoi dung',
+            'pageTitle' => 'Chỉnh sửa người dùng',
             'user' => $user,
             'driverProfile' => $driverProfile,
         ]);
@@ -181,7 +181,7 @@ class UserController extends BaseController
 
         $id = (int) $request->getRouteParam('id');
         if ($id === $this->userId()) {
-            $_SESSION['flash_error'] = 'Ban khong the tu khoa tai khoan cua minh.';
+            $_SESSION['flash_error'] = 'Bạn không thể tự khóa tài khoản của mình.';
             return $response->redirect('/admin/users');
         }
 
@@ -194,7 +194,7 @@ class UserController extends BaseController
 
             $targetUser = $userModel->findById($id);
             if ($targetUser && $isBlocked === 1 && $targetUser['role'] === 'admin') {
-                $_SESSION['flash_error'] = 'Khong the khoa tai khoan co vai tro quan tri vien.';
+                $_SESSION['flash_error'] = 'Không thể khóa tài khoản có vai trò quản trị viên.';
                 return $response->redirect('/admin/users');
             }
 
@@ -204,10 +204,10 @@ class UserController extends BaseController
                 }
 
                 $_SESSION['flash_success'] = $isBlocked
-                    ? 'Da khoa tai khoan thanh cong.'
-                    : 'Da mo khoa tai khoan thanh cong.';
+                    ? 'Đã khóa tài khoản thành công.'
+                    : 'Đã mở khóa tài khoản thành công.';
             } else {
-                $_SESSION['flash_error'] = 'Co loi xay ra, khong the thay doi trang thai.';
+                $_SESSION['flash_error'] = 'Có lỗi xảy ra, không thể thay đổi trạng thái.';
             }
         }
 
@@ -225,7 +225,7 @@ class UserController extends BaseController
             $role = $data['role'] ?? 'user';
 
             if ($role === 'admin') {
-                $_SESSION['flash_error'] = 'Khong duoc phep tao moi tai khoan quan tri vien.';
+                $_SESSION['flash_error'] = 'Không được phép tạo mới tài khoản quản trị viên.';
                 return $response->redirect('/admin/users/create');
             }
 
@@ -260,7 +260,7 @@ class UserController extends BaseController
                 $userModel = new User();
                 $userModel->createWithDriverProfile($createData);
 
-                $_SESSION['flash_success'] = 'Tao nguoi dung moi thanh cong.';
+                $_SESSION['flash_success'] = 'Tạo người dùng mới thành công.';
                 return $response->redirect('/admin/users');
             } catch (ValidationException $e) {
                 $_SESSION['flash_error'] = implode('. ', $e->errors);
@@ -272,7 +272,7 @@ class UserController extends BaseController
         }
 
         return $response->render('admin/users/create', [
-            'pageTitle' => 'Them nguoi dung moi',
+            'pageTitle' => 'Thêm người dùng mới',
         ]);
     }
 }

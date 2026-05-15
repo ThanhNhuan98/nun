@@ -4,6 +4,7 @@
  * @var array|null $ratingInfo
  * @var array $reviews
  * @var string $pageTitle
+ * @var array|null $driverProfile
  * @var string $currentUserRole
  */
 require_once __DIR__ . '/../layouts/user_header.php';
@@ -131,6 +132,39 @@ $roleLabel = $targetUser['role'] === 'admin' ? 'Quản trị viên' : ($targetUs
                         </button>
                     </form>
                 </div>
+            <?php endif; ?>
+
+            <!-- FORM ĐĂNG KÝ LÀM TÀI XẾ CHO KHÁCH HÀNG -->
+            <?php if ($isOwnProfile && $targetUser['role'] === 'user'): ?>
+                <?php if (isset($driverProfile)): ?>
+                <div style="background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border-left: 4px solid #f59e0b;">
+                    <h3 style="margin-top: 0; margin-bottom: 10px; color: #0f172a; display: flex; align-items: center; gap: 8px;">
+                        <span class="material-symbols-outlined" style="color: #f59e0b;">hourglass_empty</span> Đang chờ duyệt hồ sơ
+                    </h3>
+                    <p style="color: #475569; margin: 0; line-height: 1.5;">Hồ sơ đăng ký tài xế của bạn (Biển số: <strong><?= htmlspecialchars($driverProfile['license_plate']) ?></strong>) đang được Quản trị viên xem xét. Bạn sẽ chính thức trở thành tài xế sau khi được Admin phê duyệt và chuyển đổi quyền.</p>
+                </div>
+                <?php else: ?>
+                <div style="background: #fff; padding: 25px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1);">
+                    <h3 style="margin-top: 0; margin-bottom: 20px; color: #0f172a; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                        <span class="material-symbols-outlined" style="color: #10b981;">local_shipping</span> Đăng ký làm tài xế
+                    </h3>
+                    
+                    <form action="/profile/register-driver" method="POST" enctype="multipart/form-data">
+                        <div style="margin-bottom: 15px;">
+                            <label style="display: block; font-weight: 500; margin-bottom: 8px; color: #475569;">Biển số xe <span style="color: #ef4444;">*</span></label>
+                            <input type="text" name="license_plate" required placeholder="VD: 59A-123.45" style="width: 100%; padding: 10px 15px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 15px; outline: none;">
+                        </div>
+                        <div style="margin-bottom: 20px;">
+                            <label style="display: block; font-weight: 500; margin-bottom: 8px; color: #475569;">Ảnh Giấy đăng ký xe (Cà vẹt) <span style="color: #ef4444;">*</span></label>
+                            <input type="file" name="vehicle_registration" accept="image/*" required style="width: 100%; border: 1px solid #cbd5e1; padding: 8px; border-radius: 6px; font-size: 14px;">
+                            <small style="color: #94a3b8; display: block; margin-top: 4px;">Admin sẽ kiểm tra hình ảnh này để duyệt tài khoản.</small>
+                        </div>
+                        <button type="submit" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 6px; font-weight: bold; font-size: 15px; cursor: pointer; transition: background 0.3s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                            Gửi yêu cầu đăng ký
+                        </button>
+                    </form>
+                </div>
+                <?php endif; ?>
             <?php endif; ?>
 
             <!-- KHU VỰC ĐÁNH GIÁ (NẾU LÀ TÀI XẾ) -->

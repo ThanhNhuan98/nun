@@ -14,31 +14,6 @@ class AuthController
     /**
      * Helper xử lý upload ảnh giấy đăng ký xe
      */
-    private function uploadVehicleImage(): string
-    {
-        if (isset($_FILES['vehicle_registration']) && $_FILES['vehicle_registration']['error'] === UPLOAD_ERR_OK) {
-            $validation = app_validate_uploaded_image($_FILES['vehicle_registration']);
-            if (!$validation['valid']) {
-                throw new \RuntimeException($validation['error'] ?? 'Ảnh giấy đăng ký xe không hợp lệ.');
-            }
-
-            $uploadDir = dirname(__DIR__, 2) . '/public/uploads/vehicles/';
-            if (!is_dir($uploadDir)) {
-                @mkdir($uploadDir, 0777, true);
-            }
-
-            $ext = $validation['extension'] ?? 'jpg';
-            $filename = 'reg_' . time() . '_' . uniqid() . '.' . $ext;
-
-            if (move_uploaded_file($_FILES['vehicle_registration']['tmp_name'], $uploadDir . $filename)) {
-                return '/uploads/vehicles/' . $filename;
-            }
-
-            throw new \RuntimeException('Không thể lưu ảnh giấy đăng ký xe.');
-        }
-
-        return '';
-    }
 
     public function showLoginForm(Request $request, Response $response)
     {
@@ -122,18 +97,14 @@ class AuthController
                 'name' => 'required|max:100',
                 'phone' => 'required|phone|unique:users,phone',
                 'email' => 'email|max:150|unique:users,email',
-                'role' => 'required|in:user,driver',
                 'password' => 'required|min:6',
                 'password_confirm' => 'required|password_match:password',
             ];
 
-            if (($data['role'] ?? '') === 'driver') {
-                $rules['license_plate'] = 'required|max:20';
-            }
+            $data['role'] = 'user'; // Mặc định tất cả đăng ký mới đều là khách hàng (user)
             (new Validator($data))->validate($rules)->throw();
 
-            $vehicleImage = (($data['role'] ?? '') === 'driver') ? $this->uploadVehicleImage() : '';
-            return $this->createUserAndSendMail($response, $data, $vehicleImage);
+            return $this->createUserAndSendMail($response, $data, '');
         } catch (ValidationException $e) {
             return $response->render('auth/register', [
                 'pageTitle' => 'Đăng ký - NUN Express',
