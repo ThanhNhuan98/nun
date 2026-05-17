@@ -313,7 +313,7 @@ CREATE TABLE `wallet_transactions` (
   `user_id` bigint(20) UNSIGNED NOT NULL,
   `order_id` bigint(20) UNSIGNED DEFAULT NULL,
   `amount` decimal(12,2) NOT NULL,
-  `type` enum('deposit','platform_fee','refund','adjustment') NOT NULL,
+  `type` enum('deposit','platform_fee','refund','adjustment','penalty') NOT NULL,
   `description` varchar(255) DEFAULT NULL,
   `balance_after` decimal(12,2) NOT NULL DEFAULT 0.00,
   `created_at` datetime NOT NULL DEFAULT current_timestamp()

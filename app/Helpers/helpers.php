@@ -115,15 +115,11 @@ if (!function_exists('app_truncate')) {
     function app_truncate($text, int $length = 30): string
     {
         $text = (string) ($text ?? '');
-        if (function_exists('mb_strlen') && mb_strlen($text, 'UTF-8') > $length) {
-            return mb_substr($text, 0, $length, 'UTF-8') . '...';
+        if (function_exists('mb_strlen')) {
+            return mb_strlen($text, 'UTF-8') > $length ? mb_substr($text, 0, $length, 'UTF-8') . '...' : $text;
         }
 
-        if (!function_exists('mb_strlen') && strlen($text) > $length) {
-            return substr($text, 0, $length) . '...';
-        }
-
-        return $text;
+        return strlen($text) > $length ? substr($text, 0, $length) . '...' : $text;
     }
 }
 

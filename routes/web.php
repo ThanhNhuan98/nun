@@ -3,15 +3,14 @@
 use App\Controllers\User\OrderController;
 use App\Controllers\AuthController;
 use App\Controllers\ProfileController;
-use App\Controllers\Driver\OrderController as DriverOrderController; // Alias for Driver's OrderController
-use App\Controllers\Admin\AdminController; // Corrected namespace for AdminController
-use App\Controllers\Admin\UserController; // New: Admin UserController
+use App\Controllers\Driver\OrderController as DriverOrderController; 
+use App\Controllers\Admin\AdminController; 
+use App\Controllers\Admin\UserController; 
 use App\Controllers\Admin\SettingController;
 
 /** @var \App\Core\Router $router */
 
-// Trang chủ (ví dụ)
-// THÊM DÒNG NÀY VÀO ĐỂ HỆ THỐNG NHẬN DIỆN TRANG CHỦ
+
 $router->get('/', [\App\Controllers\HomeController::class, 'index']);
 $router->get('/tracking', [\App\Controllers\TrackingController::class, 'index']);
 
@@ -22,8 +21,8 @@ $router->post('/login', [AuthController::class, 'login']);
 $router->get('/logout', [AuthController::class, 'logout']);
 $router->get('/register', [AuthController::class, 'showRegisterForm']);
 $router->post('/register', [AuthController::class, 'register']);
-$router->get('/auth/verify', [\App\Controllers\AuthController::class, 'showVerifyForm']);
-$router->post('/auth/verify', [\App\Controllers\AuthController::class, 'verify']);
+$router->get('/auth/verify', [AuthController::class, 'showVerifyForm']);
+$router->post('/auth/verify', [AuthController::class, 'verify']);
 
 // --- FORGOT PASSWORD ROUTES ---
 $router->get('/forgot-password', [AuthController::class, 'showForgotPasswordForm']);
@@ -58,7 +57,7 @@ $router->post('/user/orders/dispute/{code}', [OrderController::class, 'dispute']
 $router->post('/user/orders/withdraw-dispute/{code}', [OrderController::class, 'withdrawDispute']);
 
 // --- DRIVER ROUTES ---
-$router->post('/profile/register-driver', [\App\Controllers\ProfileController::class, 'registerDriver']);
+$router->post('/profile/register-driver', [ProfileController::class, 'registerDriver']);
 $router->get('/driver/receive-orders', [DriverOrderController::class, 'receiveOrders']);
 $router->post('/driver/receive-orders', [DriverOrderController::class, 'acceptOrder']);
 $router->get('/driver/wallet/topup', [\App\Controllers\Driver\WalletController::class, 'topup']);
@@ -89,19 +88,19 @@ $router->post('/admin/orders/penalize-driver/{id}', [AdminController::class, 'pe
 $router->get('/admin/settings', [SettingController::class, 'index']);
 $router->post('/admin/settings', [SettingController::class, 'index']);
 // Đường dẫn thêm mới
-$router->get('/admin/users/create', [\App\Controllers\Admin\UserController::class, 'create']);
-$router->post('/admin/users/create', [\App\Controllers\Admin\UserController::class, 'create']);
+$router->get('/admin/users/create', [UserController::class, 'create']);
+$router->post('/admin/users/create', [UserController::class, 'create']);
 
 // Các đường dẫn động (có truyền ID)
-$router->get('/admin/users/edit/{id}', [\App\Controllers\Admin\UserController::class, 'edit']);
-$router->post('/admin/users/edit/{id}', [\App\Controllers\Admin\UserController::class, 'edit']);
-$router->get('/admin/users/block/{id}', [\App\Controllers\Admin\UserController::class, 'toggleBlock']);
-$router->get('/admin/users/unblock/{id}', [\App\Controllers\Admin\UserController::class, 'toggleBlock']);
+$router->get('/admin/users/edit/{id}', [UserController::class, 'edit']);
+$router->post('/admin/users/edit/{id}', [UserController::class, 'edit']);
+$router->get('/admin/users/block/{id}', [UserController::class, 'toggleBlock']);
+$router->get('/admin/users/unblock/{id}', [UserController::class, 'toggleBlock']);
 
 // --- ROUTE CHO CÁC TÍNH NĂNG MỚI CỦA ADMIN ---
 
 // 1. Route cho trang "Các công việc"
-$router->get('/admin/tasks', [\App\Controllers\Admin\AdminController::class, 'tasks']);
+$router->get('/admin/tasks', [AdminController::class, 'tasks']);
 
 // 2. Route cho "Quản lý Khiếu nại"
 $router->get('/admin/disputes', [\App\Controllers\Admin\DisputeController::class, 'index']);
@@ -109,8 +108,8 @@ $router->get('/admin/disputes/view/{id}', [\App\Controllers\Admin\DisputeControl
 $router->post('/admin/disputes/view/{id}', [\App\Controllers\Admin\DisputeController::class, 'view']);
 
 // 3. Route cho "Chỉnh sửa đơn hàng"
-$router->get('/admin/orders/edit/{id}', [\App\Controllers\Admin\AdminController::class, 'editOrder']);
-$router->post('/admin/orders/edit/{id}', [\App\Controllers\Admin\AdminController::class, 'editOrder']);
+$router->get('/admin/orders/edit/{id}', [AdminController::class, 'editOrder']);
+$router->post('/admin/orders/edit/{id}', [AdminController::class, 'editOrder']);
 
 // --- CRON JOB ROUTE ---
 $router->get('/cron/auto-reassign', [\App\Controllers\CronController::class, 'autoReassign']);

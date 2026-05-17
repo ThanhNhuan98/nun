@@ -17,15 +17,8 @@ use App\Core\Validator;
 use App\Exceptions\ValidationException;
 use App\Services\ShippingFeeService;
 
-/**
- * Class OrderController
- * Xử lý các yêu cầu liên quan đến đơn hàng của người dùng.
- */
 class OrderController extends BaseController
 {
-    /**
-     * Helper: Tìm đơn hàng theo tracking_code của user hiện tại, hoặc trả về lỗi
-     */
     private function getOrderOrFail(string $trackingCode): ?array
     {
         $orderModel = new Order();
@@ -36,10 +29,6 @@ class OrderController extends BaseController
         return $order ?: null;
     }
 
-    /**
-     * Hiển thị form để tạo đơn hàng mới.
-     * Tương ứng với route: GET /user/orders/create
-     */
     public function create(Request $request, Response $response)
     {
         if ($redirect = $this->requireAuth($response)) {
@@ -49,22 +38,15 @@ class OrderController extends BaseController
         return $this->renderCreateForm($response);
     }
 
-    /**
-     * Lưu đơn hàng mới vào cơ sở dữ liệu.
-     * Tương ứng với route: POST /user/orders/create
-     */
     public function store(Request $request, Response $response)
     {
         if ($redirect = $this->requireAuth($response)) {
             return $redirect;
         }
 
-        // 1. Lấy toàn bộ dữ liệu từ form
-        // Làm sạch toàn bộ dữ liệu POST để chống XSS
         $data = app_sanitize($request->getBody());
 
         try {
-            // 2. Validate dữ liệu
             (new Validator($data))->validate([
                 'sender_name' => 'max:120',
                 'sender_phone' => 'phone',
@@ -85,12 +67,10 @@ class OrderController extends BaseController
                 'scheduled_at' => 'required|after_now|before_one_week',
             ])->throw();
 
-            // Yêu cầu thời gian hẹn lấy đối với đơn Hỏa tốc / Giao nhanh
             if (in_array($data['shipping_method'] ?? '', ['fast', 'express'])) {
                 if (!empty($data['scheduled_at'])) {
                     $scheduledTime = strtotime($data['scheduled_at']);
-                    if ($scheduledTime > time() + 15 * 60) { // 10 phút + 5 phút thao tác điền form
-                        // Hệ thống tự động đặt lại giờ lấy hàng
+                    if ($scheduledTime > time() + 15 * 60) {
                         $data['scheduled_at'] = date('Y-m-d\TH:i', time() + 10 * 60);
                         $_SESSION['flash_error'] = "Đơn hàng Giao nhanh/Siêu tốc yêu cầu thời gian hẹn lấy hàng không được quá 10 phút kể từ hiện tại. Hệ thống đã đặt lại giờ cho bạn.";
                         throw new ValidationException([], $data);
@@ -98,7 +78,6 @@ class OrderController extends BaseController
                 }
             }
 
-            // Kiểm tra giới hạn cân nặng từ Setting
             $settingModel = new Setting();
             $maxOrderWeight = (float) $settingModel->get('max_order_weight', $settingModel->get('default_max_total_weight', 100));
             
@@ -107,10 +86,8 @@ class OrderController extends BaseController
                 throw new ValidationException([], $data);
             }
 
-            // 3. Nếu không có lỗi, gọi Service để xử lý nghiệp vụ
             return $this->createOrder($response, $data);
         } catch (ValidationException $e) {
-            // 4. Nếu có lỗi, render lại form và gửi kèm lỗi + dữ liệu cũ
             return $this->renderCreateForm($response, ['errors' => $e->errors, 'old' => $e->old]);
         }
     }
@@ -155,7 +132,6 @@ class OrderController extends BaseController
             return $response->redirect('/user/orders');
 
         } catch (\Exception $e) {
-            // Nếu có lỗi từ service, hiển thị lại form với lỗi
             return $this->renderCreateForm($response, ['errors' => ['general' => $e->getMessage()], 'old' => $originalData]);
         }
     }
@@ -199,10 +175,6 @@ class OrderController extends BaseController
         return $detailAddress . ', ' . $baseAddress;
     }
 
-    /**
-     * Hiển thị danh sách đơn hàng của người dùng.
-     * Tương ứng với route: GET /user/dashboard hoặc GET /user/orders
-     */
     public function index(Request $request, Response $response)
     {
         if ($redirect = $this->requireRole($response, 'user')) {
@@ -230,10 +202,6 @@ class OrderController extends BaseController
         ]);
     }
 
-    /**
-     * Hiển thị chi tiết theo dõi một đơn hàng.
-     * Tương ứng với route: GET /user/orders/track/{code}
-     */
     public function track(Request $request, Response $response)
     {
         if ($redirect = $this->requireAuth($response)) {
@@ -270,10 +238,6 @@ class OrderController extends BaseController
         ]);
     }
 
-    /**
-     * API: Lấy vị trí realtime của tài xế (Dùng cho AJAX Polling)
-     * Route: GET /api/orders/driver-location/{code}
-     */
     public function apiDriverLocation(Request $request, Response $response)
     {
         $trackingCode = $request->getRouteParam('code');
@@ -292,10 +256,6 @@ class OrderController extends BaseController
         return $response->json(['success' => false]);
     }
 
-    /**
-     * API: Tính trước cước phí bằng AI (Dùng cho AJAX Preview)
-     * Route: POST /api/orders/calculate-fee
-     */
     public function apiCalculateFee(Request $request, Response $response)
     {
         $data = $request->getJsonBody() ?: $request->getBody();
@@ -307,7 +267,7 @@ class OrderController extends BaseController
                 'success' => false, 
                 'message' => "Cân nặng đơn hàng không được vượt quá {$maxOrderWeight}kg.",
                 'error' => "Cân nặng đơn hàng không được vượt quá {$maxOrderWeight}kg."
-            ]); // Xóa mã 400, để mặc định là 200 OK giúp JS đọc được chuỗi message
+            ]);
         }
 
         $quote = (new ShippingFeeService())->quote($data);
@@ -328,10 +288,6 @@ class OrderController extends BaseController
         return $response->json(['success' => false, 'message' => $quote['message']]);
     }
 
-    /**
-     * Hiển thị giao diện đánh giá tài xế
-     * Route: GET /user/orders/review/{id}
-     */
     public function review(Request $request, Response $response)
     {
         if ($redirect = $this->requireAuth($response)) {
@@ -349,7 +305,6 @@ class OrderController extends BaseController
             return $response->redirect('/user/orders');
         }
 
-        // Validate điều kiện đánh giá
         $error = '';
         if ($order['status'] !== 'completed') {
             $error = 'Đơn hàng chưa hoàn thành nên chưa thể đánh giá.';
@@ -377,10 +332,6 @@ class OrderController extends BaseController
         ]);
     }
 
-    /**
-     * Xử lý lưu đánh giá
-     * Route: POST /user/orders/review/{id}
-     */
     public function storeReview(Request $request, Response $response)
     {
         if ($redirect = $this->requireAuth($response)) {
@@ -391,7 +342,6 @@ class OrderController extends BaseController
         $userId = $this->userId();
         $data = $request->getBody();
 
-        // BẢO MẬT: Kiểm tra đơn hàng phải tồn tại, thuộc về user này, và phải ở trạng thái completed
         $orderModel = new Order();
         $order = $orderModel->findByIdAndUserId($orderId, $userId);
         if (!$order) {
@@ -405,12 +355,11 @@ class OrderController extends BaseController
 
         $rating = (int) ($data['rating'] ?? 0);
         $driverId = (int) ($data['driver_id'] ?? 0);
-        $comment = app_sanitize($data['comment'] ?? ''); // <-- LÀM SẠCH COMMENT
+        $comment = app_sanitize($data['comment'] ?? '');
         
-        // Nối mảng tags vào đầu comment (VD: "Tài xế thân thiện, Giao hàng nhanh. Tài xế rất vui vẻ")
         $tags = $data['tags'] ?? [];
         if (!empty($tags) && is_array($tags)) {
-            $tagString = implode(', ', array_map('app_sanitize', $tags)); // <-- LÀM SẠCH CẢ TAGS
+            $tagString = implode(', ', array_map('app_sanitize', $tags));
             $comment = $comment !== '' ? $tagString . '. ' . $comment : $tagString;
         }
 
@@ -421,7 +370,6 @@ class OrderController extends BaseController
 
         $reviewModel = new Review();
         
-        // Chống đánh giá 2 lần
         if ($reviewModel->findByOrderAndCustomer($orderId, $userId)) {
             $_SESSION['flash_error'] = 'Bạn đã đánh giá đơn hàng này rồi.';
             return $response->redirect("/user/orders/review/{$orderId}");
@@ -436,10 +384,6 @@ class OrderController extends BaseController
         return $response->redirect("/user/orders/review/{$orderId}");
     }
 
-    /**
-     * Hiển thị trang thanh toán Online (QR Code)
-     * Route: GET /user/orders/payment/{code}
-     */
     public function payment(Request $request, Response $response)
     {
         if ($redirect = $this->requireAuth($response)) {
@@ -463,10 +407,6 @@ class OrderController extends BaseController
         ]);
     }
 
-    /**
-     * Xử lý xác nhận thanh toán (Giả lập webhook ngân hàng)
-     * Route: POST /user/orders/payment/{code}
-     */
     public function processPayment(Request $request, Response $response)
     {
         if ($redirect = $this->requireAuth($response)) {
@@ -480,7 +420,6 @@ class OrderController extends BaseController
         $order = $orderModel->findByTrackingCodeForUser($trackingCode, $userId);
 
         if ($order && $order['status'] === 'awaiting_payment') {
-            // Giả lập thanh toán thành công: Cập nhật DB
             $orderModel->updatePaymentStatus($order['id'], 'paid');
             $orderModel->updateStatus($order['id'], 'searching_driver', 'Khách hàng đã thanh toán thành công. Bắt đầu tìm tài xế.');
             
@@ -490,10 +429,6 @@ class OrderController extends BaseController
         return $response->redirect('/user/orders/track/' . $trackingCode);
     }
 
-    /**
-     * Xử lý khách hàng tự hủy đơn
-     * Route: POST /user/orders/cancel/{code}
-     */
     public function cancel(Request $request, Response $response)
     {
         if ($redirect = $this->requireAuth($response)) {
@@ -508,7 +443,6 @@ class OrderController extends BaseController
         $order = $this->getOrderOrFail($trackingCode);
         if (!$order) return $response->redirect('/user/orders');
 
-        // Chỉ cho phép hủy khi: Chờ thanh toán, Đang tìm tài xế, Tài xế mới nhận đơn, hoặc Đang lấy hàng (chưa lấy hàng thành công)
         $cancellableStatuses = ['awaiting_payment', 'searching_driver', 'accepted', 'picking_up'];
         if (!in_array($order['status'], $cancellableStatuses)) {
             $_SESSION['flash_error'] = "Đơn hàng đang trong quá trình giao hoặc đã xử lý xong, không thể tự hủy lúc này.";
@@ -521,7 +455,6 @@ class OrderController extends BaseController
         try {
             $description = "Khách hàng đã tự hủy đơn hàng. Lý do: " . $cancelReason;
 
-            // Nếu tài xế đã nhận đơn hoặc đang lấy hàng, phải hoàn lại phí nền tảng cho tài xế
             if (in_array($order['status'], ['accepted', 'picking_up']) && !empty($order['driver_id'])) {
                 if (($order['payment_method'] ?? 'cash') === 'cash') {
                     $walletModel = new Wallet();
@@ -530,7 +463,6 @@ class OrderController extends BaseController
                     $feePerOrder = (int) ceil(($order['shipping_fee'] ?? 0) * $platformFeePercent / 100);
                     $walletModel->add($order['driver_id'], $feePerOrder, 'refund', "Hoàn phí nền tảng do khách tự hủy đơn #{$order['tracking_code']}", $order['id']);
 
-                    // GỬI THÔNG BÁO CHO TÀI XẾ
                     $userModel = new User();
                     $userModel->createNotification(
                         $order['driver_id'],
@@ -553,21 +485,22 @@ class OrderController extends BaseController
 
             $orderModel = new Order();
             $orderModel->updateStatus($order['id'], 'cancelled', $description);
+            $refunded = ($order['payment_status'] ?? '') === 'paid' && $orderModel->refundPaidOrder($order['id']);
+            if ($refunded) {
+                $orderModel->addStatusHistory($order['id'], 'cancelled', 'Hệ thống hoàn tiền cho khách do khách tự hủy đơn đã thanh toán.');
+            }
             $db->commit();
-            $_SESSION['flash_success'] = "Đã hủy đơn hàng thành công.";
+            $_SESSION['flash_success'] = $refunded
+                ? "Đã hủy đơn hàng thành công. Hệ thống đã ghi nhận hoàn tiền cho đơn đã thanh toán."
+                : "Đã hủy đơn hàng thành công.";
         } catch (\Exception $e) {
             $db->rollBack();
-            error_log('Cancel Order Failed: ' . $e->getMessage());
             $_SESSION['flash_error'] = "Có lỗi xảy ra khi hủy đơn hàng.";
         }
 
         return $response->redirect('/user/orders');
     }
 
-    /**
-     * Xử lý khách hàng khiếu nại đơn hàng
-     * Route: POST /user/orders/dispute/{code}
-     */
     public function dispute(Request $request, Response $response)
     {
         if ($redirect = $this->requireAuth($response)) {
@@ -587,7 +520,6 @@ class OrderController extends BaseController
         $order = $this->getOrderOrFail($trackingCode);
         if (!$order) return $response->redirect('/user/orders');
 
-        // Cho phép khiếu nại đối với các đơn đã Giao xong, Đã hủy, Chuyển hoàn hoặc Đã hoàn
         $disputableStatuses = ['completed', 'returning', 'returned', 'cancelled'];
         if (!in_array($order['status'], $disputableStatuses)) {
             $_SESSION['flash_error'] = "Chỉ có thể khiếu nại đối với đơn hàng đã giao xong, chuyển hoàn hoặc đã bị hủy.";
@@ -599,11 +531,9 @@ class OrderController extends BaseController
             $orderModel = new Order();
             $orderModel->updateStatus($order['id'], 'disputed', $description);
 
-            // Lưu vào bảng order_disputes để Admin quản lý
             $disputeModel = new Dispute();
             $disputeModel->create($order['id'], $userId, $reason);
 
-            // GỬI THÔNG BÁO CHO TẤT CẢ ADMIN
             (new Notification())->notifyAdmins(
                 'Khiếu nại mới',
                 "Đơn hàng #{$order['tracking_code']} vừa bị khách hàng khiếu nại.",
@@ -613,17 +543,12 @@ class OrderController extends BaseController
 
             $_SESSION['flash_success'] = "Đã gửi yêu cầu khiếu nại thành công. Quản trị viên sẽ sớm liên hệ giải quyết.";
         } catch (\Exception $e) {
-            error_log('Dispute Order Failed: ' . $e->getMessage());
             $_SESSION['flash_error'] = "Có lỗi xảy ra khi gửi khiếu nại.";
         }
 
         return $response->redirect('/user/orders/track/' . $trackingCode);
     }
 
-    /**
-     * Xử lý khách hàng rút lại khiếu nại
-     * Route: POST /user/orders/withdraw-dispute/{code}
-     */
     public function withdrawDispute(Request $request, Response $response)
     {
         if ($redirect = $this->requireAuth($response)) {
@@ -642,21 +567,18 @@ class OrderController extends BaseController
         }
 
         try {
-            // Lấy trạng thái gần nhất trước khi chuyển sang disputed
             $orderModel = new Order();
             $prevStatus = $orderModel->getPreviousStatus($order['id']);
 
-            // 1. Cập nhật trạng thái đơn hàng quay về trước đó
             $orderModel->updateStatus($order['id'], $prevStatus, "Khách hàng đã tự rút lại yêu cầu khiếu nại.");
 
             // 2. Đóng khiếu nại trong bảng order_disputes
             $disputeModel = new Dispute();
             $disputeModel->withdrawByOrderId($order['id']);
 
-            $_SESSION['flash_success'] = "Đã rút yêu cầu khiếu nại thành công.";
+            $_SESSION['flash_success'] = "Đã rút lại khiếu nại thành công.";
         } catch (\Exception $e) {
-            error_log('Withdraw Dispute Failed: ' . $e->getMessage());
-            $_SESSION['flash_error'] = "Có lỗi xảy ra khi rút khiếu nại.";
+            $_SESSION['flash_error'] = "Có lỗi xảy ra khi rút lại khiếu nại.";
         }
 
         return $response->redirect('/user/orders/track/' . $trackingCode);

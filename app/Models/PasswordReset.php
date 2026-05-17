@@ -150,30 +150,28 @@ class PasswordReset
             // Begin transaction
             $this->db->beginTransaction();
 
-            try {
-                // Update user password
-                $stmt = $this->db->prepare("UPDATE users SET password = ? WHERE id = ?");
-                $stmt->execute([$hashedPassword, $userId]);
+            // Update user password
+            $stmt = $this->db->prepare("UPDATE users SET password = ? WHERE id = ?");
+            $stmt->execute([$hashedPassword, $userId]);
 
-                // Mark token as used and clear
-                $stmt = $this->db->prepare("
-                    UPDATE password_reset_tokens 
-                    SET reset_token = NULL, token_expires_at = NULL
-                    WHERE id = ?
-                ");
-                $stmt->execute([$token['id']]);
+            // Mark token as used and clear
+            $stmt = $this->db->prepare("
+                UPDATE password_reset_tokens 
+                SET reset_token = NULL, token_expires_at = NULL
+                WHERE id = ?
+            ");
+            $stmt->execute([$token['id']]);
 
-                $this->db->commit();
+            $this->db->commit();
 
-                return [
-                    'success' => true,
-                    'message' => 'Mật khẩu đã được cập nhật thành công'
-                ];
-            } catch (\Throwable $e) {
-                $this->db->rollBack();
-                throw $e;
-            }
+            return [
+                'success' => true,
+                'message' => 'Mật khẩu đã được cập nhật thành công'
+            ];
         } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
             error_log('Reset password failed: ' . $e->getMessage());
             return [
                 'success' => false,
@@ -231,11 +229,12 @@ class PasswordReset
         $parts = explode('@', $email);
         $username = $parts[0];
         $domain = $parts[1] ?? '';
+        $len = strlen($username);
         
-        if (strlen($username) <= 3) {
-            return str_repeat('*', strlen($username)) . '@' . $domain;
+        if ($len <= 3) {
+            return str_repeat('*', $len) . '@' . $domain;
         }
         
-        return substr($username, 0, 3) . str_repeat('*', strlen($username) - 3) . '@' . $domain;
+        return substr($username, 0, 3) . str_repeat('*', $len - 3) . '@' . $domain;
     }
 }

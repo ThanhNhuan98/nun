@@ -50,7 +50,7 @@
                                     $pickupPoints = [];
                                     $deliveryPoints = [];
                                     foreach ($group as $o) {
-                                        if (in_array($o['status'], ['accepted', 'picking_up'])) {
+                                        if (in_array($o['status'], ['accepted', 'picking_up', 'returning'])) {
                                             if (!empty($o['sender_lat']) && !empty($o['sender_lng'])) {
                                                 $pickupPoints[] = ['lat' => (float)$o['sender_lat'], 'lng' => (float)$o['sender_lng'], 'title' => 'Lấy hàng: ' . ($o['sender_name'] ?? ''), 'type' => 'pickup'];
                                             }
@@ -142,6 +142,11 @@
                                                 <label style="font-size:11px; color:var(--danger); font-weight:bold; margin-bottom: -4px;">* Chụp ảnh minh chứng:</label>
                                                 <input type="file" name="proof_image" accept="image/*" capture="environment" required style="font-size:11px; width: 100%; border: 1px solid var(--border-color); padding: 4px; border-radius: 4px;">
                                                 <button type="submit" class="btn-process-solid" style="background:var(--success); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Giao thành công</button>
+                                            <?php elseif ($order['status'] === 'returning'): ?>
+                                                <input type="hidden" name="status" value="returned">
+                                                <label style="font-size:11px; color:var(--danger); font-weight:bold; margin-bottom: -4px;">* Ảnh minh chứng hoàn hàng:</label>
+                                                <input type="file" name="proof_image" accept="image/*" capture="environment" required style="font-size:11px; width: 100%; border: 1px solid var(--border-color); padding: 4px; border-radius: 4px;">
+                                                <button type="submit" class="btn-process-solid" style="background:var(--warning); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Hoàn hàng xong</button>
                                             <?php endif; ?>
                                         </form>
                                     </div>
@@ -161,7 +166,7 @@
                                 <?php 
                                     $pickupPoints = [];
                                     $deliveryPoints = [];
-                                    if (in_array($order['status'], ['accepted', 'picking_up'])) {
+                                    if (in_array($order['status'], ['accepted', 'picking_up', 'returning'])) {
                                         if (!empty($order['sender_lat']) && !empty($order['sender_lng'])) {
                                             $pickupPoints[] = ['lat' => (float)$order['sender_lat'], 'lng' => (float)$order['sender_lng'], 'title' => 'Lấy hàng: ' . ($order['sender_name'] ?? ''), 'type' => 'pickup'];
                                         }
@@ -249,6 +254,11 @@
                                             <label style="font-size:11px; color:var(--danger); font-weight:bold; margin-bottom: -4px;">* Chụp ảnh minh chứng:</label>
                                             <input type="file" name="proof_image" accept="image/*" capture="environment" required style="font-size:11px; width: 100%; border: 1px solid var(--border-color); padding: 4px; border-radius: 4px;">
                                             <button type="submit" class="btn-process-solid" style="background:var(--success); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Giao thành công</button>
+                                        <?php elseif ($order['status'] === 'returning'): ?>
+                                            <input type="hidden" name="status" value="returned">
+                                            <label style="font-size:11px; color:var(--danger); font-weight:bold; margin-bottom: -4px;">* Ảnh minh chứng hoàn hàng:</label>
+                                            <input type="file" name="proof_image" accept="image/*" capture="environment" required style="font-size:11px; width: 100%; border: 1px solid var(--border-color); padding: 4px; border-radius: 4px;">
+                                            <button type="submit" class="btn-process-solid" style="background:var(--warning); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Hoàn hàng xong</button>
                                         <?php endif; ?>
                                     </form>
                                 </div>

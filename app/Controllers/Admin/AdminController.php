@@ -10,15 +10,8 @@ use App\Models\DashboardModel;
 use App\Models\Wallet;
 use App\Models\User;
 
-/**
- * Class AdminController
- * Quản lý các chức năng dành cho Quản trị viên (Admin)
- */
 class AdminController extends BaseController
 {
-    /**
-     * Helper: Tìm đơn hàng theo ID hoặc tạo thông báo lỗi
-     */
     private function getOrderOrFail(int $id)
     {
         $orderModel = new Order();
@@ -32,32 +25,21 @@ class AdminController extends BaseController
         return $order;
     }
 
-    /**
-     * Hiển thị trang Tổng quan (Dashboard)
-     * Route: GET /admin/dashboard
-     */
     public function dashboard(Request $request, Response $response)
     {
-        // 1. Kiểm tra quyền truy cập (Chỉ Admin mới được vào)
         if ($redirect = $this->requireRole($response, 'admin')) {
             return $redirect;
         }
 
-        // 2. Lấy dữ liệu thống kê
         $dashboardModel = new DashboardModel();
         $stats = $dashboardModel->getStats();
 
-        // 3. Render View và truyền dữ liệu
         return $response->render('admin/dashboard', [
             'pageTitle' => 'Tổng quan hệ thống NUN Express',
             'stats' => $stats
         ]);
     }
 
-    /**
-     * Hiển thị trang Cần xử lý ngay
-     * Route: GET /admin/tasks
-     */
     public function tasks(Request $request, Response $response)
     {
         if ($redirect = $this->requireRole($response, 'admin')) {
@@ -73,10 +55,6 @@ class AdminController extends BaseController
         ]);
     }
 
-    /**
-     * Hiển thị danh sách đơn hàng
-     * Route: GET /admin/orders
-     */
     public function orders(Request $request, Response $response)
     {
         if ($redirect = $this->requireRole($response, 'admin')) {
@@ -106,10 +84,6 @@ class AdminController extends BaseController
         ]);
     }
 
-    /**
-     * Xem chi tiết đơn hàng
-     * Route: GET /admin/orders/view/{id}
-     */
     public function viewOrder(Request $request, Response $response)
     {
         if ($redirect = $this->requireRole($response, 'admin')) {
@@ -155,10 +129,6 @@ class AdminController extends BaseController
         ]);
     }
 
-    /**
-     * Chỉnh sửa thông tin đơn hàng
-     * Route: GET/POST /admin/orders/edit/{id}
-     */
     public function editOrder(Request $request, Response $response)
     {
         if ($redirect = $this->requireRole($response, 'admin')) {
@@ -189,10 +159,6 @@ class AdminController extends BaseController
         ]);
     }
 
-    /**
-     * Phạt tài xế vì báo cáo/hủy đơn sai sự thật
-     * Route: POST /admin/orders/penalize-driver/{id}
-     */
     public function penalizeDriver(Request $request, Response $response)
     {
         if ($redirect = $this->requireRole($response, 'admin')) {
@@ -206,7 +172,7 @@ class AdminController extends BaseController
         }
 
         $data = $request->getBody();
-        $penaltyAmount = (float) ($data['penalty_amount'] ?? 50000); // Mặc định phạt 50.000đ
+        $penaltyAmount = (float) ($data['penalty_amount'] ?? 50000);
         $reason = app_sanitize($data['reason'] ?? 'Báo cáo/Hủy đơn sai sự thật');
         $driverId = $order['driver_id'];
 
@@ -219,33 +185,26 @@ class AdminController extends BaseController
         $db->beginTransaction();
 
         try {
-            // 1. Trừ tiền ví tài xế
             $walletModel = new Wallet();
             $deducted = $walletModel->deduct($driverId, $penaltyAmount, 'penalty', $reason);
             
-            // ÉP TRỪ: Bỏ qua kiểm tra số dư an toàn, ép ví xuống âm nếu hàm deduct mặc định từ chối
             if (!$deducted) {
-                // Cần định nghĩa hàm forceDeduct trong Wallet Model để đảm bảo tính đóng gói MVC
                 $walletModel->forceDeduct($driverId, $penaltyAmount, 'penalty', $reason);
             }
             
-            // 2. Lấy số dư ví hiện tại
             $currentBalance = $walletModel->getBalance($driverId);
             $userModel = new User();
             
-            // 3. Nếu ví âm, lập tức khóa tài khoản
             if ($currentBalance < 0) {
                 $userModel->updateBlockStatus($driverId, 1);
             }
 
-            // 4. Ghi chú vào Lịch sử đơn hàng để Admin dễ theo dõi
             $desc = "Admin đã phạt tài xế " . number_format($penaltyAmount, 0, ',', '.') . "đ. Lý do: " . $reason;
             if ($currentBalance < 0) {
                 $desc .= " (Tài khoản tài xế đã tự động bị khóa do số dư ví âm).";
             }
             $db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())")->execute([$orderId, $order['status'], $desc]);
 
-            // 5. Gửi thông báo cho tài xế
             $userModel->createNotification($driverId, 'Trừ tiền - Phạt vi phạm', "Hệ thống đã trừ " . number_format($penaltyAmount, 0, ',', '.') . "đ của bạn tại đơn #{$order['tracking_code']}. Lý do: {$reason}.", 'wallet', "/driver/orders/view/{$orderId}");
 
             $db->commit();

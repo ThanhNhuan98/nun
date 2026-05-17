@@ -77,8 +77,7 @@ class Order
      */
     public static function getShippingMethodLabel(?string $method): string
     {
-        $method = $method ?: 'standard';
-        return self::SHIPPING_METHOD_LABELS[$method] ?? 'Giao tiêu chuẩn';
+        return self::SHIPPING_METHOD_LABELS[$method ?: 'standard'] ?? 'Giao tiêu chuẩn';
     }
 
     /**
@@ -86,8 +85,7 @@ class Order
      */
     public static function getShippingMethodColor(?string $method): string
     {
-        $method = $method ?: 'standard';
-        return self::SHIPPING_METHOD_COLORS[$method] ?? 'var(--text-main)';
+        return self::SHIPPING_METHOD_COLORS[$method ?: 'standard'] ?? 'var(--text-main)';
     }
 
     public function create(array $data)
@@ -139,13 +137,11 @@ class Order
 
             $this->db->commit();
             return $trackingCode;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->db->rollBack();
             return false;
         }
     }
-
-    // Bạn có thể thêm các hàm như getById($id), getByUserId($userId)... ở đây
 
     public function findByIdAndUserId(int $orderId, int $userId)
     {
@@ -249,13 +245,15 @@ class Order
                 o.id, o.tracking_code, o.status, o.created_at, o.updated_at, od.accepted_at, o.weight, o.scheduled_at, o.shipping_method,
                 oa.sender_name, oa.sender_address AS pickup_address, oa.sender_lat, oa.sender_lng,
                 oa.receiver_name, oa.receiver_address AS delivery_address, oa.receiver_lat, oa.receiver_lng,
+                u.no_show_count AS customer_no_show_count,
                 fin.shipping_fee
             FROM orders o
             JOIN order_deliveries od ON o.id = od.order_id
+            LEFT JOIN users u ON o.customer_id = u.id
             LEFT JOIN order_addresses oa ON o.id = oa.order_id
             LEFT JOIN order_finances fin ON o.id = fin.order_id
             WHERE od.driver_id = ? 
-              AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping')
+              AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning')
               AND o.is_archived = 0
             ORDER BY 
                 CASE o.status
@@ -263,7 +261,8 @@ class Order
                     WHEN 'picking_up' THEN 2
                     WHEN 'in_transit' THEN 3
                     WHEN 'shipping' THEN 4
-                    ELSE 5
+                    WHEN 'returning' THEN 5
+                    ELSE 6
                 END ASC,
                 od.accepted_at ASC
         ";
@@ -301,7 +300,7 @@ class Order
         $sql = "
             SELECT 
                 o.*, 
-                fin.shipping_fee, fin.payment_method, fin.payment_status,
+                fin.shipping_fee, fin.payment_method, fin.payment_status, fin.paid_at, fin.refunded_at,
                 oa.sender_name, oa.sender_phone, oa.sender_address, oa.sender_lat, oa.sender_lng,
                 oa.receiver_name, oa.receiver_phone, oa.receiver_address, oa.receiver_lat, oa.receiver_lng,
                 dp.current_lat AS driver_lat, dp.current_lng AS driver_lng,
@@ -330,22 +329,23 @@ class Order
             $stmt = $this->db->prepare($sql);
             $stmt->execute(['id' => $orderId]);
 
-            if ($stmt->rowCount() > 0) {
-                // Cập nhật driver_id vào bảng order_deliveries
-                $sqlDelivery = "UPDATE order_deliveries SET driver_id = :driver_id, accepted_at = NOW() WHERE order_id = :order_id";
-                $stmtDelivery = $this->db->prepare($sqlDelivery);
-                $stmtDelivery->execute(['driver_id' => $driverId, 'order_id' => $orderId]);
-                
-                // Thêm lịch sử trạng thái
-                $sqlHistory = "INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, 'accepted', 'Tài xế đã nhận đơn hàng và đang di chuyển đến điểm lấy hàng.', NOW())";
-                $this->db->prepare($sqlHistory)->execute([$orderId]);
-                
-                $this->db->commit();
-                return true;
+            if ($stmt->rowCount() === 0) {
+                $this->db->rollBack();
+                return false;
             }
-            $this->db->rollBack();
-            return false;
-        } catch (\Exception $e) {
+
+            // Cập nhật driver_id vào bảng order_deliveries
+            $sqlDelivery = "UPDATE order_deliveries SET driver_id = :driver_id, accepted_at = NOW() WHERE order_id = :order_id";
+            $stmtDelivery = $this->db->prepare($sqlDelivery);
+            $stmtDelivery->execute(['driver_id' => $driverId, 'order_id' => $orderId]);
+            
+            // Thêm lịch sử trạng thái
+            $sqlHistory = "INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, 'accepted', 'Tài xế đã nhận đơn hàng và đang di chuyển đến điểm lấy hàng.', NOW())";
+            $this->db->prepare($sqlHistory)->execute([$orderId]);
+            
+            $this->db->commit();
+            return true;
+        } catch (\Throwable $e) {
             $this->db->rollBack();
             return false;
         }
@@ -372,22 +372,21 @@ class Order
             foreach ($orderIds as $orderId) {
                 $stmtOrder->execute([$now, $orderId]);
                 
-                // Chỉ khi đơn hàng đó thực sự được cập nhật thành 'accepted' (Chưa bị người khác nhận)
-                if ($stmtOrder->rowCount() > 0) {
-                    $stmtDelivery->execute([$driverId, $now, $orderId]);
-                    $stmtHistory->execute([$orderId, $now]);
-                    $assignedIds[] = $orderId;
-                } else {
-                    // Logic ALL OR NOTHING (Tất cả hoặc không có gì)
-                    // Nếu 1 đơn trong chuyến ghép đã bị người khác nhận trước, hủy toàn bộ chuyến đó.
+                // Logic ALL OR NOTHING (Tất cả hoặc không có gì)
+                // Nếu 1 đơn trong chuyến ghép đã bị người khác nhận trước, hủy toàn bộ chuyến đó.
+                if ($stmtOrder->rowCount() === 0) {
                     $this->db->rollBack();
                     return [];
                 }
+
+                $stmtDelivery->execute([$driverId, $now, $orderId]);
+                $stmtHistory->execute([$orderId, $now]);
+                $assignedIds[] = $orderId;
             }
             
             $this->db->commit();
             return $assignedIds;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->db->rollBack();
             return [];
         }
@@ -479,7 +478,7 @@ class Order
                 o.id, o.tracking_code, o.status, o.created_at, o.updated_at, o.scheduled_at,
                 oa.sender_name, oa.receiver_name, oa.sender_address, oa.receiver_address,
                 oa.sender_lat, oa.sender_lng, oa.receiver_lat, oa.receiver_lng,
-                fin.shipping_fee, fin.payment_method, fin.payment_status,
+                fin.shipping_fee, fin.payment_method, fin.payment_status, fin.paid_at, fin.refunded_at,
                 u.name AS driver_name, u.avatar AS driver_avatar,
                 dp.current_lat AS driver_lat, dp.current_lng AS driver_lng,
                 dp.license_plate AS driver_license_plate
@@ -598,7 +597,7 @@ class Order
                 del.driver_id, del.accepted_at, del.picked_up_at, del.delivered_at, del.cancelled_at,
                 u.name as customer_name, u.phone as customer_phone, u.email as customer_email, u.avatar as customer_avatar, u.no_show_count as customer_no_show_count,
                 d.name as driver_name, d.phone as driver_phone, d.avatar as driver_avatar,
-                fin.shipping_fee, fin.payment_method, fin.payment_status,
+                fin.shipping_fee, fin.payment_method, fin.payment_status, fin.paid_at, fin.refunded_at,
                 oa.sender_name, oa.sender_phone, oa.sender_address, oa.sender_lat, oa.sender_lng,
                 oa.receiver_name, oa.receiver_phone, oa.receiver_address, oa.receiver_lat, oa.receiver_lng,
                 dp.current_lat AS driver_lat, dp.current_lng AS driver_lng,
@@ -625,27 +624,61 @@ class Order
     {
         $this->db->beginTransaction();
         try {
-            // Cập nhật bảng orders
-            // Sử dụng COALESCE để giữ nguyên trạng thái cũ nếu form không gửi lên
-            $stmt = $this->db->prepare("UPDATE orders SET status = COALESCE(?, status), note = ?, updated_at = NOW() WHERE id = ?");
+            $stmtCurrent = $this->db->prepare("
+                SELECT o.status, o.note, fin.payment_status
+                FROM orders o
+                LEFT JOIN order_finances fin ON fin.order_id = o.id
+                WHERE o.id = ?
+                LIMIT 1
+            ");
+            $stmtCurrent->execute([$orderId]);
+            $current = $stmtCurrent->fetch(PDO::FETCH_ASSOC);
+            if (!$current) {
+                $this->db->rollBack();
+                return false;
+            }
+
+            $newStatus = $data['status'] ?? $current['status'];
+            $newNote = $data['description'] ?? ($data['note'] ?? ($current['note'] ?? ''));
+            $newPaymentStatus = $data['payment_status'] ?? ($current['payment_status'] ?? 'pending');
+            if ($newStatus === 'cancelled' && $newPaymentStatus === 'paid') {
+                $newPaymentStatus = 'refunded';
+            }
+
+            $stmt = $this->db->prepare("UPDATE orders SET note = ?, updated_at = NOW() WHERE id = ?");
             $stmt->execute([
-                $data['status'] ?? null,
-                $data['description'] ?? ($data['note'] ?? ''),
+                $newNote,
                 $orderId
             ]);
 
-            // Cập nhật bảng order_finances
-            $stmtFin = $this->db->prepare("UPDATE order_finances SET shipping_fee = ?, payment_method = ?, payment_status = ? WHERE order_id = ?");
+            $stmtFin = $this->db->prepare("
+                UPDATE order_finances
+                SET shipping_fee = ?,
+                    payment_method = ?,
+                    payment_status = ?,
+                    paid_at = CASE WHEN ? = 'paid' THEN COALESCE(paid_at, NOW()) ELSE paid_at END,
+                    refunded_at = CASE WHEN ? = 'refunded' THEN COALESCE(refunded_at, NOW()) ELSE refunded_at END
+                WHERE order_id = ?
+            ");
             $stmtFin->execute([
                 isset($data['shipping_fee']) ? (float)$data['shipping_fee'] : 0,
                 $data['payment_method'] ?? 'cash',
-                $data['payment_status'] ?? 'pending',
+                $newPaymentStatus,
+                $newPaymentStatus,
+                $newPaymentStatus,
                 $orderId
             ]);
 
+            if ($newStatus !== $current['status']) {
+                $this->updateStatus($orderId, $newStatus, 'Admin cập nhật trạng thái đơn hàng.');
+            }
+            if ($newPaymentStatus !== ($current['payment_status'] ?? 'pending')) {
+                $this->addStatusHistory($orderId, $newStatus, 'Admin cập nhật trạng thái thanh toán thành: ' . $newPaymentStatus);
+            }
+
             $this->db->commit();
             return true;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->db->rollBack();
             return false;
         }
@@ -686,8 +719,33 @@ class Order
 
     public function updatePaymentStatus(int $orderId, string $status): bool
     {
-        $stmt = $this->db->prepare("UPDATE order_finances SET payment_status = ? WHERE order_id = ?");
-        return $stmt->execute([$status, $orderId]);
+        $stmt = $this->db->prepare("
+            UPDATE order_finances
+            SET payment_status = ?,
+                paid_at = CASE WHEN ? = 'paid' THEN COALESCE(paid_at, NOW()) ELSE paid_at END,
+                refunded_at = CASE WHEN ? = 'refunded' THEN COALESCE(refunded_at, NOW()) ELSE refunded_at END
+            WHERE order_id = ?
+        ");
+        return $stmt->execute([$status, $status, $status, $orderId]);
+    }
+
+    public function addStatusHistory(int $orderId, string $status, string $description): bool
+    {
+        $stmt = $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())");
+        return $stmt->execute([$orderId, $status, $description]);
+    }
+
+    public function refundPaidOrder(int $orderId): bool
+    {
+        $stmt = $this->db->prepare("
+            UPDATE order_finances
+            SET payment_status = 'refunded',
+                refunded_at = COALESCE(refunded_at, NOW())
+            WHERE order_id = ?
+              AND payment_status = 'paid'
+        ");
+        $stmt->execute([$orderId]);
+        return $stmt->rowCount() > 0;
     }
 
     public function getPreviousStatus(int $orderId): string
@@ -776,7 +834,7 @@ class Order
             SELECT COUNT(*) as active_count, SUM(CASE WHEN o.shipping_method = 'express' THEN 1 ELSE 0 END) as express_count 
             FROM orders o
             JOIN order_deliveries od ON o.id = od.order_id
-            WHERE od.driver_id = ? AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping')
+            WHERE od.driver_id = ? AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning')
         ");
         $stmtCount->execute([$driverId]);
         $countResult = $stmtCount->fetch(PDO::FETCH_ASSOC);
@@ -884,7 +942,7 @@ class Order
         $stmtCount = $this->db->prepare("
             SELECT COUNT(*) as total_active, SUM(CASE WHEN o.shipping_method = 'express' THEN 1 ELSE 0 END) as express_count 
             FROM orders o JOIN order_deliveries od ON o.id = od.order_id
-            WHERE od.driver_id = ? AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping')
+            WHERE od.driver_id = ? AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning')
         ");
         $stmtCount->execute([$driverId]);
         $activeStats = $stmtCount->fetch(PDO::FETCH_ASSOC);
@@ -970,7 +1028,7 @@ class Order
             SELECT COUNT(*) as count 
             FROM orders o
             JOIN order_deliveries od ON o.id = od.order_id
-            WHERE od.driver_id = ? AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping')
+            WHERE od.driver_id = ? AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning')
         ");
         $stmt->execute([$driverId]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -987,7 +1045,7 @@ class Order
             FROM orders o
             JOIN order_deliveries od ON o.id = od.order_id
             WHERE od.driver_id = ? 
-              AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping')
+              AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning')
               AND o.shipping_method = 'express'
             LIMIT 1
         ");
@@ -1004,7 +1062,7 @@ class Order
             SELECT SUM(COALESCE(o.weight, 1.0)) as total_weight
             FROM orders o
             JOIN order_deliveries od ON o.id = od.order_id
-            WHERE od.driver_id = ? AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping')
+            WHERE od.driver_id = ? AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning')
         ");
         $stmt->execute([$driverId]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -1039,35 +1097,36 @@ class Order
             $stmtOrder = $this->db->prepare("UPDATE orders SET status = 'searching_driver', updated_at = NOW() WHERE id = ? AND status = 'accepted'");
             $stmtOrder->execute([$orderId]);
 
-            if ($stmtOrder->rowCount() > 0) {
-                $stmtDel = $this->db->prepare("UPDATE order_deliveries SET driver_id = NULL, accepted_at = NULL WHERE order_id = ?");
-                $stmtDel->execute([$orderId]);
-
-                $desc = "Hệ thống tự động thu hồi đơn hàng do tài xế không đi lấy hàng quá thời gian quy định.";
-                $stmtHist = $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, 'searching_driver', ?, NOW())");
-                $stmtHist->execute([$orderId, $desc]);
-
-                $this->db->commit();
-                
-                // Tìm thông tin khách hàng để gửi thông báo trấn an
-                $stmtInfo = $this->db->prepare("SELECT tracking_code, customer_id FROM orders WHERE id = ?");
-                $stmtInfo->execute([$orderId]);
-                if ($info = $stmtInfo->fetch(\PDO::FETCH_ASSOC)) {
-                    $userModel = new \App\Models\User();
-                    $userModel->createNotification(
-                        $info['customer_id'],
-                        'Đang tìm lại tài xế',
-                        "Đơn hàng #{$info['tracking_code']} đang được hệ thống tự động tìm lại tài xế mới do tài xế trước đó không đến lấy hàng.",
-                        'order',
-                        "/user/orders/track/{$info['tracking_code']}"
-                    );
-                }
-                
-                return true;
+            if ($stmtOrder->rowCount() === 0) {
+                $this->db->rollBack();
+                return false;
             }
-            $this->db->rollBack();
-            return false;
-        } catch (\Exception $e) {
+
+            $stmtDel = $this->db->prepare("UPDATE order_deliveries SET driver_id = NULL, accepted_at = NULL WHERE order_id = ?");
+            $stmtDel->execute([$orderId]);
+
+            $desc = "Hệ thống tự động thu hồi đơn hàng do tài xế không đi lấy hàng quá thời gian quy định.";
+            $stmtHist = $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, 'searching_driver', ?, NOW())");
+            $stmtHist->execute([$orderId, $desc]);
+
+            $this->db->commit();
+            
+            // Tìm thông tin khách hàng để gửi thông báo trấn an
+            $stmtInfo = $this->db->prepare("SELECT tracking_code, customer_id FROM orders WHERE id = ?");
+            $stmtInfo->execute([$orderId]);
+            if ($info = $stmtInfo->fetch(\PDO::FETCH_ASSOC)) {
+                $userModel = new \App\Models\User();
+                $userModel->createNotification(
+                    $info['customer_id'],
+                    'Đang tìm lại tài xế',
+                    "Đơn hàng #{$info['tracking_code']} đang được hệ thống tự động tìm lại tài xế mới do tài xế trước đó không đến lấy hàng.",
+                    'order',
+                    "/user/orders/track/{$info['tracking_code']}"
+                );
+            }
+            
+            return true;
+        } catch (\Throwable $e) {
             $this->db->rollBack();
             return false;
         }
@@ -1084,7 +1143,7 @@ class Order
             $stmt = $this->db->prepare("
                 SELECT id, tracking_code, customer_id 
                 FROM orders 
-                WHERE status IN ('pending', 'searching_driver') 
+                WHERE status IN ('pending', 'awaiting_payment', 'searching_driver') 
                   AND is_archived = 0
                   AND (
                       (scheduled_at IS NULL AND created_at <= DATE_SUB(NOW(), INTERVAL 1 DAY))
@@ -1121,7 +1180,7 @@ class Order
 
             $this->db->commit();
             return true;
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             $this->db->rollBack();
             return false;
         }

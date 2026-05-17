@@ -123,6 +123,17 @@
                             Xác Nhận Đã Giao Xong
                         </button>
                     </form>
+                <?php elseif ($order['status'] === 'returning'): ?>
+                    <form method="POST" action="/driver/orders/update-status/<?= $order['id'] ?>" enctype="multipart/form-data">
+                        <input type="hidden" name="status" value="returned">
+                        <div style="background: #f8fafc; padding: 12px; border-radius: 4px; border: 1px solid var(--border-color); margin-bottom: 12px;">
+                            <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 8px;">Ảnh minh chứng hoàn hàng (Bắt buộc):</label>
+                            <input type="file" name="proof_image" accept="image/*" capture="environment" class="minimal-input" style="margin-bottom: 0;" required>
+                        </div>
+                        <button type="submit" class="btn-driver-action orange">
+                            Xác Nhận Đã Hoàn Hàng
+                        </button>
+                    </form>
                 <?php endif; ?>
                 
                 <?php if (in_array($order['status'], ['accepted', 'picking_up', 'in_transit', 'shipping'])): ?>
@@ -356,7 +367,7 @@
 
             drawRoute(driverLat, driverLng);
 
-            if (navigator.geolocation && ['accepted', 'picking_up', 'in_transit', 'shipping'].includes(orderStatus)) {
+            if (navigator.geolocation && ['accepted', 'picking_up', 'in_transit', 'shipping', 'returning'].includes(orderStatus)) {
                 let lastPushTime = 0; // Lưu vết thời gian
                 const pushLocationToServer = (lat, lng) => {
                     const now = Date.now();

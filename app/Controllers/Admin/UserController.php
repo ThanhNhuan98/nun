@@ -152,11 +152,8 @@ class UserController extends BaseController
                 }
 
                 $_SESSION['flash_error'] = 'Có lỗi xảy ra khi lưu vào cơ sở dữ liệu. Vui lòng thử lại.';
-            } catch (ValidationException $e) {
-                $_SESSION['flash_error'] = implode('. ', $e->errors);
-                $user = array_merge($user, $data);
-            } catch (\RuntimeException $e) {
-                $_SESSION['flash_error'] = $e->getMessage();
+            } catch (ValidationException | \RuntimeException $e) {
+                $_SESSION['flash_error'] = $e instanceof ValidationException ? implode('. ', $e->errors) : $e->getMessage();
                 $user = array_merge($user, $data);
             }
         }
@@ -262,12 +259,10 @@ class UserController extends BaseController
 
                 $_SESSION['flash_success'] = 'Tạo người dùng mới thành công.';
                 return $response->redirect('/admin/users');
-            } catch (ValidationException $e) {
-                $_SESSION['flash_error'] = implode('. ', $e->errors);
-            } catch (\RuntimeException $e) {
-                $_SESSION['flash_error'] = $e->getMessage();
+            } catch (ValidationException | \RuntimeException $e) {
+                $_SESSION['flash_error'] = $e instanceof ValidationException ? implode('. ', $e->errors) : $e->getMessage();
             } catch (\Exception $e) {
-                $_SESSION['flash_error'] = 'Loi he thong CSDL: ' . $e->getMessage();
+                $_SESSION['flash_error'] = 'Lỗi hệ thống CSDL: ' . $e->getMessage();
             }
         }
 

@@ -106,6 +106,7 @@
                     <select name="order_status" class="form-control">
                         <option value="">-- Không thay đổi (Giữ nguyên trạng thái) --</option>
                         <option value="returning" <?= ($dispute['order_status'] ?? '') === 'returning' ? 'selected' : '' ?>>Tiếp tục chuyển hoàn (Tài xế báo cáo đúng)</option>
+                        <option value="returned" <?= ($dispute['order_status'] ?? '') === 'returned' ? 'selected' : '' ?>>Đã hoàn hàng về người gửi</option>
                         <option value="completed" <?= ($dispute['order_status'] ?? '') === 'completed' ? 'selected' : '' ?>>Đã giao thành công (Khách đã nhận được hàng)</option>
                         <option value="cancelled" <?= ($dispute['order_status'] ?? '') === 'cancelled' ? 'selected' : '' ?>>Hủy đơn (Lỗi tài xế, cần hoàn tiền cho khách)</option>
                     </select>

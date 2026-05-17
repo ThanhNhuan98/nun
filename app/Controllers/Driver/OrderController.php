@@ -13,9 +13,6 @@ use App\Models\Wallet;
 
 class OrderController extends BaseController
 {
-    /**
-     * Helper xử lý upload ảnh minh chứng
-     */
     private function uploadProofImage(int $orderId, string $prefix = ''): string
     {
         if (isset($_FILES['proof_image']) && $_FILES['proof_image']['error'] === UPLOAD_ERR_OK) {
@@ -44,7 +41,6 @@ class OrderController extends BaseController
 
     public function receiveOrders(Request $request, Response $response)
     {
-        // Kiểm tra quyền (Nếu chưa đăng nhập hoặc không phải driver thì đẩy ra login)
         if ($redirect = $this->requireRole($response, 'driver')) {
             return $redirect;
         }
@@ -56,15 +52,11 @@ class OrderController extends BaseController
         $dp = $userModel->getDriverProfile($driverId);
         $isVerified = !empty($dp['is_verified']);
 
-        // Chỉ thực hiện AI Radar khi có request AJAX để tránh lỗi trang load quá lâu lúc đăng nhập
         if ($request->isGet() && isset($_GET['ajax'])) {
-            // Tắt chức năng phân bổ đơn của AI nếu chưa xác thực giấy tờ
             if (!$isVerified) {
                 return $response->json(['success' => true, 'batches' => []]);
             }
 
-            // TỐI ƯU HÓA (DRY - Đừng lặp lại code):
-            // Tái sử dụng lại hàm gọi AI đã được tách ra để chuẩn hóa kiến trúc
             $routingResult = $this->processAIRouting($driverId);
             $batches = $routingResult['batches'] ?? [];
             $message = $routingResult['message'] ?? '';
@@ -76,7 +68,6 @@ class OrderController extends BaseController
             $_SESSION['flash_error'] = "LƯU Ý: Tài khoản của bạn chưa được Admin xác thực giấy tờ. Hệ thống sẽ không phân bổ đơn hàng cho đến khi bạn được phê duyệt.";
         }
 
-        // Lấy số dư ví thực tế của tài xế
         $walletModel = new Wallet();
         $walletBalance = $walletModel->getBalance($driverId);
 
@@ -84,13 +75,10 @@ class OrderController extends BaseController
             'pageTitle' => 'Nhận đơn hàng mới',
             'walletBalance' => $walletBalance,
             'walletBanner' => null,
-            'batches' => null // Khởi tạo null để render loading trên View, dữ liệu thật sẽ được fetch qua AJAX
+            'batches' => null
         ]);
     }
 
-    /**
-     * Trích xuất logic gọi AI tối ưu hóa lộ trình ra một phương thức riêng
-     */
     private function processAIRouting(int $driverId): array
     {
         $orderModel = new Order();
@@ -119,7 +107,6 @@ class OrderController extends BaseController
         $activeCount = $orderModel->getDriverActiveOrderCount($driverId);
         $hasExpress = $orderModel->hasDriverActiveExpressOrder($driverId);
         
-        // MUTUAL EXCLUSION: Khóa hoàn toàn Radar nếu tài xế đang thực hiện đơn Siêu tốc
         if ($hasExpress) {
             return ['batches' => [], 'message' => 'Bạn đang thực hiện đơn Siêu tốc (độc quyền). Radar tự động ẩn các đơn khác để đảm bảo chất lượng dịch vụ.'];
         }
@@ -142,7 +129,6 @@ class OrderController extends BaseController
         $skippedExpressCount = 0;
         $skippedWeightCount = 0;
         foreach ($orders as $o) {
-            // MUTUAL EXCLUSION: Nếu tài xế đang có đơn Tiêu chuẩn (activeCount > 0), ẩn các đơn Siêu tốc đi
             $isExpress = ($o['shipping_method'] ?? 'standard') === 'express';
             if ($activeCount > 0 && $isExpress) {
                 $skippedExpressCount++;
@@ -258,7 +244,6 @@ class OrderController extends BaseController
                 return ($b['efficiency_score'] ?? 0) <=> ($a['efficiency_score'] ?? 0);
             });
         } else {
-            error_log("AI Route Optimizer Error: " . print_r($output, true));
             foreach ($orders as $o) {
                 $o['formatted_scheduled_at'] = !empty($o['scheduled_at']) 
                     ? date('H:i d/m/Y', strtotime($o['scheduled_at'])) 
@@ -294,7 +279,6 @@ class OrderController extends BaseController
             });
         }
 
-        // TỐI ƯU GIAO DIỆN: Chỉ lấy Top 10 chuyến ghép tốt nhất để Radar không bị quá dài
         $batches = array_slice($batches, 0, 10);
 
         return ['batches' => $batches, 'message' => ''];
@@ -310,8 +294,6 @@ class OrderController extends BaseController
 
         $data = $request->getBody();
         
-        // Nhận vào mảng các order_ids thay vì 1 id
-        // Dùng $_POST trực tiếp để tránh lỗi hàm getBody() tự động lọc mất mảng
         $orderIds = $_POST['order_ids'] ?? $data['order_ids'] ?? [];
         if (isset($data['order_id'])) {
             $orderIds[] = $data['order_id'];
@@ -325,7 +307,6 @@ class OrderController extends BaseController
 
         $orderModel = new Order();
 
-        // === TỐI ƯU HÓA: KIỂM TRA GIỚI HẠN TÀI XẾ BẰNG BATCH (Xóa N+1 Query) ===
         $validationResult = $orderModel->canDriverAcceptMultipleOrders($driverId, $orderIds);
         $validOrderIds = $validationResult['valid_orders'];
         $rejectedOrders = $validationResult['rejected_orders'];
@@ -336,24 +317,20 @@ class OrderController extends BaseController
             return $response->redirect('/driver/receive-orders');
         }
 
-        // --- LOGIC KIỂM TRA VÀ TRỪ VÍ ---
         $walletModel = new Wallet();
         $settingModel = new Setting();
         $platformFeePercent = (float) $settingModel->get('platform_fee_percent', 20);
 
         $shippingFees = $orderModel->getShippingFees($validOrderIds);
 
-        $orderFees = [];
         $totalDeduction = 0;
         foreach ($shippingFees as $row) {
             $fee = (int) $row['shipping_fee'];
-            // Chỉ thu trước phí nền tảng nếu khách trả Tiền mặt
             if (($row['payment_method'] ?? 'cash') === 'cash') {
                 $deduction = (int) ceil($fee * $platformFeePercent / 100);
             } else {
                 $deduction = 0;
             }
-            $orderFees[$row['order_id']] = $deduction;
             $totalDeduction += $deduction;
         }
 
@@ -364,7 +341,6 @@ class OrderController extends BaseController
             }
         }
 
-        // === TỐI ƯU HÓA: GÁN NHIỀU ĐƠN HÀNG TRONG 1 TRANSACTION ===
         $assignedIds = $orderModel->assignMultipleOrdersToDriver($validOrderIds, $driverId);
         $successCount = count($assignedIds);
 
@@ -372,17 +348,14 @@ class OrderController extends BaseController
             if ($totalDeduction > 0) {
                 $_SESSION['flash_success'] = "Đã nhận thành công cụm $successCount đơn hàng! Hệ thống đã trừ " . number_format($totalDeduction, 0, ',', '.') . "đ phí nhận đơn.";
                 
-                // Gửi thông báo trừ tiền ví cho tài xế
                 $userModel = new User();
                 $userModel->createNotification($driverId, 'Trừ phí nhận đơn', "Bạn đã bị trừ " . number_format($totalDeduction, 0, ',', '.') . "đ phí nền tảng khi nhận " . $successCount . " đơn hàng.", 'wallet', '/driver/active-orders');
             } else {
                 $_SESSION['flash_success'] = "Đã nhận thành công cụm $successCount đơn hàng!";
             }
 
-            // Sau khi nhận đơn thành công, chuyển hướng đến trang "Đơn đang chạy"
             return $response->redirect('/driver/active-orders');
         } else {
-            // Hoàn tiền lại toàn bộ nếu quá trình gán đơn thất bại (VD: 1 đơn đã bị người khác giành mất)
             if ($totalDeduction > 0) {
                 $walletModel->add($driverId, $totalDeduction, 'refund', 'Refund failed order acceptance fee');
                 $userModel = new User();
@@ -434,7 +407,6 @@ class OrderController extends BaseController
         
         $activeOrders = $orderModel->getActiveOrdersForDriver($driverId);
 
-        // Nhóm các đơn hàng theo thời gian nhận (accepted_at) để phân loại Đơn ghép / Đơn lẻ
         $groupedOrders = [];
         foreach ($activeOrders as $order) {
             $orderTimeStr = $order['accepted_at'] ?? $order['scheduled_at'] ?? $order['created_at'];
@@ -443,7 +415,6 @@ class OrderController extends BaseController
             $foundGroupKey = null;
             foreach (array_keys($groupedOrders) as $existingKeyStr) {
                 $existingTime = strtotime($existingKeyStr);
-                // Gộp các đơn hàng được nhận cách nhau không quá 5 giây thành 1 chuyến ghép
                 if (abs($orderTime - $existingTime) <= 5) {
                     $foundGroupKey = $existingKeyStr;
                     break;
@@ -456,10 +427,6 @@ class OrderController extends BaseController
                 $groupedOrders[$orderTimeStr] = [$order];
             }
         }
-
-        // Hiện tại, trang này sẽ hiển thị danh sách các đơn đang chạy theo thứ tự ưu tiên.
-        // "Lộ trình hoàn hảo" được thể hiện qua việc sắp xếp các công việc cần làm.
-        // Việc tích hợp bản đồ và tối ưu hóa lộ trình real-time sẽ được phát triển trong giai đoạn sau.
 
         return $response->render('driver/orders/active', [
             'pageTitle' => 'Đơn hàng đang chạy',
@@ -512,11 +479,11 @@ class OrderController extends BaseController
             return $response->redirect('/driver/history');
         }
 
-        // Xác định luồng trạng thái hợp lệ
         $allowedTransitions = [
             'accepted' => ['picking_up', 'cancelled'],
             'picking_up' => ['in_transit', 'cancelled'],
             'in_transit' => ['completed', 'cancelled', 'returning'],
+            'returning' => ['returned'],
             'shipping' => ['completed', 'cancelled', 'returning'] // Phòng hờ nếu DB đang dùng chữ shipping
         ];
 
@@ -524,7 +491,6 @@ class OrderController extends BaseController
         
         if (isset($allowedTransitions[$currentStatus]) && in_array($newStatus, $allowedTransitions[$currentStatus])) {
             
-            // Xử lý upload ảnh minh chứng (nếu có)
             try {
                 $proofImagePath = $this->uploadProofImage($orderId);
             } catch (\RuntimeException $e) {
@@ -532,8 +498,7 @@ class OrderController extends BaseController
                 return $response->redirect("/driver/orders/view/$orderId");
             }
             
-            // Bắt buộc phải có ảnh khi Giao xong, Hủy đơn hoặc Chuyển hoàn
-            if (in_array($newStatus, ['completed', 'cancelled', 'returning']) && empty($proofImagePath)) {
+            if (in_array($newStatus, ['completed', 'cancelled', 'returning', 'returned']) && empty($proofImagePath)) {
                 $_SESSION['flash_error'] = "Lỗi: Bạn bắt buộc phải chụp và tải lên ảnh minh chứng!";
                 return $response->redirect($redirectUrl);
             }
@@ -549,14 +514,14 @@ class OrderController extends BaseController
                 }
             } elseif ($newStatus === 'returning') {
                 $description = "Tài xế báo cáo giao thất bại. Đơn hàng đang được chuyển hoàn. Lý do: " . $cancelReason;
+            } elseif ($newStatus === 'returned') {
+                $description = "Tài xế xác nhận đã hoàn trả hàng về người gửi.";
             }
             
-            // Đính kèm ảnh vào dòng Lịch sử để Admin / Khách hàng thấy được
             if (!empty($proofImagePath)) {
                 $description .= "<br><br><div class='proof-image-wrapper'><a href='" . $proofImagePath . "' target='_blank' title='Nhấn để xem ảnh lớn'><img src='" . $proofImagePath . "' alt='Ảnh minh chứng' class='proof-image'></a></div>";
             }
 
-            // Bắt đầu transaction để đảm bảo tính toàn vẹn
             $db = Database::getInstance();
             $db->beginTransaction();
 
@@ -571,7 +536,6 @@ class OrderController extends BaseController
                 if ($orderModel->updateStatus($orderId, $newStatus, $description)) {
                     $successMessage = "Cập nhật trạng thái thành công!";
 
-                    // Thanh toán tiền công cho tài xế nếu đơn chuyển khoản giao thành công
                     if ($newStatus === 'completed' && ($order['payment_method'] ?? 'cash') === 'transfer') {
                         $walletModel = new Wallet();
                         $settingModel = new Setting();
@@ -580,7 +544,13 @@ class OrderController extends BaseController
                         $driverEarnings = (int) ($order['shipping_fee'] ?? 0) - $feePerOrder;
                         
                         if ($driverEarnings > 0) {
-                            $walletModel->add($driverId, $driverEarnings);
+                            $walletModel->add(
+                                $driverId,
+                                $driverEarnings,
+                                'adjustment',
+                                "Cộng tiền cước đơn #{$order['tracking_code']} (khách thanh toán chuyển khoản)",
+                                $orderId
+                            );
                             $successMessage = "Giao hàng thành công. Bạn được cộng " . number_format($driverEarnings, 0, ',', '.') . "đ (tiền cước - phí) vào ví.";
                             
                             $userModel = new User();
@@ -594,10 +564,8 @@ class OrderController extends BaseController
                         }
                     }
 
-                    // Hoàn lại phí nền tảng nếu tài xế hủy đơn
                     if ($newStatus === 'cancelled') {
                         $successMessage = "Đã hủy đơn.";
-                        // Chỉ hoàn phí nếu trước đó đơn là Tiền mặt (đã bị trừ)
                         if (($order['payment_method'] ?? 'cash') === 'cash') {
                             $walletModel = new Wallet();
                             $settingModel = new Setting();
@@ -611,7 +579,6 @@ class OrderController extends BaseController
                         }
                     }
 
-                    // GỬI THÔNG BÁO CHO KHÁCH HÀNG
                     $userModel = new User();
                     $userModel->createNotification(
                         $order['customer_id'],
@@ -621,6 +588,11 @@ class OrderController extends BaseController
                         "/user/orders/track/{$order['tracking_code']}"
                     );
                     
+                    if ($newStatus === 'cancelled' && ($order['payment_status'] ?? '') === 'paid' && $orderModel->refundPaidOrder($orderId)) {
+                        $successMessage .= " Hệ thống đã ghi nhận hoàn tiền cho khách.";
+                        $orderModel->addStatusHistory($orderId, 'cancelled', 'Hệ thống hoàn tiền cho khách do đơn đã thanh toán nhưng bị hủy.');
+                    }
+
                     $db->commit();
                     $_SESSION['flash_success'] = $successMessage;
                 }
@@ -628,7 +600,6 @@ class OrderController extends BaseController
                 if ($db->inTransaction()) {
                     $db->rollBack();
                 }
-                // Ghi log lỗi để debug: error_log($e->getMessage());
                 $_SESSION['flash_error'] = "Có lỗi xảy ra, không thể cập nhật trạng thái.";
             }
         } else {
@@ -638,10 +609,6 @@ class OrderController extends BaseController
         return $response->redirect($redirectUrl);
     }
 
-    /**
-     * Xử lý tài xế báo cáo khách bom hàng
-     * Route: POST /driver/orders/report-noshow/{id}
-     */
     public function reportNoShow(Request $request, Response $response)
     {
         if ($redirect = $this->requireRole($response, 'driver')) {
@@ -661,7 +628,6 @@ class OrderController extends BaseController
             return $response->redirect('/driver/history');
         }
 
-        // Bắt buộc phải có ảnh khi báo cáo bom hàng
         try {
             $proofImagePath = $this->uploadProofImage($orderId, 'noshow');
         } catch (\RuntimeException $e) {
@@ -681,19 +647,15 @@ class OrderController extends BaseController
         $db->beginTransaction();
 
         try {
-            // Nếu đang đi lấy hàng (accepted/picking_up) -> Hủy đơn
-            // Nếu đang đi giao hàng (in_transit/shipping) -> Chuyển hoàn (returning)
             $newStatus = in_array($order['status'], ['accepted', 'picking_up']) ? 'cancelled' : 'returning';
 
             $db->prepare("UPDATE order_deliveries SET proof_image = ?, cancel_reason = ? WHERE order_id = ?")
                 ->execute([$proofImagePath, $reason, $orderId]);
 
             if ($orderModel->updateStatus($orderId, $newStatus, $description)) {
-                // 1. Kích hoạt hàm phạt khách hàng (viết sẵn trong Model)
                 $userModel = new User();
                 $userModel->recordNoShow($order['customer_id']);
 
-                // 2. Hoàn lại phí nền tảng cho tài xế
                 $walletModel = new Wallet();
                 $settingModel = new Setting();
                 $platformFeePercent = (float) $settingModel->get('platform_fee_percent', 20);
@@ -714,7 +676,6 @@ class OrderController extends BaseController
                     $_SESSION['flash_success'] = "Đã báo cáo khách bom hàng thành công!";
                 }
 
-                // 3. Gửi thông báo cảnh cáo cho khách hàng
                 $userModel->createNotification(
                     $order['customer_id'],
                     "Cảnh báo: Báo cáo bom hàng",
@@ -737,18 +698,12 @@ class OrderController extends BaseController
         return $response->redirect("/driver/orders/view/$orderId");
     }
 
-    /**
-     * API: Cập nhật vị trí GPS liên tục của tài xế
-     * Route: POST /api/driver/update-location
-     */
     public function updateLocation(Request $request, Response $response)
     {
-        // Chỉ cho phép tài xế đã đăng nhập
         if (!\app_has_role('driver')) {
             return $response->json(['success' => false, 'message' => 'Unauthorized'], 403);
         }
 
-        // Đọc dữ liệu JSON từ body của request
         $data = $request->getJsonBody();
         $lat = $data['lat'] ?? null;
         $lng = $data['lng'] ?? null;
@@ -756,28 +711,9 @@ class OrderController extends BaseController
         if ($lat !== null && $lng !== null) {
             $userModel = new User();
             $success = $userModel->updateLocation($this->userId(), $lat, $lng);
-            
             return $response->json(['success' => $success]);
         }
 
-        return $response->json(['success' => false, 'message' => 'Thiếu tọa độ.'], 400);
-    }
-
-    /**
-     * API: Kiểm tra có đơn hàng mới không (Dùng cho AJAX Polling)
-     * Route: GET /api/driver/check-new-orders
-     */
-    public function apiCheckNewOrders(Request $request, Response $response)
-    {
-        if (!\app_has_role('driver')) {
-            return $response->json(['success' => false], 403);
-        }
-
-        $orderModel = new Order();
-
-        // TỐI ƯU HÓA: Dùng hàm COUNT trực tiếp trong SQL thay vì kéo toàn bộ array về PHP
-        $count = $orderModel->countPendingOrders();
-
-        return $response->json(['success' => true, 'count' => $count]);
+        return $response->json(['success' => false, 'message' => 'Thiếu dữ liệu tọa độ'], 400);
     }
 }

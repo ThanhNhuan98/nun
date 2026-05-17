@@ -11,19 +11,10 @@ use App\Models\User;
 use App\Models\Wallet;
 use App\Models\Setting;
 
-/**
- * Class DisputeController
- * Quản lý các chức năng liên quan đến khiếu nại.
- */
 class DisputeController extends BaseController
 {
-    /**
-     * Hiển thị danh sách khiếu nại.
-     * Route: GET /admin/disputes
-     */
     public function index(Request $request, Response $response)
     {
-        // Chỉ Admin mới có quyền truy cập
         if ($redirect = $this->requireRole($response, 'admin')) {
             return $redirect;
         }
@@ -41,7 +32,6 @@ class DisputeController extends BaseController
 
         $disputes = $disputeModel->getAll($perPage, $offset, $statusFilter, $search);
 
-        // Dịch loại khiếu nại sang tiếng Việt
         foreach ($disputes as &$d) {
             $d['issue_type'] = Dispute::getIssueTypeLabel($d['issue_type'] ?? '');
             $d['status_label'] = Dispute::getStatusLabel($d['status'] ?? '');
@@ -59,10 +49,6 @@ class DisputeController extends BaseController
         ]);
     }
 
-    /**
-     * Xem chi tiết và xử lý khiếu nại
-     * Route: GET/POST /admin/disputes/view/{id}
-     */
     public function view(Request $request, Response $response)
     {
         if ($redirect = $this->requireRole($response, 'admin')) {
@@ -72,13 +58,12 @@ class DisputeController extends BaseController
         $id = (int) $request->getRouteParam('id');
         $disputeModel = new Dispute();
 
-        // Xử lý POST request để cập nhật kết quả
         if ($request->isPost()) {
             $data = $request->getBody();
             $status = $data['status'] ?? 'open';
             $resolutionNote = app_sanitize($data['resolution_note'] ?? ($data['admin_note'] ?? ''));
             $resolvedBy = $this->userId();
-            $newOrderStatus = $data['order_status'] ?? ''; // Trạng thái đơn hàng mới Admin muốn set
+            $newOrderStatus = $data['order_status'] ?? '';
             $fault = $data['fault'] ?? 'none';
             $penaltyAmount = (int) ($data['penalty_amount'] ?? 0);
 
@@ -87,14 +72,12 @@ class DisputeController extends BaseController
                 return $response->redirect("/admin/disputes/view/{$id}");
             }
 
-            // Lấy ID đơn hàng liên quan đến khiếu nại này
             $disputeData = $disputeModel->findById($id);
             if (!$disputeData) {
                 $_SESSION['flash_error'] = 'Khiếu nại không tồn tại.';
                 return $response->redirect("/admin/disputes");
             }
 
-            // Tự động thêm ghi chú và ngăn phạt 2 lần nếu Admin bấm lưu nhiều lần
             $oldNote = $disputeData['resolution_note'] ?? $disputeData['admin_note'] ?? '';
             $alreadyCustomerPenalized = strpos($oldNote, 'Đã phạt khách hàng') !== false;
             $alreadyDriverPenalized = strpos($oldNote, 'Đã phạt tài xế') !== false;
@@ -124,7 +107,6 @@ class DisputeController extends BaseController
                         $currentOrder = $orderModel->findByIdForAdmin($disputeData['order_id']);
                         
                         if ($currentOrder) {
-                            // 1. Thay đổi trạng thái đơn hàng nếu có
                             if (!empty($newOrderStatus) && $currentOrder['status'] !== $newOrderStatus) {
                                 $desc = "Admin đã xử lý khiếu nại. Quyết định: " . ($resolutionNote ?: 'Thay đổi trạng thái đơn hàng');
                                 $orderModel->updateStatus($currentOrder['id'], $newOrderStatus, $desc);
@@ -153,7 +135,6 @@ class DisputeController extends BaseController
                                 }
                             }
 
-                            // 2. Xử lý phạt vi phạm
                             $userModel = new User();
                             if ($shouldPenalizeCustomer) {
                                 $userModel->recordNoShow($currentOrder['customer_id']);
@@ -162,14 +143,13 @@ class DisputeController extends BaseController
                                 $walletModel = new Wallet();
                                 $deducted = $walletModel->deduct($currentOrder['driver_id'], $penaltyAmount, 'penalty', "Admin phạt lỗi khiếu nại đơn #{$currentOrder['tracking_code']}");
                                 
-                                // ÉP TRỪ: Nếu hàm deduct trả về false (do ví 0đ hoặc không đủ), gọi hàm forceDeduct của Model
                                 if (!$deducted) {
                                     $walletModel->forceDeduct($currentOrder['driver_id'], $penaltyAmount, 'penalty', "Admin phạt lỗi khiếu nại đơn #{$currentOrder['tracking_code']}", $currentOrder['id']);
                                 }
                                 
                                 $currentBalance = $walletModel->getBalance($currentOrder['driver_id']);
                                 if ($currentBalance < 0) {
-                                    $userModel->updateBlockStatus($currentOrder['driver_id'], 1); // Tự động khóa nếu ví âm
+                                    $userModel->updateBlockStatus($currentOrder['driver_id'], 1);
                                     $db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())")->execute([$currentOrder['id'], $currentOrder['status'], "Tài khoản tài xế đã tự động bị khóa do số dư ví âm sau khi bị phạt."]);
                                 }
                                 $userModel->createNotification($currentOrder['driver_id'], 'Trừ tiền - Phạt vi phạm', "Hệ thống trừ " . number_format($penaltyAmount, 0, ',', '.') . "đ phạt lỗi khiếu nại đơn #{$currentOrder['tracking_code']}.", 'wallet', "/driver/orders/view/{$currentOrder['id']}");
@@ -190,7 +170,6 @@ class DisputeController extends BaseController
             return $response->redirect("/admin/disputes/view/{$id}");
         }
 
-        // Lấy chi tiết khiếu nại
         $dispute = $disputeModel->findById($id);
 
         if (!$dispute) {
@@ -198,7 +177,6 @@ class DisputeController extends BaseController
             return $response->redirect('/admin/disputes');
         }
 
-        // Dịch loại khiếu nại sang tiếng Việt
         $dispute['issue_type'] = Dispute::getIssueTypeLabel($dispute['issue_type'] ?? '');
         $dispute['status_label'] = Dispute::getStatusLabel($dispute['status'] ?? '');
         $dispute['reporter_role_label'] = User::getRoleLabel($dispute['reporter_role'] ?? '');
