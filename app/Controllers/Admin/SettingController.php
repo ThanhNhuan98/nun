@@ -12,10 +12,6 @@ class SettingController extends BaseController
 {
     public function index(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'admin')) {
-            return $redirect;
-        }
-
         $settingModel = new Setting();
 
         if ($request->isPost()) {

@@ -136,6 +136,45 @@ if (!function_exists('app_nav_active')) {
     }
 }
 
+if (!function_exists('app_format_address')) {
+    /**
+     * Định dạng địa chỉ chuẩn phong cách Việt Nam
+     * Tự động gộp số nhà và tên đường, lược bỏ mã bưu điện và tên quốc gia
+     */
+    function app_format_address($address): string
+    {
+        $address = (string) ($address ?? '');
+        if ($address === '') return '';
+        
+        $parts = array_map('trim', explode(',', $address));
+        
+        // Lược bỏ Mã bưu điện và chữ Việt Nam
+        $parts = array_filter($parts, function($p) {
+            return !preg_match('/^\d{5,6}$/', $p) 
+                && strcasecmp($p, 'Việt Nam') !== 0 
+                && strcasecmp($p, 'Vietnam') !== 0;
+        });
+        
+        $parts = array_values($parts);
+        $merged = [];
+        $i = 0;
+        $count = count($parts);
+        
+        while ($i < $count) {
+            // Ghép Số nhà vào Tên đường nếu bị tách rời
+            if (preg_match('/^\d+[A-Za-z\/\-]*$/', $parts[$i]) && $i < $count - 1) {
+                $merged[] = $parts[$i] . ' ' . $parts[$i+1];
+                $i += 2;
+            } else {
+                $merged[] = $parts[$i];
+                $i++;
+            }
+        }
+        
+        return implode(', ', $merged);
+    }
+}
+
 if (!function_exists('app_sanitize')) {
     /**
      * Làm sạch (sanitize) dữ liệu đầu vào để chống XSS.
@@ -162,8 +201,7 @@ if (!function_exists('app_sanitize')) {
 
 if (!function_exists('array_is_list')) {
     /**
-     * Polyfill cho hàm array_is_list (Được giới thiệu từ PHP 8.1)
-     * Sửa lỗi Cloudinary SDK khi chạy trên PHP <= 8.0
+     * Polyfill cho hàm array_is_list 
      */
     function array_is_list(array $array): bool
     {

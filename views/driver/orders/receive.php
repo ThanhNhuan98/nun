@@ -106,7 +106,7 @@
                 const accessMin = batch.access_duration_minutes != null ? batch.access_duration_minutes + ' phút' : 'N/A';
                 const totalMin = batch.total_trip_duration_minutes != null ? batch.total_trip_duration_minutes + ' phút' : 'N/A';
                 const totalFee = formatMoney(batch.total_fee || 0);
-                const displayBatchId = batch.batch_id ? batch.batch_id.replace('BATCH_', 'CHUYẾN_') : 'N/A';
+                const displayBatchId = batch.batch_id ? batch.batch_id.replace('BATCH_', 'CHUYẾN ') : 'N/A';
 
                 // Gom mảng các điểm dừng (Stops) để vẽ Timeline
                 let stops = [];

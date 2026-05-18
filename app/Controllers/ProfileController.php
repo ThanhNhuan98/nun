@@ -57,10 +57,6 @@ class ProfileController extends BaseController
      */
     public function updateAvatar(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
             try {
                 // Cấu hình Cloudinary từ biến môi trường .env
@@ -99,10 +95,6 @@ class ProfileController extends BaseController
      */
     public function changePassword(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         $data = $request->getBody();
         $currentPassword = $data['current_password'] ?? '';
         $newPassword = $data['new_password'] ?? '';
@@ -145,10 +137,6 @@ class ProfileController extends BaseController
      */
     public function updateInfo(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         $data = $request->getBody();
         $name = trim($data['name'] ?? '');
         $phone = trim($data['phone'] ?? '');
@@ -211,10 +199,6 @@ class ProfileController extends BaseController
      */
     public function readAllNotifications(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         $notificationModel = new Notification();
         $notificationModel->markAllAsRead($this->userId());
 
@@ -229,10 +213,6 @@ class ProfileController extends BaseController
      */
     public function registerDriver(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         $userId = $this->userId();
         $userModel = new User();
         $currentUser = $userModel->findById($userId);

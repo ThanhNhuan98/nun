@@ -13,10 +13,6 @@ class NotificationController extends BaseController
     public function index(Request $request, Response $response)
     {
         // Yêu cầu đăng nhập, ai cũng có thể xem thông báo của chính mình
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         $userId = $this->userId();
         
         // Đánh dấu tất cả là đã đọc khi vào trang này

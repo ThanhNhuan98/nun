@@ -98,14 +98,14 @@
                                                 <span class="material-symbols-outlined r-icon">storefront</span>
                                                 <div>
                                                     <div class="r-label">Điểm lấy (<strong><?= app_e($order['sender_name'] ?? 'Kho/Cửa hàng') ?></strong>)</div>
-                                                    <div class="r-address"><?= app_e($order['pickup_address']) ?></div>
+                                                    <div class="r-address"><?= app_e(app_format_address($order['pickup_address'])) ?></div>
                                                 </div>
                                             </div>
                                             <div class="r-node">
                                                 <span class="material-symbols-outlined r-icon text-blue">location_on</span>
                                                 <div>
                                                     <div class="r-label">Điểm giao (<strong>Khách hàng</strong>)</div>
-                                                    <div class="r-address"><?= app_e($order['delivery_address']) ?></div>
+                                                    <div class="r-address"><?= app_e(app_format_address($order['delivery_address'])) ?></div>
                                                     <?php if (($order['customer_no_show_count'] ?? 0) > 0): ?>
                                                         <div style="margin-top: 6px; color: var(--danger); font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; background: var(--danger-light); padding: 2px 6px; border-radius: 4px; border: 1px solid #fca5a5;">
                                                             <span class="material-symbols-outlined" style="font-size: 13px;">warning</span>
@@ -211,14 +211,14 @@
                                             <span class="material-symbols-outlined r-icon">storefront</span>
                                             <div>
                                                 <div class="r-label">Điểm lấy (<strong><?= app_e($order['sender_name'] ?? 'Kho/Cửa hàng') ?></strong>)</div>
-                                                <div class="r-address"><?= app_e($order['pickup_address']) ?></div>
+                                                <div class="r-address"><?= app_e(app_format_address($order['pickup_address'])) ?></div>
                                             </div>
                                         </div>
                                         <div class="r-node">
                                             <span class="material-symbols-outlined r-icon text-blue">location_on</span>
                                             <div>
                                                 <div class="r-label">Điểm giao (<strong>Khách hàng</strong>)</div>
-                                                <div class="r-address"><?= app_e($order['delivery_address']) ?></div>
+                                                <div class="r-address"><?= app_e(app_format_address($order['delivery_address'])) ?></div>
                                                 <?php if (($order['customer_no_show_count'] ?? 0) > 0): ?>
                                                     <div style="margin-top: 6px; color: var(--danger); font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; background: var(--danger-light); padding: 2px 6px; border-radius: 4px; border: 1px solid #fca5a5;">
                                                         <span class="material-symbols-outlined" style="font-size: 13px;">warning</span>

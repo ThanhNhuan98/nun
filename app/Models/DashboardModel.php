@@ -14,12 +14,8 @@ class DashboardModel
         $this->db = Database::getInstance();
     }
 
-    /**
-     * Lấy tất cả số liệu thống kê cho bảng điều khiển (Dashboard)
-     */
     public function getStats(): array
     {
-        // TỐI ƯU HÓA: Gộp 6 câu truy vấn đếm riêng lẻ thành 1 câu truy vấn duy nhất để tránh nghẽn CSDL
         $sql = "
             SELECT 
                 (SELECT COUNT(id) FROM users) as total_users,
@@ -57,7 +53,6 @@ class DashboardModel
         $totalOrders = $overview['total_orders'] ?? 0;
         $totalRevenue = $overview['total_revenue'] ?? 0;
 
-        // 7. Biểu đồ doanh thu 7 ngày gần nhất
         $stmt = $this->db->query("
             SELECT DATE(o.updated_at) as date, SUM(fin.shipping_fee) as daily_revenue
             FROM orders o
@@ -85,7 +80,6 @@ class DashboardModel
             }
         }
 
-        // 8. Biểu đồ doanh thu tháng này
         $stmtMonth = $this->db->query("
             SELECT DAY(o.updated_at) as day, SUM(fin.shipping_fee) as daily_revenue
             FROM orders o
@@ -110,7 +104,6 @@ class DashboardModel
             }
         }
 
-        // 9. Biểu đồ doanh thu năm nay
         $stmtYear = $this->db->query("
             SELECT MONTH(o.updated_at) as month, SUM(fin.shipping_fee) as monthly_revenue
             FROM orders o

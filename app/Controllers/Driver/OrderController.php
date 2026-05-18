@@ -41,10 +41,6 @@ class OrderController extends BaseController
 
     public function receiveOrders(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'driver')) {
-            return $redirect;
-        }
-
         $driverId = $this->userId();
         $orderModel = new Order();
         $userModel = new User();
@@ -286,10 +282,6 @@ class OrderController extends BaseController
 
     public function acceptOrder(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'driver')) {
-            return $redirect;
-        }
-
         $driverId = $this->userId();
 
         $data = $request->getBody();
@@ -368,10 +360,6 @@ class OrderController extends BaseController
 
     public function history(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'driver')) {
-            return $redirect;
-        }
-
         $query = $request->getBody();
         $page = max(1, (int)($query['page'] ?? 1));
         $perPage = 10;
@@ -398,10 +386,6 @@ class OrderController extends BaseController
 
     public function activeOrders(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'driver')) {
-            return $redirect;
-        }
-
         $driverId = $this->userId();
         $orderModel = new Order();
         
@@ -437,10 +421,6 @@ class OrderController extends BaseController
 
     public function viewOrder(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'driver')) {
-            return $redirect;
-        }
-
         $driverId = $this->userId();
         $orderId = (int) $request->getRouteParam('id');
         $orderModel = new Order();
@@ -459,10 +439,6 @@ class OrderController extends BaseController
 
     public function updateStatus(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'driver')) {
-            return $redirect;
-        }
-
         $driverId = $this->userId();
         $orderId = (int) $request->getRouteParam('id');
         $data = $request->getBody();
@@ -611,10 +587,6 @@ class OrderController extends BaseController
 
     public function reportNoShow(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'driver')) {
-            return $redirect;
-        }
-
         $driverId = $this->userId();
         $orderId = (int) $request->getRouteParam('id');
         $data = $request->getBody();
@@ -700,10 +672,6 @@ class OrderController extends BaseController
 
     public function updateLocation(Request $request, Response $response)
     {
-        if (!\app_has_role('driver')) {
-            return $response->json(['success' => false, 'message' => 'Unauthorized'], 403);
-        }
-
         $data = $request->getJsonBody();
         $lat = $data['lat'] ?? null;
         $lng = $data['lng'] ?? null;

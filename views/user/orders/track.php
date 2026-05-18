@@ -160,12 +160,12 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     <div class="t-address-block">
                         <div class="t-address-icon pickup"><span class="material-symbols-outlined">storefront</span></div>
                         <div class="t-address-title">Điểm lấy hàng</div>
-                        <div class="t-address-desc"><?= app_e($order['sender_address'] ?? '') ?> <br> Người gửi: <?= app_e($order['sender_name'] ?? '') ?> (<?= app_e($order['sender_phone'] ?? '') ?>)</div>
+                        <div class="t-address-desc"><?= app_e(app_format_address($order['sender_address'] ?? '')) ?> <br> Người gửi: <?= app_e($order['sender_name'] ?? '') ?> (<?= app_e($order['sender_phone'] ?? '') ?>)</div>
                     </div>
                     <div class="t-address-block">
                         <div class="t-address-icon dropoff"><span class="material-symbols-outlined">home</span></div>
                         <div class="t-address-title">Điểm giao hàng</div>
-                        <div class="t-address-desc"><?= app_e($order['receiver_address'] ?? '') ?> <br> Người nhận: <?= app_e($order['receiver_name'] ?? '') ?> (<?= app_e($order['receiver_phone'] ?? '') ?>)</div>
+                        <div class="t-address-desc"><?= app_e(app_format_address($order['receiver_address'] ?? '')) ?> <br> Người nhận: <?= app_e($order['receiver_name'] ?? '') ?> (<?= app_e($order['receiver_phone'] ?? '') ?>)</div>
                     </div>
                 </div>
             </div>

@@ -15,23 +15,6 @@ class Dispute
     }
 
     /**
-     * Dịch mã lỗi khiếu nại sang tiếng Việt
-     */
-    public static function getIssueTypeLabel(string $type): string
-    {
-        $types = [
-            'driver_attitude' => 'Thái độ tài xế không tốt',
-            'damaged_goods'   => 'Hàng hóa bị hư hỏng',
-            'late_delivery'   => 'Giao hàng quá trễ',
-            'lost_goods'      => 'Thất lạc hàng hóa',
-            'wrong_status'    => 'Cập nhật sai trạng thái',
-            'overcharged'     => 'Thu sai cước phí',
-            'other'           => 'Lý do khác'
-        ];
-        return $types[$type] ?? $type;
-    }
-
-    /**
      * Dịch trạng thái khiếu nại sang tiếng Việt
      */
     public static function getStatusLabel(string $status): string
@@ -137,10 +120,10 @@ class Dispute
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
-    public function create(int $orderId, int $reporterId, string $issueType): bool
+    public function create(int $orderId, int $reporterId, string $reason): bool
     {
         $stmt = $this->db->prepare("INSERT INTO order_disputes (order_id, reported_by, issue_type, status, created_at) VALUES (?, ?, ?, 'open', NOW())");
-        return $stmt->execute([$orderId, $reporterId, $issueType]);
+        return $stmt->execute([$orderId, $reporterId, $reason]);
     }
 
     public function withdrawByOrderId(int $orderId): bool

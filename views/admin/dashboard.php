@@ -128,13 +128,13 @@ $growth = [
         };
 
         const config = {
-            type: 'bar', // Đã chuyển thành bar
+            type: 'bar',
             data: data,
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
                 plugins: {
-                    legend: { display: false } // Ẩn legend để giống bản thiết kế
+                    legend: { display: false } 
                 },
                 scales: {
                     x: {
@@ -158,7 +158,7 @@ $growth = [
             if (chartData[selectedPeriod]) {
                 revenueChart.data.labels = chartData[selectedPeriod].labels;
                 revenueChart.data.datasets[0].data = chartData[selectedPeriod].data;
-                revenueChart.update(); // Cập nhật lại biểu đồ với hiệu ứng transition
+                revenueChart.update(); 
             }
         });
     });

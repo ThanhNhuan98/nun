@@ -11,9 +11,6 @@ class WalletController extends BaseController
 {
     public function topup(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'driver')) {
-            return $redirect;
-        }
 
         $driverId = $this->userId();
         $walletModel = new Wallet();

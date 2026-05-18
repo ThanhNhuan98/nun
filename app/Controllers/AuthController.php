@@ -8,8 +8,9 @@ use App\Models\User;
 use App\Core\Validator;
 use App\Exceptions\ValidationException;
 use App\Services\MailService;
+use App\Controllers\BaseController;
 
-class AuthController
+class AuthController extends BaseController
 {
     /**
      * Helper xử lý upload ảnh giấy đăng ký xe
@@ -64,9 +65,10 @@ class AuthController
 
             throw new ValidationException(['account' => ['Tài khoản hoặc mật khẩu không chính xác.']], $data);
         } catch (ValidationException $e) {
-            $firstError = !empty($e->errors) ? reset($e->errors)[0] ?? reset($e->errors) : 'Lỗi đăng nhập.';
-            if (is_array($firstError)) {
-                $firstError = $firstError[0];
+            $firstError = 'Lỗi đăng nhập.';
+            if (!empty($e->errors)) {
+                $firstVal = reset($e->errors);
+                $firstError = is_array($firstVal) ? reset($firstVal) : $firstVal;
             }
 
             return $response->render('auth/login', [
@@ -90,7 +92,12 @@ class AuthController
 
     public function register(Request $request, Response $response)
     {
-        $data = app_sanitize($request->getBody());
+        $rawData = $request->getBody();
+        $data = app_sanitize($rawData);
+
+        // Không sanitize mật khẩu để tránh lỗi khi người dùng sử dụng ký tự (<, >)
+        if (isset($rawData['password'])) $data['password'] = $rawData['password'];
+        if (isset($rawData['password_confirm'])) $data['password_confirm'] = $rawData['password_confirm'];
 
         try {
             $rules = [
@@ -344,7 +351,12 @@ class AuthController
             return $response->redirect('/forgot-password');
         }
 
-        $data = app_sanitize($request->getBody());
+        $rawData = $request->getBody();
+        $data = app_sanitize($rawData);
+
+        // Giữ nguyên mật khẩu gốc
+        if (isset($rawData['password'])) $data['password'] = $rawData['password'];
+        if (isset($rawData['password_confirm'])) $data['password_confirm'] = $rawData['password_confirm'];
 
         try {
             (new Validator($data))->validate([

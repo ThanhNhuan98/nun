@@ -10,21 +10,21 @@ class Validator
     private array $errors = [];
     private array $rules;
     private static array $messages = [
-        'required' => 'Trường :field không được để trống.',
-        'email' => 'Trường :field phải là một địa chỉ email hợp lệ.',
-        'phone' => 'Trường :field không phải là số điện thoại Việt Nam hợp lệ.',
-        'min' => 'Trường :field phải có ít nhất :rule ký tự.',
-        'max' => 'Trường :field không được vượt quá :rule ký tự.',
-        'in' => 'Trường :field được chọn không hợp lệ.',
-        'unique' => 'Trường :field đã tồn tại trong hệ thống.',
-        'numeric' => 'Trường :field phải là một số.',
-        'float' => 'Trường :field phải là một số thực.',
-        'gt' => 'Trường :field phải lớn hơn :rule.',
-        'gte' => 'Trường :field phải lớn hơn hoặc bằng :rule.',
+        'required' => ':field không được để trống.',
+        'email' => ':field phải là một địa chỉ email hợp lệ.',
+        'phone' => ':field không phải là số điện thoại hợp lệ.',
+        'min' => ':field phải có ít nhất :rule ký tự.',
+        'max' => ':field không được vượt quá :rule ký tự.',
+        'in' => ':field được chọn không hợp lệ.',
+        'unique' => ':field đã tồn tại trong hệ thống.',
+        'numeric' => ':field phải là một số.',
+        'float' => ':field phải là một số thực.',
+        'gt' => ':field phải lớn hơn :rule.',
+        'gte' => ':field phải lớn hơn hoặc bằng :rule.',
         'password_match' => 'Mật khẩu xác nhận không khớp.',
-        'datetime' => 'Trường :field không phải là ngày giờ hợp lệ.',
-        'after_now' => 'Trường :field phải là một thời điểm trong tương lai.',
-        'before_one_week' => 'Trường :field không được hẹn quá 1 tuần kể từ hiện tại.',
+        'datetime' => ':field không phải là ngày giờ hợp lệ.',
+        'after_now' => ':field phải là thời gian trong tương lai.',
+        'before_one_week' => ':field không được hẹn quá 1 tuần kể từ hiện tại.',
     ];
 
     private static array $fieldNames = [

@@ -31,19 +31,11 @@ class OrderController extends BaseController
 
     public function create(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         return $this->renderCreateForm($response);
     }
 
     public function store(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         $data = app_sanitize($request->getBody());
 
         try {
@@ -157,8 +149,8 @@ class OrderController extends BaseController
 
     private function mergeDetailedAddress(string $baseAddress, string $detailAddress): string
     {
-        $baseAddress = trim($baseAddress);
-        $detailAddress = trim($detailAddress);
+        $baseAddress = trim(trim($baseAddress), ", ");
+        $detailAddress = trim(trim($detailAddress), ", ");
 
         if ($detailAddress === '') {
             return $baseAddress;
@@ -168,7 +160,8 @@ class OrderController extends BaseController
             return $detailAddress;
         }
 
-        if (stripos($baseAddress, $detailAddress) !== false) {
+        // Để tránh trùng lặp như "Số 1, Số 1 Hùng Vương...", kiểm tra nếu địa chỉ map đã bắt đầu bằng địa chỉ chi tiết (không phân biệt hoa thường).
+        if (stripos($baseAddress, $detailAddress) === 0) {
             return $baseAddress;
         }
 
@@ -177,10 +170,6 @@ class OrderController extends BaseController
 
     public function index(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'user')) {
-            return $redirect;
-        }
-
         $query = $request->getBody();
         $userId = $this->userId();
         $statusFilter = trim($query['status'] ?? '');
@@ -204,10 +193,6 @@ class OrderController extends BaseController
 
     public function track(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         $trackingCode = $request->getRouteParam('code');
         $userId = $this->userId();
 
@@ -290,10 +275,6 @@ class OrderController extends BaseController
 
     public function review(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         $orderId = (int) $request->getRouteParam('id');
         $userId = $this->userId();
 
@@ -334,10 +315,6 @@ class OrderController extends BaseController
 
     public function storeReview(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         $orderId = (int) $request->getRouteParam('id');
         $userId = $this->userId();
         $data = $request->getBody();
@@ -386,10 +363,6 @@ class OrderController extends BaseController
 
     public function payment(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         $trackingCode = $request->getRouteParam('code');
         $userId = $this->userId();
 
@@ -409,10 +382,6 @@ class OrderController extends BaseController
 
     public function processPayment(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         $trackingCode = $request->getRouteParam('code');
         $userId = $this->userId();
 
@@ -431,10 +400,6 @@ class OrderController extends BaseController
 
     public function cancel(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         $trackingCode = $request->getRouteParam('code');
         $userId = $this->userId();
         $data = $request->getBody();
@@ -503,10 +468,6 @@ class OrderController extends BaseController
 
     public function dispute(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         $trackingCode = $request->getRouteParam('code');
         $userId = $this->userId();
         $data = $request->getBody();
@@ -551,10 +512,6 @@ class OrderController extends BaseController
 
     public function withdrawDispute(Request $request, Response $response)
     {
-        if ($redirect = $this->requireAuth($response)) {
-            return $redirect;
-        }
-
         $trackingCode = $request->getRouteParam('code');
         $userId = $this->userId();
 

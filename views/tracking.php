@@ -120,12 +120,12 @@
                     <div class="tracking-info-box">
                         <div class="tracking-info-label">NGƯỜI GỬI</div>
                         <div class="tracking-info-value"><?= app_e($order['sender_name']) ?></div>
-                        <div class="tracking-info-desc"><?= app_e($order['sender_address']) ?></div>
+                        <div class="tracking-info-desc"><?= app_e(app_format_address($order['sender_address'])) ?></div>
                     </div>
                     <div class="tracking-info-box">
                         <div class="tracking-info-label">NGƯỜI NHẬN</div>
                         <div class="tracking-info-value"><?= app_e($order['receiver_name']) ?></div>
-                        <div class="tracking-info-desc"><?= app_e($order['receiver_address']) ?></div>
+                        <div class="tracking-info-desc"><?= app_e(app_format_address($order['receiver_address'])) ?></div>
                     </div>
                 </div>
             </div>

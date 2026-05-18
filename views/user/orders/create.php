@@ -129,7 +129,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     <div class="form-grid-2">
                         <div>
                             <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Lịch hẹn lấy hàng *</label>
-                            <input type="datetime-local" name="scheduled_at" id="scheduled_at" class="form-control" value="<?= app_e($old['scheduled_at'] ?? '') ?>" required>
+                            <input type="datetime-local" name="scheduled_at" id="scheduled_at" class="form-control" value="<?= app_e($old['scheduled_at'] ?? date('Y-m-d\TH:i')) ?>" required>
                         </div>
                         <div>
                             <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Gói dịch vụ</label>
@@ -249,6 +249,26 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
         document.getElementById(mode === 'sender' ? 'btnSenderMap' : 'btnReceiverMap').classList.add('active');
     }
 
+    // Hàm định dạng lại địa chỉ cho chuẩn phong cách Việt Nam
+    function formatAddress(rawAddress) {
+        if (!rawAddress) return '';
+        let parts = rawAddress.split(',').map(p => p.trim());
+        // Lược bỏ Mã bưu điện (5-6 số) và Tên quốc gia
+        parts = parts.filter(p => !/^\d{5,6}$/.test(p) && p.toLowerCase() !== 'việt nam' && p.toLowerCase() !== 'vietnam');
+        
+        let mergedParts = [];
+        for (let i = 0; i < parts.length; i++) {
+            // Ghép Số nhà (VD: 77, 77A, 77/2...) vào chung với Tên đường nếu bị Nominatim tách rời
+            if (/^\d+[A-Za-z\/\-]*$/.test(parts[i]) && i < parts.length - 1) {
+                mergedParts.push(parts[i] + ' ' + parts[i+1]);
+                i++;
+            } else {
+                mergedParts.push(parts[i]);
+            }
+        }
+        return mergedParts.join(', ');
+    }
+
     const geocoder = L.Control.geocoder({
         defaultMarkGeocode: false,
         placeholder: "Tìm địa chỉ...",
@@ -256,7 +276,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
     }).on('markgeocode', function(e) {
         const lat = e.geocode.center.lat;
         const lng = e.geocode.center.lng;
-        const address = e.geocode.name.replace(/, Việt Nam|, Vietnam/gi, '');
+        const address = formatAddress(e.geocode.name);
         updateMapLocation(lat, lng, address, currentMode);
         if(currentMode === 'sender' && !document.getElementById('receiver_lat').value) setMapMode('receiver');
         calculateFee();
@@ -275,29 +295,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
             const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}&accept-language=vi&addressdetails=1`, { headers: { 'User-Agent': 'NUN-Express/1.0' } });
             const data = await response.json();
             if(data) {
-                let fullAddress = '';
-                if (data.address) {
-                    let addr = data.address;
-                    let addressParts = [];
-
-                    if (addr.house_number && addr.road) addressParts.push(addr.house_number + ' ' + addr.road);
-                    else if (addr.road) addressParts.push(addr.road);
-                    
-                    let localArea = addr.hamlet || addr.village || addr.suburb || addr.quarter || addr.neighbourhood || addr.residential;
-                    if (localArea) addressParts.push(localArea);
-                    
-                    let ward = addr.city_district || addr.town || addr.county || addr.state_district;
-                    if (ward && ward !== localArea) addressParts.push(ward);
-                    
-                    let city = addr.city || addr.state || addr.province;
-                    if (city && city !== ward) addressParts.push(city);
-
-                    fullAddress = addressParts.join(', ');
-                }
-                
-                if (!fullAddress || fullAddress.split(',').length < 2) {
-                    fullAddress = data.display_name ? data.display_name.replace(/, Việt Nam|, Vietnam/gi, '') : '';
-                }
+                let fullAddress = formatAddress(data.display_name);
 
                 document.getElementById(currentMode === 'sender' ? 'pickup_address' : 'delivery_address').value = fullAddress;
             }

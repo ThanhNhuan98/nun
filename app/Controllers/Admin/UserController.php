@@ -39,10 +39,6 @@ class UserController extends BaseController
 
     public function index(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'admin')) {
-            return $redirect;
-        }
-
         $query = $request->getBody();
         $roleFilter = trim($query['role'] ?? '');
         $search = trim($query['search'] ?? '');
@@ -67,10 +63,6 @@ class UserController extends BaseController
 
     public function edit(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'admin')) {
-            return $redirect;
-        }
-
         $id = (int) $request->getRouteParam('id');
 
         $userModel = new User();
@@ -172,10 +164,6 @@ class UserController extends BaseController
 
     public function toggleBlock(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'admin')) {
-            return $redirect;
-        }
-
         $id = (int) $request->getRouteParam('id');
         if ($id === $this->userId()) {
             $_SESSION['flash_error'] = 'Bạn không thể tự khóa tài khoản của mình.';
@@ -213,10 +201,6 @@ class UserController extends BaseController
 
     public function create(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'admin')) {
-            return $redirect;
-        }
-
         if ($request->isPost()) {
             $data = app_sanitize($request->getBody());
             $role = $data['role'] ?? 'user';

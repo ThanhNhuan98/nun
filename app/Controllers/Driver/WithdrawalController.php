@@ -11,9 +11,6 @@ class WithdrawalController extends BaseController
 {
     public function index(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'driver')) {
-            return $redirect;
-        }
 
         $driverId = $this->userId();
         $walletModel = new Wallet();
@@ -28,10 +25,6 @@ class WithdrawalController extends BaseController
 
     public function store(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'driver')) {
-            return $redirect;
-        }
-
         $driverId = $this->userId();
         $data = app_sanitize($request->getBody());
         $amount = (float) ($data['amount'] ?? 0);

@@ -73,7 +73,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                             <span class="material-symbols-outlined">location_on</span>
                             <div class="info-text">
                                 <strong>Giao đến:</strong>
-                                <span style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;"><?= app_e($order['receiver_address'] ?? 'Chưa cập nhật') ?></span>
+                                <span style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;"><?= app_e(app_format_address($order['receiver_address'] ?? 'Chưa cập nhật')) ?></span>
                             </div>
                         </div>
 

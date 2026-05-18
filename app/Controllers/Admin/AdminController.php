@@ -27,10 +27,6 @@ class AdminController extends BaseController
 
     public function dashboard(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'admin')) {
-            return $redirect;
-        }
-
         $dashboardModel = new DashboardModel();
         $stats = $dashboardModel->getStats();
 
@@ -42,10 +38,6 @@ class AdminController extends BaseController
 
     public function tasks(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'admin')) {
-            return $redirect;
-        }
-
         $dashboardModel = new DashboardModel();
         $stats = $dashboardModel->getStats();
 
@@ -57,10 +49,6 @@ class AdminController extends BaseController
 
     public function orders(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'admin')) {
-            return $redirect;
-        }
-
         $query = $request->getBody();
         $statusFilter = trim($query['status'] ?? '');
         $search = trim($query['search'] ?? '');
@@ -86,10 +74,6 @@ class AdminController extends BaseController
 
     public function viewOrder(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'admin')) {
-            return $redirect;
-        }
-
         $id = (int) $request->getRouteParam('id');
         $order = $this->getOrderOrFail($id);
         if (!$order) {
@@ -131,10 +115,6 @@ class AdminController extends BaseController
 
     public function editOrder(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'admin')) {
-            return $redirect;
-        }
-
         $id = (int) $request->getRouteParam('id');
         $order = $this->getOrderOrFail($id);
         if (!$order) {
@@ -161,10 +141,6 @@ class AdminController extends BaseController
 
     public function penalizeDriver(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'admin')) {
-            return $redirect;
-        }
-
         $orderId = (int) $request->getRouteParam('id');
         $order = $this->getOrderOrFail($orderId);
         if (!$order) {

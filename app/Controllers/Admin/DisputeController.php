@@ -15,10 +15,6 @@ class DisputeController extends BaseController
 {
     public function index(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'admin')) {
-            return $redirect;
-        }
-        
         $query = $request->getBody();
         $page = max(1, (int)($query['page'] ?? 1));
         $statusFilter = trim($query['status'] ?? '');
@@ -33,7 +29,6 @@ class DisputeController extends BaseController
         $disputes = $disputeModel->getAll($perPage, $offset, $statusFilter, $search);
 
         foreach ($disputes as &$d) {
-            $d['issue_type'] = Dispute::getIssueTypeLabel($d['issue_type'] ?? '');
             $d['status_label'] = Dispute::getStatusLabel($d['status'] ?? '');
             $d['reporter_role_label'] = User::getRoleLabel($d['reporter_role'] ?? '');
         }
@@ -51,10 +46,6 @@ class DisputeController extends BaseController
 
     public function view(Request $request, Response $response)
     {
-        if ($redirect = $this->requireRole($response, 'admin')) {
-            return $redirect;
-        }
-
         $id = (int) $request->getRouteParam('id');
         $disputeModel = new Dispute();
 
@@ -177,7 +168,6 @@ class DisputeController extends BaseController
             return $response->redirect('/admin/disputes');
         }
 
-        $dispute['issue_type'] = Dispute::getIssueTypeLabel($dispute['issue_type'] ?? '');
         $dispute['status_label'] = Dispute::getStatusLabel($dispute['status'] ?? '');
         $dispute['reporter_role_label'] = User::getRoleLabel($dispute['reporter_role'] ?? '');
 

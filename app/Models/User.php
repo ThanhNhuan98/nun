@@ -573,7 +573,10 @@ class User
      */
     public function getBlockReason(int $userId): ?string
     {
-        // **nun_ai**: Trả về lý do tài khoản bị khóa (Hiện tại hàm này đang là stub (hàm rỗng) trả về null và cần được phát triển sau).
-        return null;
+        // Lấy lý do khóa tài khoản thực tế từ CSDL
+        $stmt = $this->db->prepare("SELECT blocked_reason FROM users WHERE id = ?");
+        $stmt->execute([$userId]);
+        $result = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $result['blocked_reason'] ?? null;
     }
 }

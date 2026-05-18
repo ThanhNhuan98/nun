@@ -42,7 +42,7 @@
                         <div class="node-title-v2">ĐIỂM LẤY HÀNG</div>
                         <div class="node-desc-v2">
                             <strong><?= app_e($order['sender_name']) ?></strong><br>
-                            <?= app_e($order['sender_address']) ?>
+                                    <?= app_e(app_format_address($order['sender_address'])) ?>
                         </div>
                         <a href="tel:<?= app_e($order['sender_phone']) ?>" class="node-phone-v2">
                             <span class="material-symbols-outlined" style="font-size: 16px;">call</span> <?= app_e($order['sender_phone']) ?>
@@ -54,7 +54,7 @@
                         <div class="node-title-v2">ĐIỂM GIAO HÀNG</div>
                         <div class="node-desc-v2">
                             <strong><?= app_e($order['receiver_name']) ?></strong><br>
-                            <?= app_e($order['receiver_address']) ?>
+                                    <?= app_e(app_format_address($order['receiver_address'])) ?>
                         </div>
                         <a href="tel:<?= app_e($order['receiver_phone']) ?>" class="node-phone-v2">
                             <span class="material-symbols-outlined" style="font-size: 16px;">call</span> <?= app_e($order['receiver_phone']) ?>
