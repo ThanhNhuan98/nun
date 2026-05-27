@@ -4,7 +4,11 @@ import io
 import urllib.error
 import urllib.parse
 import urllib.request
-from ortools.constraint_solver import pywrapcp, routing_enums_pb2
+try:
+    from ortools.constraint_solver import pywrapcp, routing_enums_pb2
+    OR_TOOLS_AVAILABLE = True
+except ImportError:
+    OR_TOOLS_AVAILABLE = False
 from math import asin, cos, radians, sin, sqrt
 from datetime import datetime
 
@@ -106,39 +110,48 @@ def calculate_fee_breakdown(distance_km, weight, service_type="standard", surge_
 
 
 # ==========================================
-# [MỚI] AI LOGIC: GIẢI QUYẾT TSP BẰNG GOOGLE OR-TOOLS
+# [NÂNG CẤP] AI LOGIC: GIẢI QUYẾT BÀI TOÁN LẤY & GIAO HÀNG (PDP) BẰNG GOOGLE OR-TOOLS
 # ==========================================
-def solve_tsp_for_batch(batch_orders_data):
+def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity):
     """
-    Tìm lộ trình tối ưu (TSP) cho một nhóm các đơn hàng.
-    Input: danh sách các đối tượng order.
-    Output: dictionary với 'route' (list of IDs) và 'total_duration_s' (int).
+    Giải quyết bài toán Vehicle Routing Problem with Pickups and Deliveries (VRPPD).
+    Cho phép giao/nhận xen kẽ để tối ưu lộ trình.
     """
     if not batch_orders_data:
-        return {'route': [], 'total_duration_s': 0}
-        
-    if len(batch_orders_data) == 1:
-        return {
-            'route': [o['id'] for o in batch_orders_data],
-            'total_duration_s': 0
-        }
-        
-    # TỐI ƯU 1: Với nhóm chỉ có 2 đơn, đi thẳng từ A -> B, không cần khởi tạo OR-Tools C++ engine
-    if len(batch_orders_data) == 2:
-        o1, o2 = batch_orders_data[0], batch_orders_data[1]
-        route_info = osrm_route(o1['lat'], o1['lng'], o2['lat'], o2['lng'])
-        return {
-            'route': [o1['id'], o2['id']],
-            'total_duration_s': int(route_info.get('duration_s', 0))
-        }
+        return {'route_details': [], 'total_duration_s': 0}
 
-    # 1. Tạo ma trận khoảng cách/thời gian
-    num_locations = len(batch_orders_data)
-    locations = [(o['lat'], o['lng']) for o in batch_orders_data]
+    locations = []
+    demands = [0]
     
-    # Gọi OSRM Table API để lấy toàn bộ ma trận trong 1 lần thay vì N^2 lần
+    if driver_location:
+        locations.append((driver_location['lat'], driver_location['lng']))
+        node_map = [{'type': 'driver', 'order_id': None, 'address': 'Vị trí của bạn'}]
+    else:
+        first_order = batch_orders_data[0]
+        locations.append((first_order['sender_lat'], first_order['sender_lng']))
+        node_map = [{'type': 'driver', 'order_id': None, 'address': 'Vị trí bắt đầu'}]
+        
+    if not OR_TOOLS_AVAILABLE:
+        route_details = []
+        for order in batch_orders_data:
+            route_details.append({'type': 'pickup', 'order_id': order['id'], 'address': order.get('pickup_address', '')})
+            route_details.append({'type': 'delivery', 'order_id': order['id'], 'address': order.get('delivery_address', '')})
+        return {'route_details': route_details, 'total_duration_s': 0}
+
+    for order in batch_orders_data:
+        locations.append((order['sender_lat'], order['sender_lng']))
+        demands.append(float(order.get('weight', 0) or 0))
+        node_map.append({'type': 'pickup', 'order_id': order['id'], 'address': order.get('pickup_address', '')})
+
+    num_orders = len(batch_orders_data)
+    for i, order in enumerate(batch_orders_data):
+        locations.append((order['receiver_lat'], order['receiver_lng']))
+        demands.append(-float(order.get('weight', 0) or 0))
+        node_map.append({'type': 'delivery', 'order_id': order['id'], 'address': order.get('delivery_address', '')})
+
+    num_locations = len(locations)
+
     duration_matrix = osrm_table(locations)
-    
     dist_matrix = {}
     for from_node in range(num_locations):
         dist_matrix[from_node] = {}
@@ -149,54 +162,82 @@ def solve_tsp_for_batch(batch_orders_data):
                 if duration_matrix and duration_matrix[from_node][to_node] is not None:
                     dist_matrix[from_node][to_node] = int(duration_matrix[from_node][to_node])
                 else:
-                    # Fallback (dự phòng) bằng haversine nếu API lỗi
                     dist = haversine_distance(locations[from_node][0], locations[from_node][1], locations[to_node][0], locations[to_node][1])
                     dist_matrix[from_node][to_node] = int((dist / 28) * 3600)
 
-    # 2. Khởi tạo bài toán routing
-    manager = pywrapcp.RoutingIndexManager(num_locations, 1, 0) # (số điểm, số xe, điểm bắt đầu)
-    routing = pywrapcp.RoutingModel(manager)
+    try:
+        manager = pywrapcp.RoutingIndexManager(num_locations, 1, 0)
+        routing = pywrapcp.RoutingModel(manager)
 
-    # 3. Tạo callback để cung cấp ma trận khoảng cách cho solver
-    def distance_callback(from_index, to_index):
-        from_node = manager.IndexToNode(from_index)
-        to_node = manager.IndexToNode(to_index)
-        return dist_matrix[from_node][to_node]
+        def time_callback(from_index, to_index):
+            from_node = manager.IndexToNode(from_index)
+            to_node = manager.IndexToNode(to_index)
+            return dist_matrix[from_node][to_node]
 
-    transit_callback_index = routing.RegisterTransitCallback(distance_callback)
-    routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
+        transit_callback_index = routing.RegisterTransitCallback(time_callback)
+        routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
 
-    # 4. Thiết lập tham số và giải
-    search_parameters = pywrapcp.DefaultRoutingSearchParameters()
-    # Sử dụng thuật toán PATH_CHEAPEST_ARC để tìm giải pháp ban đầu
-    search_parameters.first_solution_strategy = (routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC)
-    
-    # TỐI ƯU: Chỉ dùng Guided Local Search và giới hạn 1 giây nếu số lượng điểm lớn.
-    # Với các cụm nhỏ (<=5 điểm), OR-Tools giải quyết trong vài mili-giây, không cần chờ.
-    if num_locations > 5:
-        search_parameters.local_search_metaheuristic = (routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH)
-        search_parameters.time_limit.seconds = 1
-    solution = routing.SolveWithParameters(search_parameters)
+        routing.AddDimension(
+            transit_callback_index,
+            0,
+            86400,
+            True,
+            'Time'
+        )
+        time_dimension = routing.GetDimensionOrDie('Time')
 
-    # 5. Trích xuất kết quả
-    if solution:
-        index = routing.Start(0)
-        route = []
-        total_duration_s = solution.ObjectiveValue() # Lấy tổng chi phí (thời gian) từ solver
-        while not routing.IsEnd(index):
-            node_index = manager.IndexToNode(index)
-            route.append(batch_orders_data[node_index]['id'])
-            index = solution.Value(routing.NextVar(index))
-        return {
-            'route': route,
-            'total_duration_s': total_duration_s
-        }
-    
-    # Nếu không giải được, trả về thứ tự ban đầu
-    return {
-        'route': [o['id'] for o in batch_orders_data],
-        'total_duration_s': 0
-    }
+        # Xử lý bắt buộc của OR-Tools: Sức chứa phải là số nguyên (Gam thay vì Kg)
+        int_demands = [int(d * 1000) for d in demands]
+        int_capacity = int(max_weight_capacity * 1000)
+
+        def demand_callback(from_index):
+            from_node = manager.IndexToNode(from_index)
+            return int_demands[from_node]
+
+        demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
+        routing.AddDimensionWithVehicleCapacity(
+            demand_callback_index,
+            0,
+            [int_capacity],
+            True,
+            'Capacity'
+        )
+
+        for i in range(num_orders):
+            pickup_index = manager.NodeToIndex(i + 1)
+            delivery_index = manager.NodeToIndex(i + 1 + num_orders)
+            routing.AddPickupAndDelivery(pickup_index, delivery_index)
+            routing.solver().Add(routing.VehicleVar(pickup_index) == routing.VehicleVar(delivery_index))
+            routing.solver().Add(time_dimension.CumulVar(pickup_index) <= time_dimension.CumulVar(delivery_index))
+
+        search_parameters = pywrapcp.DefaultRoutingSearchParameters()
+        search_parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+        search_parameters.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
+        search_parameters.time_limit.seconds = 2
+
+        solution = routing.SolveWithParameters(search_parameters)
+
+        if solution:
+            route_details = []
+            total_duration_s = solution.ObjectiveValue()
+            index = routing.Start(0)
+            while not routing.IsEnd(index):
+                node_index = manager.IndexToNode(index)
+                if node_index != 0:
+                    route_details.append(node_map[node_index])
+                index = solution.Value(routing.NextVar(index))
+            return {
+                'route_details': route_details,
+                'total_duration_s': total_duration_s
+            }
+    except Exception:
+        pass
+
+    route_details = []
+    for order in batch_orders_data:
+        route_details.append({'type': 'pickup', 'order_id': order['id'], 'address': order.get('pickup_address', '')})
+        route_details.append({'type': 'delivery', 'order_id': order['id'], 'address': order.get('delivery_address', '')})
+    return {'route_details': route_details, 'total_duration_s': 0}
 
 # AI LOGIC: THUẬT TOÁN GHÉP CHUYẾN
 def batch_orders(orders_json):
@@ -237,8 +278,8 @@ def batch_orders(orders_json):
             current_batch_weight = float(seed_order_data.get('weight', 0) or 0)
             
             # Tọa độ trung tâm của cụm (ban đầu là tọa độ của đơn hạt giống)
-            center_lat = float(seed_order_data['lat'])
-            center_lng = float(seed_order_data['lng'])
+            center_lat = float(seed_order_data['sender_lat'])
+            center_lng = float(seed_order_data['sender_lng'])
 
             orders_to_remove = []
             
@@ -255,8 +296,8 @@ def batch_orders(orders_json):
                     if order.get('shipping_method') == 'express':
                         continue
 
-                    o_lat = float(order['lat'])
-                    o_lng = float(order['lng'])
+                    o_lat = float(order['sender_lat'])
+                    o_lng = float(order['sender_lng'])
                     
                     # Tính khoảng cách từ điểm lấy hàng này đến trung tâm cụm
                     dist = haversine_distance(center_lat, center_lng, o_lat, o_lng)
@@ -276,31 +317,31 @@ def batch_orders(orders_json):
             for o in orders_to_remove:
                 unassigned_orders.remove(o)
 
-            # [TỐI ƯU] Gọi TSP solver để tìm lộ trình tốt nhất cho batch này
-            tsp_solution = solve_tsp_for_batch(current_batch_data)
-            optimized_route_ids = tsp_solution['route']
-            total_duration_s = tsp_solution['total_duration_s']
-
-            # [MỚI] Tính thời gian di chuyển từ vị trí tài xế đến điểm lấy hàng đầu tiên
+            # [NÂNG CẤP] Gọi PDP solver để tìm lộ trình lấy/giao xen kẽ tối ưu
+            pdp_solution = solve_pdp_for_batch(current_batch_data, driver_location, max_weight_capacity)
+            total_duration_s = pdp_solution['total_duration_s']
+            
+            # Tối ưu hóa: Tính thời gian tiếp cận ngay tại Python bằng công thức Haversine 
+            # để PHP không cần gọi API OSRM nhiều lần gây giật lag
             access_duration_s = 0
-            first_order_id = optimized_route_ids[0] if optimized_route_ids else None
-            if driver_location and first_order_id:
-                # Tìm dữ liệu của đơn hàng đầu tiên
-                first_order_data = next((o for o in current_batch_data if o['id'] == first_order_id), None)
-                if first_order_data:
-                    route_to_first = osrm_route(
-                        driver_location['lat'], driver_location['lng'],
-                        first_order_data['lat'], first_order_data['lng']
-                    )
-                    access_duration_s = route_to_first.get('duration_s', 0)
+            if pdp_solution.get('route_details') and driver_location:
+                first_step = pdp_solution['route_details'][0]
+                f_oid = first_step['order_id']
+                f_order = next((o for o in current_batch_data if o['id'] == f_oid), None)
+                if f_order:
+                    f_lat = float(f_order['sender_lat'] if first_step['type'] == 'pickup' else f_order['receiver_lat'])
+                    f_lng = float(f_order['sender_lng'] if first_step['type'] == 'pickup' else f_order['receiver_lng'])
+                    d_lat = float(driver_location['lat'])
+                    d_lng = float(driver_location['lng'])
+                    dist = haversine_distance(d_lat, d_lng, f_lat, f_lng)
+                    access_duration_s = int((dist / 28) * 3600)
 
             batches.append({
                 "batch_id": f"BATCH_{len(batches) + 1}",
-                "order_ids": [o['id'] for o in current_batch_data], # Giữ danh sách ID gốc
-                "optimized_route": optimized_route_ids, # Thêm lộ trình đã tối ưu
+                "order_ids": [o['id'] for o in current_batch_data],
+                "route_details": pdp_solution['route_details'],
                 "total_orders": len(current_batch_data),
                 "total_weight": current_batch_weight,
-                # [MỚI] Thêm các chỉ số mới
                 "total_duration_s": total_duration_s,
                 "access_duration_s": access_duration_s,
                 "most_urgent_time": min([get_raw_time(o) for o in current_batch_data]),

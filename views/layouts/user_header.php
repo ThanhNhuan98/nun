@@ -38,6 +38,7 @@ $globalSearchQuery = $_GET['search'] ?? $_GET['code'] ?? '';
     <link rel="stylesheet" href="/assets/css/style.css">
 </head>
 <body>
+    <?= app_render_toast(); ?>
     <div class="sidebar" id="app-sidebar">
         <a href="/" style="text-decoration: none; color: inherit; display: block;">
             <h2 class="sidebar-logo">NUN Express</h2>
@@ -51,9 +52,8 @@ $globalSearchQuery = $_GET['search'] ?? $_GET['code'] ?? '';
         </div>
 
         <?php if ($role === 'user'): ?>
-            <a href="/user/dashboard" class="<?= app_nav_active('/user/dashboard', true) ?>"><span class="material-symbols-outlined">dashboard</span> Bảng điều khiển</a>
-            <a href="/user/orders/create" class="<?= app_nav_active('/user/orders/create') ?>"><span class="material-symbols-outlined">add_box</span> Tạo đơn hàng</a>
             <a href="/user/orders" class="<?= app_nav_active('/user/orders', true) ?>"><span class="material-symbols-outlined">list_alt</span> Danh sách đơn</a>
+            <a href="/user/orders/create" class="<?= app_nav_active('/user/orders/create') ?>"><span class="material-symbols-outlined">add_box</span> Tạo đơn hàng</a>
         <?php elseif ($role === 'driver'): ?>
             <a href="/driver/active-orders" class="<?= app_nav_active('/driver/active-orders') ?>"><span class="material-symbols-outlined">route</span> Đơn đang chạy</a>
             <a href="/driver/receive-orders" class="<?= app_nav_active('/driver/receive-orders') ?>"><span class="material-symbols-outlined">radar</span> Radar nhận đơn</a>
@@ -169,6 +169,7 @@ $globalSearchQuery = $_GET['search'] ?? $_GET['code'] ?? '';
                 document.getElementById('app-sidebar').classList.toggle('show');
             }
 
+            // Ham toggleNotificationDropdown: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
             function toggleNotificationDropdown() {
                 const notifMenu = document.getElementById('notification-dropdown-menu');
                 const avatarMenu = document.getElementById('nav-dropdown-menu');
@@ -176,6 +177,7 @@ $globalSearchQuery = $_GET['search'] ?? $_GET['code'] ?? '';
                 notifMenu.style.display = (notifMenu.style.display === 'none' || notifMenu.style.display === '') ? 'block' : 'none';
             }
 
+            // Ham toggleNavDropdown: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
             function toggleNavDropdown() {
                 const menu = document.getElementById('nav-dropdown-menu');
                 const notifMenu = document.getElementById('notification-dropdown-menu');
@@ -196,6 +198,13 @@ $globalSearchQuery = $_GET['search'] ?? $_GET['code'] ?? '';
                 if (notifContainer && !notifContainer.contains(event.target) && notifMenu) {
                     notifMenu.style.display = 'none';
                 }
+
+                // Đóng Sidebar trên điện thoại khi click ra ngoài
+                const sidebar = document.getElementById('app-sidebar');
+                const toggleBtn = document.querySelector('.sidebar-toggle-btn');
+                if (sidebar && sidebar.classList.contains('show') && !sidebar.contains(event.target) && toggleBtn && !toggleBtn.contains(event.target)) {
+                    sidebar.classList.remove('show');
+                }
             });
 
             // Xử lý sự kiện tìm kiếm/tra cứu ở Header
@@ -212,6 +221,35 @@ $globalSearchQuery = $_GET['search'] ?? $_GET['code'] ?? '';
                     }
                 }
             });
+
+            <?php if ($role === 'driver'): ?>
+            // TỰ ĐỘNG ĐỒNG BỘ VỊ TRÍ TÀI XẾ (XỬ LÝ LỖI TRỐNG TỌA ĐỘ KHI MỚI ĐĂNG KÝ)
+            function syncDriverLocation() {
+                if ("geolocation" in navigator) {
+                    navigator.geolocation.getCurrentPosition(async function(position) {
+                        try {
+                            await fetch('/api/driver/update-location', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ 
+                                    lat: position.coords.latitude, 
+                                    lng: position.coords.longitude,
+                                    accuracy: position.coords.accuracy
+                                })
+                            });
+                        } catch (e) { console.error('Lỗi đồng bộ GPS:', e); }
+                    }, function(error) {
+                        console.warn('Hệ thống chưa được cấp quyền vị trí. Radar sẽ không hoạt động.');
+                    }, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
+                }
+            }
+            
+            // Kích hoạt đồng bộ ngay khi tài xế mở app, và chạy ngầm mỗi 30 giây
+            document.addEventListener('DOMContentLoaded', function() {
+                syncDriverLocation();
+                setInterval(syncDriverLocation, 30000);
+            });
+            <?php endif; ?>
         </script>
 
         <div class="content-area">

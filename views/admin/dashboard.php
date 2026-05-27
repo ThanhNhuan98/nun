@@ -1,7 +1,6 @@
 <?php
 $stats = $stats ?? [
-    'total_users' => 0, 'blocked_users' => 0, 'open_disputes' => 0,
-    'pending_cod_settlements' => 0, 'pending_online_payments' => 0,
+    'total_users' => 0, 'blocked_users' => 0, 'open_disputes' => 0, 'pending_online_payments' => 0,
     'total_orders' => 0, 'total_revenue' => 0
 ];
 
@@ -76,10 +75,6 @@ $growth = [
                     <div class="task-item__left"><span class="material-symbols-outlined">gavel</span> Khiếu nại đang mở</div>
                     <span class="task-item__badge"><?= app_money($stats['open_disputes'] ?? 0, '') ?></span>
                 </li>
-                <li class="task-item task-item--warning">
-                    <div class="task-item__left"><span class="material-symbols-outlined">currency_exchange</span> Yêu cầu đối soát COD</div>
-                    <span class="task-item__badge"><?= app_money($stats['pending_cod_settlements'] ?? 0, '') ?></span>
-                </li>
                 <li class="task-item task-item--info">
                     <div class="task-item__left"><span class="material-symbols-outlined">credit_card</span> Đơn chờ thanh toán Online</div>
                     <span class="task-item__badge"><?= app_money($stats['pending_online_payments'] ?? 0, '') ?></span>
@@ -120,8 +115,8 @@ $growth = [
             datasets: [{
                 label: 'Số lượng / Doanh thu',
                 data: chartData['7days'].data,
-                backgroundColor: '#93c5fd', // Màu xanh nhạt (Tailwind blue-300)
-                hoverBackgroundColor: '#2563eb', // Đổi màu khi hover
+                backgroundColor: '#93c5fd', 
+                hoverBackgroundColor: '#2563eb', 
                 borderRadius: 4,
                 barPercentage: 0.6
             }]

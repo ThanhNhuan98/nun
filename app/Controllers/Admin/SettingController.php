@@ -10,6 +10,7 @@ use App\Models\Setting;
 
 class SettingController extends BaseController
 {
+    // Hiển thị và xử lý lưu cấu hình các biến môi trường hệ thống (System Settings).
     public function index(Request $request, Response $response)
     {
         $settingModel = new Setting();
@@ -22,7 +23,7 @@ class SettingController extends BaseController
                 $data['platform_fee_percent'] = max(0, min(100, (float) $data['platform_fee_percent']));
             }
             
-            // Ràng buộc số lần bom hàng tối thiểu là 1
+            // Ràng buộc số lần vi phạm giao nhận tối thiểu là 1
             if (isset($data['no_show_threshold_for_ban'])) {
                 $data['no_show_threshold_for_ban'] = max(1, (int) $data['no_show_threshold_for_ban']);
             }

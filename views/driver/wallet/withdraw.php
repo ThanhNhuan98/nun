@@ -26,7 +26,7 @@
             <div style="font-size: 32px; font-weight: 700; letter-spacing: 0.5px;"><?= app_money($balance ?? 0, ' đ') ?></div>
         </div>
 
-        <h2 class="topup-title">Rút tiền (Tượng trưng)</h2>
+        <h2 class="topup-title">Rút tiền</h2>
         <p class="topup-desc">Hệ thống sẽ mô phỏng trừ tiền trong ví và báo thành công ngay lập tức để phục vụ kiểm thử luồng đối soát.</p>
 
         <form method="POST" action="/driver/wallet/withdraw">

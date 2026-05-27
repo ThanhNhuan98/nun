@@ -8,12 +8,12 @@ use PDO;
 class DashboardModel
 {
     protected PDO $db;
-
     public function __construct()
     {
         $this->db = Database::getInstance();
     }
 
+    // Lấy các số liệu thống kê 
     public function getStats(): array
     {
         $sql = "
@@ -28,16 +28,7 @@ class DashboardModel
                     FROM orders o 
                     LEFT JOIN order_finances fin ON fin.order_id = o.id 
                     WHERE o.status = 'completed' AND o.is_archived = 0
-                ) as total_revenue,
-                (
-                    SELECT COUNT(o.id)
-                    FROM orders o
-                    JOIN order_finances fin ON fin.order_id = o.id
-                    WHERE o.status = 'completed'
-                      AND o.is_archived = 0
-                      AND fin.payment_method = 'cash'
-                      AND fin.payment_status IN ('pending', 'unpaid')
-                ) as pending_cod
+                ) as total_revenue
         ";
         
         $stmt = $this->db->query($sql);
@@ -48,7 +39,6 @@ class DashboardModel
             'blocked' => $overview['blocked_users'] ?? 0
         ];
         $openDisputes = $overview['open_disputes'] ?? 0;
-        $pendingCod = $overview['pending_cod'] ?? 0;
         $pendingOnline = $overview['pending_online'] ?? 0;
         $totalOrders = $overview['total_orders'] ?? 0;
         $totalRevenue = $overview['total_revenue'] ?? 0;
@@ -127,7 +117,6 @@ class DashboardModel
             'total_users' => (int) ($userStats['total'] ?? 0),
             'blocked_users' => (int) ($userStats['blocked'] ?? 0),
             'open_disputes' => (int) $openDisputes,
-            'pending_cod_settlements' => (int) $pendingCod,
             'pending_online_payments' => (int) $pendingOnline,
             'total_orders' => (int) $totalOrders,
             'total_revenue' => (int) $totalRevenue,

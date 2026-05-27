@@ -9,10 +9,12 @@ use App\Models\Dispute;
 use App\Models\Order;
 use App\Models\User;
 use App\Models\Wallet;
+use App\Models\DriverPenalty;
 use App\Models\Setting;
 
 class DisputeController extends BaseController
 {
+    // Hiển thị danh sách khiếu nại của hệ thống (có hỗ trợ phân trang và tìm kiếm).
     public function index(Request $request, Response $response)
     {
         $query = $request->getBody();
@@ -44,6 +46,7 @@ class DisputeController extends BaseController
         ]);
     }
 
+    // Hiển thị chi tiết và xử lý một khiếu nại (cập nhật trạng thái đơn, phạt tiền tài xế).
     public function view(Request $request, Response $response)
     {
         $id = (int) $request->getRouteParam('id');
@@ -54,7 +57,7 @@ class DisputeController extends BaseController
             $status = $data['status'] ?? 'open';
             $resolutionNote = app_sanitize($data['resolution_note'] ?? ($data['admin_note'] ?? ''));
             $resolvedBy = $this->userId();
-            $newOrderStatus = $data['order_status'] ?? '';
+            $newOrderStatus = $data['target_order_status'] ?? ($data['order_status'] ?? '');
             $fault = $data['fault'] ?? 'none';
             $penaltyAmount = (int) ($data['penalty_amount'] ?? 0);
 
@@ -78,7 +81,7 @@ class DisputeController extends BaseController
 
             $autoNote = "";
             if ($shouldPenalizeCustomer) {
-                $autoNote = "\n- Đã phạt khách hàng (Ghi nhận bom hàng).";
+                $autoNote = "\n- Đã phạt khách hàng (Ghi nhận vi phạm giao nhận).";
             } elseif ($shouldPenalizeDriver) {
                 $autoNote = "\n- Đã phạt tài xế " . number_format($penaltyAmount, 0, ',', '.') . "đ.";
             }
@@ -111,7 +114,7 @@ class DisputeController extends BaseController
                                     if ($driverEarnings > 0) {
                                         $walletModel->add($currentOrder['driver_id'], $driverEarnings, 'adjustment', "Cộng tiền cước đơn #{$currentOrder['tracking_code']} (Admin xử lý khiếu nại)", $currentOrder['id']);
                                         $userModel = new User();
-                                        $userModel->createNotification($currentOrder['driver_id'], 'Cộng tiền cước', "Bạn đã được cộng " . number_format($driverEarnings, 0, ',', '.') . "đ cho đơn #{$currentOrder['tracking_code']} sau khi Admin xử lý khiếu nại.", 'wallet', "/driver/orders/view/{$currentOrder['id']}");
+                                        $userModel->createNotification($currentOrder['driver_id'], 'Cộng tiền cước vận chuyển', "Hệ thống đã cộng " . number_format($driverEarnings, 0, ',', '.') . "đ vào ví của bạn cho đơn #{$currentOrder['tracking_code']} (Quyết định từ Quản trị viên).", 'wallet', "/driver/orders/view/{$currentOrder['id']}");
                                     }
                                 }
 
@@ -122,28 +125,47 @@ class DisputeController extends BaseController
                                     
                                     $walletModel->add($currentOrder['driver_id'], $feePerOrder, 'refund', "Hoàn phí nền tảng đơn #{$currentOrder['tracking_code']} (Khách hủy)", $currentOrder['id']);
                                     $userModel = new User();
-                                    $userModel->createNotification($currentOrder['driver_id'], 'Cộng tiền - Hoàn phí', "Đơn #{$currentOrder['tracking_code']} đã bị hủy sau khi khiếu nại. Bạn được hoàn lại " . number_format($feePerOrder, 0, ',', '.') . "đ phí.", 'wallet', "/driver/orders/view/{$currentOrder['id']}");
+                                    $userModel->createNotification($currentOrder['driver_id'], 'Hoàn phí nền tảng', "Đơn #{$currentOrder['tracking_code']} đã được hủy. Hệ thống hoàn lại " . number_format($feePerOrder, 0, ',', '.') . "đ phí nền tảng vào ví của bạn.", 'wallet', "/driver/orders/view/{$currentOrder['id']}");
+                                }
+
+                                // NGHIỆP VỤ HOÀN TIỀN CƯỚC ONLINE TỰ ĐỘNG CHƯA TỪNG CÓ:
+                                // Nếu khách hàng trả trước bằng ví/Online mà đơn bị lỗi/hủy/hoàn trả, Admin kết luận trả tiền cho khách
+                                if (in_array($currentOrder['payment_method'] ?? '', ['transfer', 'online']) && ($currentOrder['payment_status'] ?? '') === 'paid' && in_array($newOrderStatus, ['cancelled', 'returning', 'returned'])) {
+                                    
+                                    // Cập nhật trạng thái tiền tệ sang 'refunded' và cập nhật 'refunded_at' qua Model đã sửa đổi
+                                    $orderModel->updatePaymentStatus($currentOrder['id'], 'refunded');
+
+                                    // Ghi nhận lịch sử luồng tiền tệ
+                                    $db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())")
+                                       ->execute([$currentOrder['id'], $currentOrder['status'], "Hệ thống tự động kích hoạt hoàn trả tiền cước online (" . number_format($currentOrder['shipping_fee'] ?? 0, 0, ',', '.') . "đ) về phương thức thanh toán gốc của Khách hàng."]);
+
+                                    // Bắn thông báo đẩy Toast / Notification chính thức trực quan cho Khách hàng
+                                    $userModel->createNotification(
+                                        $currentOrder['customer_id'],
+                                        'Hoàn tiền đơn hàng thành công',
+                                        "Số tiền cước phí " . number_format($currentOrder['shipping_fee'] ?? 0, 0, ',', '.') . "đ của đơn #{$currentOrder['tracking_code']} đã được hoàn duyệt thành công. Vui lòng kiểm tra tài khoản của bạn.",
+                                        'system',
+                                        "/user/orders/track/{$currentOrder['tracking_code']}"
+                                    );
                                 }
                             }
 
                             $userModel = new User();
                             if ($shouldPenalizeCustomer) {
                                 $userModel->recordNoShow($currentOrder['customer_id']);
-                                $userModel->createNotification($currentOrder['customer_id'], "Cảnh báo vi phạm", "Bạn đã bị ghi nhận 1 lần vi phạm từ Admin sau khi giải quyết khiếu nại đơn hàng #{$currentOrder['tracking_code']}.", 'system', "/user/orders/track/{$currentOrder['tracking_code']}");
+                                $userModel->createNotification($currentOrder['customer_id'], "Cảnh báo vi phạm", "Tài khoản của bạn đã bị ghi nhận vi phạm sau quá trình Quản trị viên xử lý khiếu nại đơn hàng #{$currentOrder['tracking_code']}.", 'system', "/user/orders/track/{$currentOrder['tracking_code']}");
                             } elseif ($shouldPenalizeDriver && !empty($currentOrder['driver_id'])) {
-                                $walletModel = new Wallet();
-                                $deducted = $walletModel->deduct($currentOrder['driver_id'], $penaltyAmount, 'penalty', "Admin phạt lỗi khiếu nại đơn #{$currentOrder['tracking_code']}");
+                                $penaltyModel = new DriverPenalty();
+                                $reason = "Admin phạt lỗi khiếu nại đơn #{$currentOrder['tracking_code']}";
                                 
-                                if (!$deducted) {
-                                    $walletModel->forceDeduct($currentOrder['driver_id'], $penaltyAmount, 'penalty', "Admin phạt lỗi khiếu nại đơn #{$currentOrder['tracking_code']}", $currentOrder['id']);
+                                if ($penaltyModel->applyPenalty($currentOrder['driver_id'], 'customer_complaint', $penaltyAmount, $reason, $resolvedBy)) {
+                                    $currentBalance = (new Wallet())->getBalance($currentOrder['driver_id']);
+                                    if ($currentBalance < 0) {
+                                        $userModel->updateBlockStatus($currentOrder['driver_id'], 1);
+                                        $db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())")->execute([$currentOrder['id'], $currentOrder['status'], "Tài khoản tài xế đã tự động bị khóa do số dư ví âm sau khi bị phạt."]);
+                                    }
+                                    $userModel->createNotification($currentOrder['driver_id'], 'Thông báo chế tài', "Hệ thống đã khấu trừ " . number_format($penaltyAmount, 0, ',', '.') . "đ do vi phạm quy định tại đơn #{$currentOrder['tracking_code']}.", 'wallet', "/driver/orders/view/{$currentOrder['id']}");
                                 }
-                                
-                                $currentBalance = $walletModel->getBalance($currentOrder['driver_id']);
-                                if ($currentBalance < 0) {
-                                    $userModel->updateBlockStatus($currentOrder['driver_id'], 1);
-                                    $db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())")->execute([$currentOrder['id'], $currentOrder['status'], "Tài khoản tài xế đã tự động bị khóa do số dư ví âm sau khi bị phạt."]);
-                                }
-                                $userModel->createNotification($currentOrder['driver_id'], 'Trừ tiền - Phạt vi phạm', "Hệ thống trừ " . number_format($penaltyAmount, 0, ',', '.') . "đ phạt lỗi khiếu nại đơn #{$currentOrder['tracking_code']}.", 'wallet', "/driver/orders/view/{$currentOrder['id']}");
                             }
                         }
                     }

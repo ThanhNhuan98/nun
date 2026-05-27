@@ -2,19 +2,6 @@
 
 <div class="admin-container">
     
-    <div style="max-width: 460px; margin: 0 auto;">
-        <?php if (isset($_SESSION['flash_success'])): ?>
-            <div class="alert-banner" style="background: var(--success-light); color: var(--success); padding: 12px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #bbf7d0;">
-                <?= $_SESSION['flash_success']; unset($_SESSION['flash_success']); ?>
-            </div>
-        <?php endif; ?>
-        <?php if (isset($_SESSION['flash_error'])): ?>
-            <div class="alert-banner" style="background: var(--danger-light); color: var(--danger); padding: 12px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #fecaca;">
-                <?= $_SESSION['flash_error']; unset($_SESSION['flash_error']); ?>
-            </div>
-        <?php endif; ?>
-    </div>
-
     <!-- BƯỚC 1: NHẬP SỐ TIỀN -->
     <div id="step-1" class="topup-wrapper">
         
@@ -130,17 +117,23 @@
 </div>
 
 <script>
+    // Chọn nhanh mệnh giá nạp và tự động trigger hàm tạo QR.
     function setAmount(value) {
         document.getElementById('amount').value = value;
         generateQR(); // Tự động tạo QR ngay khi bấm chọn mệnh giá
     }
 
+    // Lấy số tiền cần nạp để gọi API VietQR sinh mã QR thanh toán động.
     function generateQR() {
         const amountInput = document.getElementById('amount').value;
         const amount = parseInt(amountInput);
 
         if (!amount || amount < 10000) {
-            alert('Vui lòng nhập số tiền hợp lệ (tối thiểu 10.000đ).');
+            if (typeof showToast === 'function') {
+                showToast('Vui lòng nhập số tiền hợp lệ (tối thiểu 10.000đ).', 'error');
+            } else {
+                alert('Vui lòng nhập số tiền hợp lệ (tối thiểu 10.000đ).');
+            }
             return;
         }
 
@@ -168,6 +161,7 @@
         document.getElementById('step-2').scrollIntoView({ behavior: 'smooth' });
     }
 
+    // Sao chép nội dung văn bản (số tài khoản, thông điệp chuyển khoản) vào khay nhớ tạm (Clipboard).
     function copyToClipboard(elementId) {
         const textToCopy = document.getElementById(elementId).innerText;
         navigator.clipboard.writeText(textToCopy).then(() => {

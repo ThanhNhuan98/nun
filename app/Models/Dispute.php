@@ -8,15 +8,11 @@ use PDO;
 class Dispute
 {
     protected PDO $db;
-
     public function __construct()
     {
         $this->db = Database::getInstance();
     }
 
-    /**
-     * Dịch trạng thái khiếu nại sang tiếng Việt
-     */
     public static function getStatusLabel(string $status): string
     {
         $statuses = [
@@ -30,6 +26,7 @@ class Dispute
         return $statuses[$status] ?? $status;
     }
 
+    // Đếm tổng số lượng khiếu nại 
     public function countAll(string $statusFilter = '', string $search = ''): int
     {
         $whereClause = "WHERE 1=1";
@@ -58,6 +55,7 @@ class Dispute
         return (int) $stmt->fetchColumn();
     }
 
+    // Lấy danh sách khiếu nại
     public function getAll(int $limit, int $offset, string $statusFilter = '', string $search = ''): array
     {
         $whereClause = "WHERE 1=1";
@@ -91,6 +89,7 @@ class Dispute
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
+    // Lấy chi tiết một khiếu nại 
     public function findById(int $id)
     {
         $stmt = $this->db->prepare("
@@ -107,25 +106,21 @@ class Dispute
         return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
+    // Cập nhật trạng thái và ghi chú giải quyết khiếu nại .
     public function updateStatus(int $id, string $status, string $resolutionNote, int $resolvedBy): bool
     {
         $stmt = $this->db->prepare("UPDATE order_disputes SET status = ?, resolution_note = ?, resolved_by = ?, resolved_at = NOW() WHERE id = ?");
         return $stmt->execute([$status, $resolutionNote, $resolvedBy, $id]);
     }
 
-    public function getOrderDispute(int $id)
-    {
-        $stmt = $this->db->prepare("SELECT order_id FROM order_disputes WHERE id = ?");
-        $stmt->execute([$id]);
-        return $stmt->fetch(PDO::FETCH_ASSOC);
-    }
-
+    // Tạo mới một khiếu nại vào hệ thống.
     public function create(int $orderId, int $reporterId, string $reason): bool
     {
-        $stmt = $this->db->prepare("INSERT INTO order_disputes (order_id, reported_by, issue_type, status, created_at) VALUES (?, ?, ?, 'open', NOW())");
+        $stmt = $this->db->prepare("INSERT INTO order_disputes (order_id, reported_by, issue_type, status, created_at, updated_at) VALUES (?, ?, ?, 'open', NOW(), NOW())");
         return $stmt->execute([$orderId, $reporterId, $reason]);
     }
 
+    // Cho phép khách hàng tự rút/hủy khiếu nại đã tạo trước đó.
     public function withdrawByOrderId(int $orderId): bool
     {
         $stmt = $this->db->prepare("UPDATE order_disputes SET status = 'closed', resolution_note = 'Khách hàng tự rút khiếu nại', resolved_at = NOW() WHERE order_id = ? AND status = 'open'");

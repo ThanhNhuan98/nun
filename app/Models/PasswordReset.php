@@ -9,6 +9,7 @@ class PasswordReset
 {
     private PDO $db;
 
+    // Khởi tạo model PasswordReset và kết nối cơ sở dữ liệu.
     public function __construct()
     {
         $this->db = Database::getInstance();
@@ -221,6 +222,7 @@ class PasswordReset
     }
 
 
+    // Che giấu một phần địa chỉ email (VD: abc***@gmail.com) để bảo vệ quyền riêng tư.
     private function maskEmail(string $email): string
     {
         if (empty($email)) {

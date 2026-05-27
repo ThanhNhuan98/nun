@@ -9,6 +9,7 @@ use App\Models\Wallet;
 
 class WalletController extends BaseController
 {
+    // Hiển thị giao diện nạp tiền và xử lý cập nhật số dư khi tài xế nạp tiền vào ví.
     public function topup(Request $request, Response $response)
     {
 

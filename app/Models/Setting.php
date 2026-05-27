@@ -9,13 +9,14 @@ class Setting
 {
     protected PDO $db;
 
+    // Khởi tạo model Setting và kết nối cơ sở dữ liệu.
     public function __construct()
     {
         $this->db = Database::getInstance();
     }
 
     /**
-     * Lấy giá trị của một cài đặt
+     * Lấy giá trị cấu hình theo khóa (key), trả về mặc định nếu không tồn tại.
      * @param string $key
      * @param mixed|null $default
      * @return mixed
@@ -29,7 +30,7 @@ class Setting
     }
 
     /**
-     * Lấy tất cả cài đặt
+     * Lấy tất cả các cài đặt hệ thống dưới dạng mảng cặp key-value.
      * @return array
      */
     public function getAll(): array
@@ -39,7 +40,7 @@ class Setting
     }
 
     /**
-     * Cập nhật một hoặc nhiều cài đặt
+     * Cập nhật hoặc chèn mới danh sách các giá trị cài đặt vào hệ thống.
      * @param array $settings
      * @return bool
      */

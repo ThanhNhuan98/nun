@@ -2,3 +2,6 @@
 /.env
 /storage/*.log
 /public/uploads/
+__pycache__/
+*.pyc
+*.log

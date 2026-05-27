@@ -7,6 +7,7 @@ use App\Core\Response;
 
 class HomeController extends BaseController
 {
+    // Hiển thị trang chủ giới thiệu dịch vụ (Landing Page).
     public function index(Request $request, Response $response)
     {
         return $response->render('home', [

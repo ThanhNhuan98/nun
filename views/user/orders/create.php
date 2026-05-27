@@ -17,16 +17,13 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
     </div>
 
     <?php if (!empty($errors)): ?>
-        <div class="alert-banner danger" style="background: var(--danger-light); color: var(--danger); padding: 16px; border-radius: 4px; border: 1px solid #fca5a5; margin-bottom: 24px;">
-            <div style="font-weight: bold; margin-bottom: 8px; display: flex; align-items: center; gap: 6px;">
-                <span class="material-symbols-outlined">error</span> Có lỗi xảy ra
-            </div>
-            <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
+        <script>
+            document.addEventListener('DOMContentLoaded', function() {
                 <?php foreach ($errors as $err): ?>
-                    <li><?= app_e($err) ?></li>
+                showJsToast('<?= app_e($err) ?>', 'error');
                 <?php endforeach; ?>
-            </ul>
-        </div>
+            });
+        </script>
     <?php endif; ?>
 
     <div id="draft-notice" style="display: none; background: #e0f2fe; color: #0284c7; padding: 12px 16px; border-radius: 4px; margin-bottom: 24px; border: 1px solid #bae6fd; font-size: 14px; align-items: center; justify-content: space-between;">
@@ -67,7 +64,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                                 <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Địa chỉ trên bản đồ *</label>
                                 <div class="form-input-with-icon" style="position: relative;">
                                     <span class="material-symbols-outlined" style="position: absolute; left: 10px; top: 10px; color: var(--text-muted); font-size: 18px;">search</span>
-                                    <input type="text" name="pickup_address" id="pickup_address" class="form-control" style="padding-left: 36px;" placeholder="Tìm kiếm địa chỉ..." value="<?= app_e($old['pickup_address'] ?? '') ?>" required>
+                                    <input type="text" name="pickup_address" id="pickup_address" class="form-control" style="padding-left: 36px;" placeholder="Tìm kiếm địa chỉ..." value="<?= app_e($old['pickup_address'] ?? '') ?>" required oninvalid="this.setCustomValidity('Vui lòng chọn hoặc nhập địa chỉ lấy hàng.')" oninput="this.setCustomValidity('')">
                                 </div>
                             </div>
                             <div>
@@ -86,11 +83,11 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                             <div class="form-grid-2">
                                 <div>
                                     <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Tên người nhận *</label>
-                                    <input type="text" name="receiver_name" class="form-control" placeholder="Nhập tên" value="<?= app_e($old['receiver_name'] ?? '') ?>" required>
+                                    <input type="text" name="receiver_name" class="form-control" placeholder="Nhập tên" value="<?= app_e($old['receiver_name'] ?? '') ?>" required oninvalid="this.setCustomValidity('Vui lòng nhập tên người nhận.')" oninput="this.setCustomValidity('')">
                                 </div>
                                 <div>
                                     <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Số điện thoại *</label>
-                                    <input type="text" name="receiver_phone" class="form-control" placeholder="Nhập SĐT" value="<?= app_e($old['receiver_phone'] ?? '') ?>" required>
+                                    <input type="text" name="receiver_phone" class="form-control" placeholder="Nhập SĐT" value="<?= app_e($old['receiver_phone'] ?? '') ?>" required oninvalid="this.setCustomValidity('Vui lòng nhập số điện thoại người nhận.')" oninput="this.setCustomValidity('')">
                                 </div>
                             </div>
                             
@@ -98,7 +95,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                                 <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Địa chỉ trên bản đồ *</label>
                                 <div class="form-input-with-icon" style="position: relative;">
                                     <span class="material-symbols-outlined" style="position: absolute; left: 10px; top: 10px; color: var(--text-muted); font-size: 18px;">search</span>
-                                    <input type="text" name="delivery_address" id="delivery_address" class="form-control" style="padding-left: 36px;" placeholder="Tìm kiếm địa chỉ..." value="<?= app_e($old['delivery_address'] ?? '') ?>" required>
+                                    <input type="text" name="delivery_address" id="delivery_address" class="form-control" style="padding-left: 36px;" placeholder="Tìm kiếm địa chỉ..." value="<?= app_e($old['delivery_address'] ?? '') ?>" required oninvalid="this.setCustomValidity('Vui lòng chọn hoặc nhập địa chỉ giao hàng.')" oninput="this.setCustomValidity('')">
                                 </div>
                             </div>
                             <div>
@@ -116,7 +113,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     
                     <div>
                         <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Trọng lượng (kg) *</label>
-                        <input type="number" step="0.1" min="0.1" name="weight" class="form-control" placeholder="0.0" value="<?= app_e($old['weight'] ?? '') ?>" required>
+                        <input type="number" step="0.1" min="0.1" name="weight" class="form-control" placeholder="0.0" value="<?= app_e($old['weight'] ?? '') ?>" required oninvalid="this.setCustomValidity('Vui lòng nhập trọng lượng hợp lệ.')" oninput="this.setCustomValidity('')">
                         <div id="weightError" style="color: var(--danger); font-size: 12px; margin-top: 6px; display: none;"></div>
                     </div>
                 </div>
@@ -129,7 +126,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     <div class="form-grid-2">
                         <div>
                             <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Lịch hẹn lấy hàng *</label>
-                            <input type="datetime-local" name="scheduled_at" id="scheduled_at" class="form-control" value="<?= app_e($old['scheduled_at'] ?? date('Y-m-d\TH:i')) ?>" required>
+                            <input type="datetime-local" name="scheduled_at" id="scheduled_at" class="form-control" value="<?= app_e($old['scheduled_at'] ?? date('Y-m-d\TH:i')) ?>" required oninvalid="this.setCustomValidity('Vui lòng chọn thời gian lấy hàng.')" oninput="this.setCustomValidity('')">
                         </div>
                         <div>
                             <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Gói dịch vụ</label>
@@ -202,6 +199,13 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                         <strong id="previewFee" class="fee-amount">0 đ</strong>
                     </div>
 
+                    <div style="margin-top: 16px; padding: 12px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; display: flex; align-items: flex-start; gap: 10px;">
+                        <input type="checkbox" id="legal_agree" name="legal_agree" required oninvalid="this.setCustomValidity('Vui lòng đánh dấu xác nhận cam kết pháp lý để tiếp tục tạo đơn.')" onchange="this.setCustomValidity('')" style="margin-top: 3px; cursor: pointer; transform: scale(1.2);">
+                        <label for="legal_agree" style="font-size: 12px; color: #92400e; line-height: 1.5; cursor: pointer;">
+                            <strong>Cam kết pháp lý:</strong> Tôi cam kết gói hàng không chứa các danh mục hàng cấm theo quy định của pháp luật. Tôi xin chịu hoàn toàn trách nhiệm trước pháp luật nếu vi phạm.
+                        </label>
+                    </div>
+
                     <div style="margin-top: 24px;">
                         <button type="submit" id="submitBtn" class="btn-submit-order-large">
                             Tạo đơn hàng ngay <span class="material-symbols-outlined" style="font-size: 18px;">arrow_forward</span>
@@ -221,6 +225,28 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
 <script>
+    // ===== HÀM HIỂN THỊ THÔNG BÁO BONG BÓNG (TOAST) BẰNG JAVASCRIPT =====
+    function showJsToast(message, type = 'error') {
+        let container = document.querySelector('.toast-container-center');
+        if (!container) {
+            container = document.createElement('div');
+            container.className = 'toast-container-center';
+            document.body.appendChild(container);
+        }
+        
+        const toast = document.createElement('div');
+        toast.className = `toast-center toast-${type}`;
+        toast.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <span class="material-symbols-outlined" style="font-size: 20px;">${type === 'error' ? 'error' : 'check_circle'}</span>
+                <span>${message}</span>
+            </div>
+            <button onclick="this.parentElement.remove()" style="background: none; border: none; color: rgba(255,255,255,0.8); font-size: 20px; cursor: pointer; margin-left: 15px; line-height: 1;">&times;</button>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => { if (toast.parentElement) toast.remove(); }, 5000);
+    }
+
     // ===== BẢN ĐỒ & GEOCODER (Giữ nguyên) =====
     let map = L.map('mapContainer').setView([16.4637, 107.5909], 13);
     L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -320,7 +346,19 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
             const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&countrycodes=vn&limit=1`, { headers: { 'User-Agent': 'NUN-Express/1.0' } });
             const data = await response.json();
             if (data && data.length > 0) {
-                updateMapLocation(parseFloat(data[0].lat), parseFloat(data[0].lon), address, mode);
+                let fullAddress = formatAddress(data[0].display_name);
+                
+                // Cố gắng giữ lại số nhà/địa chỉ cụ thể do khách hàng nhập nếu hệ thống OSM không trả về
+                const originalPrefix = address.split(',')[0].trim();
+                const houseNumberMatch = originalPrefix.match(/^(\d+[A-Za-z\/\-]*)/);
+                if (houseNumberMatch) {
+                    const houseNumber = houseNumberMatch[1];
+                    if (!fullAddress.includes(houseNumber)) {
+                        fullAddress = houseNumber + ' ' + fullAddress;
+                    }
+                }
+
+                updateMapLocation(parseFloat(data[0].lat), parseFloat(data[0].lon), fullAddress, mode);
                 calculateFee();
             }
         } catch (error) { console.error(error); }
@@ -364,7 +402,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
     function clearDraft() { localStorage.removeItem(draftKey); window.location.reload(); }
 
     function loadDraft() {
-        const hasError = document.querySelector('.alert-banner.danger') !== null;
+        const hasError = <?= !empty($errors) ? 'true' : 'false' ?>;
         if (hasError) return;
         const saved = localStorage.getItem(draftKey);
         if (saved) {
@@ -447,7 +485,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     } else if (data.message) {
                         document.getElementById('weightError').style.display = 'none';
                         document.querySelector('input[name="weight"]').style.borderColor = '';
-                        alert(data.message);
+                        showJsToast(data.message, 'error');
                     }
                 }
             } catch (e) { 
@@ -475,10 +513,26 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
     document.querySelector('select[name="shipping_method"]').addEventListener('change', calculateFee);
     document.getElementById('scheduled_at').addEventListener('change', calculateFee);
     
-    document.querySelector('.order-form').addEventListener('submit', function() {
+    // Xử lý Validate bằng JavaScript khi Submit thay vì phụ thuộc vào trình duyệt
+    document.querySelector('.order-form').addEventListener('submit', function(e) {
+        const legalAgree = document.getElementById('legal_agree');
+        if (legalAgree && !legalAgree.checked) {
+            e.preventDefault(); // Chặn không cho form gửi đi
+            // Đã chuyển sang dùng Validate bằng bong bóng HTML5 mượt mà hơn
+            return false;
+        }
+
         const btn = document.getElementById('submitBtn');
         btn.disabled = true; btn.innerHTML = 'Đang xử lý...';
         localStorage.removeItem(draftKey);
+    });
+
+    // Phục hồi lại màu sắc ban đầu của khung cảnh báo khi người dùng đã tích chọn
+    document.getElementById('legal_agree').addEventListener('change', function() {
+        if (this.checked) {
+            this.parentElement.style.borderColor = '#fde68a';
+            this.parentElement.style.backgroundColor = '#fffbeb';
+        }
     });
     
     document.addEventListener('DOMContentLoaded', () => {
@@ -507,7 +561,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     
                     if (new Date(scheduledAtInput.value) > maxDate) {
                         scheduledAtInput.value = formatDateTime(currentNow);
-                        alert("Đơn hàng Giao nhanh/Siêu tốc yêu cầu thời gian hẹn lấy hàng không được quá 10 phút kể từ hiện tại. Hệ thống đã đặt lại giờ cho bạn.");
+                        showJsToast("Đơn hàng Giao nhanh/Siêu tốc yêu cầu thời gian hẹn lấy hàng không được quá 10 phút kể từ hiện tại. Hệ thống đã đặt lại giờ cho bạn.", "error");
                     }
                 } else {
                     // Tiêu chuẩn tối đa 1 tuần

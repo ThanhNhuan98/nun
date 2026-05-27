@@ -13,33 +13,20 @@
     
 </head>
 <body>
+    <?= app_render_toast(); ?>
 
     <div class="auth-card">
         <h2 class="auth-card-title">Tạo tài khoản mới</h2>
         <p class="auth-card-desc">Tham gia NUN Express để trải nghiệm dịch vụ giao hàng nhanh chóng.</p>
 
-        <!-- Bổ sung khối hiển thị lỗi hệ thống / lỗi gửi Mail -->
-        <?php if ($message = app_flash('flash_error')): ?>
-            <div class="alert-danger" style="display: flex; align-items: center; gap: 8px;">
-                <span class="material-symbols-outlined" style="font-size: 20px;">error</span>
-                <span><?= app_e($message) ?></span>
-            </div>
-        <?php endif; ?>
-        <?php if ($message = app_flash('flash_success')): ?>
-            <div style="background-color: #D1FAE5; color: #065F46; padding: 12px 16px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; display: flex; align-items: center; gap: 8px;">
-                <span class="material-symbols-outlined" style="font-size: 20px;">check_circle</span>
-                <span><?= app_e($message) ?></span>
-            </div>
-        <?php endif; ?>
-
         <?php if (!empty($errors)): ?>
-            <div class="alert-danger">
-                <ul style="margin: 0; padding-left: 20px;">
+            <script>
+                document.addEventListener('DOMContentLoaded', function() {
                     <?php foreach ($errors as $error): ?>
-                        <li><?= app_e($error) ?></li>
+                    if (typeof showToast === 'function') showToast('<?= app_e($error) ?>', 'error');
                     <?php endforeach; ?>
-                </ul>
-            </div>
+                });
+            </script>
         <?php endif; ?>
 
         <form method="POST" action="/register" enctype="multipart/form-data">
@@ -47,7 +34,7 @@
                 <label class="auth-label" for="name">Họ và tên <span class="text-danger">*</span></label>
                 <div class="input-wrapper">
                     <span class="material-symbols-outlined input-icon-prefix">person_outline</span>
-                    <input type="text" id="name" name="name" class="auth-input" placeholder="VD: Nguyễn Văn A" required value="<?= app_e($old['name'] ?? '') ?>">
+                    <input type="text" id="name" name="name" class="auth-input" placeholder="VD: Nguyễn Văn A" required value="<?= app_e($old['name'] ?? '') ?>" oninvalid="this.setCustomValidity('Vui lòng nhập họ và tên.')" oninput="this.setCustomValidity('')">
                 </div>
             </div>
 
@@ -55,7 +42,7 @@
                 <label class="auth-label" for="phone">Số điện thoại <span class="text-danger">*</span></label>
                 <div class="input-wrapper">
                     <span class="material-symbols-outlined input-icon-prefix">call</span>
-                    <input type="text" id="phone" name="phone" class="auth-input" placeholder="09xx..." required value="<?= app_e($old['phone'] ?? '') ?>">
+                    <input type="text" id="phone" name="phone" class="auth-input" placeholder="09xx..." required value="<?= app_e($old['phone'] ?? '') ?>" oninvalid="this.setCustomValidity('Vui lòng nhập số điện thoại.')" oninput="this.setCustomValidity('')">
                 </div>
             </div>
 
@@ -71,7 +58,7 @@
                 <label class="auth-label" for="password">Mật khẩu <span class="text-danger">*</span></label>
                 <div class="input-wrapper">
                     <span class="material-symbols-outlined input-icon-prefix">lock_outline</span>
-                    <input type="password" id="password" name="password" class="auth-input password-field" placeholder="Nhập mật khẩu" required>
+                    <input type="password" id="password" name="password" class="auth-input password-field" placeholder="Nhập mật khẩu" required oninvalid="this.setCustomValidity('Vui lòng nhập mật khẩu.')" oninput="this.setCustomValidity('')">
                     <span class="material-symbols-outlined input-icon-suffix toggle-password">visibility_off</span>
                 </div>
             </div>
@@ -80,7 +67,7 @@
                 <label class="auth-label" for="password_confirm">Xác nhận mật khẩu <span class="text-danger">*</span></label>
                 <div class="input-wrapper">
                     <span class="material-symbols-outlined input-icon-prefix">lock_reset</span>
-                    <input type="password" id="password_confirm" name="password_confirm" class="auth-input password-field" placeholder="Nhập lại mật khẩu" required>
+                    <input type="password" id="password_confirm" name="password_confirm" class="auth-input password-field" placeholder="Nhập lại mật khẩu" required oninvalid="this.setCustomValidity('Vui lòng xác nhận mật khẩu.')" oninput="this.setCustomValidity('')">
                     <span class="material-symbols-outlined input-icon-suffix toggle-password">visibility_off</span>
                 </div>
             </div>

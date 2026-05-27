@@ -101,7 +101,7 @@ if (!isset($driverProfile) && isset($user['id'])) {
                 </div>
 
                 <div class="form-group" style="margin-bottom: 24px;">
-                    <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 8px;">Số lần bom hàng</label>
+                    <label class="form-label" style="display: block; font-weight: 600; margin-bottom: 8px;">Số lần vi phạm giao nhận</label>
                     <div class="form-input-with-icon">
                         <span class="material-symbols-outlined icon-left">person_off</span>
                         <input type="number" name="no_show_count" class="form-control" value="<?= app_e($user['no_show_count'] ?? 0) ?>" min="0">

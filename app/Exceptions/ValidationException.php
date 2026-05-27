@@ -18,6 +18,7 @@ class ValidationException extends Exception
      */
     public $old = [];
 
+    // Ham __construct: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function __construct(array $errors, array $old = [], $message = "Dữ liệu không hợp lệ.", $code = 422, Exception $previous = null)
     {
         parent::__construct($message, $code, $previous);

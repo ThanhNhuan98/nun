@@ -81,13 +81,13 @@
                         <div class="h-node">
                             <div class="h-node-icon"><span class="material-symbols-outlined">storefront</span></div>
                             <div class="h-node-label">ĐIỂM LẤY HÀNG</div>
-                            <div class="h-node-text"><?= app_e(app_format_address($order['pickup_address'] ?? 'Đang cập nhật')) ?></div>
+                            <div class="h-node-text"><?= app_e($order['pickup_address'] ?? 'Đang cập nhật') ?></div>
                         </div>
                         
                         <div class="h-node">
                             <div class="h-node-icon"><span class="material-symbols-outlined">location_on</span></div>
                             <div class="h-node-label">ĐIỂM GIAO HÀNG</div>
-                            <div class="h-node-text"><?= app_e(app_format_address($order['delivery_address'] ?? 'Đang cập nhật')) ?></div>
+                            <div class="h-node-text"><?= app_e($order['delivery_address'] ?? 'Đang cập nhật') ?></div>
                         </div>
                     </div>
 

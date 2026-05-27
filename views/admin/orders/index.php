@@ -36,11 +36,16 @@
         <?php 
         // Danh sách trạng thái cần hiển thị trên thanh filter
         $filterOptions = [
-            'awaiting_payment' => 'Chờ thanh toán',
             'pending' => 'Chờ xử lý',
+            'awaiting_payment' => 'Chờ thanh toán',
             'searching_driver' => 'Đang tìm tài xế',
-            'in_transit' => 'Đang giao hàng',
+            'accepted' => 'Đã nhận đơn',
+            'picking_up' => 'Đang lấy hàng',
+            'shipping' => 'Đang giao hàng',
             'completed' => 'Hoàn thành',
+            'returning' => 'Đang chuyển hoàn',
+            'returned' => 'Đã hoàn hàng',
+            'disputed' => 'Khiếu nại',
             'cancelled' => 'Đã hủy'
         ];
         foreach ($filterOptions as $val => $label): 
@@ -108,9 +113,17 @@
                     <div class="order-card-footer" style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid #f1f5f9; padding-top: 15px; margin-top: 15px;">
                         <div class="fee-block">
                             <strong style="display: block; margin-bottom: 3px;">Cước: <?= app_money($order['shipping_fee'] ?? 0, ' đ') ?></strong>
-                            <span style="color: <?= ($order['payment_status'] === 'paid') ? '#10b981' : '#ef4444' ?>; font-size: 13px;">
-                                <?= $order['payment_method'] === 'cash' ? 'Tiền mặt' : 'Chuyển khoản' ?> - 
-                                <?= ($order['payment_status'] === 'paid') ? 'Đã thanh toán' : 'Chưa thanh toán' ?>
+                            <span style="font-size: 13px;">
+                                <span style="color: var(--text-main);"><?= $order['payment_method'] === 'cash' ? 'Tiền mặt' : 'Chuyển khoản' ?></span> - 
+                                <?php 
+                                    if (($order['payment_status'] ?? '') === 'paid') {
+                                        echo '<span style="color: #10b981;">Đã thanh toán</span>';
+                                    } elseif (($order['payment_status'] ?? '') === 'refunded') {
+                                        echo '<span style="color: #f59e0b;">Đã hoàn tiền</span>';
+                                    } else {
+                                        echo '<span style="color: #ef4444;">Chưa thanh toán</span>';
+                                    }
+                                ?>
                             </span>
                         </div>
                         <div style="display: flex; align-items: center; gap: 15px;">

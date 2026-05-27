@@ -24,9 +24,22 @@
             <div class="detail-section">
                 <div class="detail-section-title">Thông tin khiếu nại</div>
                 
+                <?php
+                    $issueStr = $dispute['issue_type'] ?? 'Khác';
+                    $proofUrl = '';
+                    if (strpos($issueStr, '||PROOF||') !== false) {
+                        $parts = explode('||PROOF||', $issueStr);
+                        $issueStr = $parts[0];
+                        $proofUrl = $parts[1];
+                    }
+                    $issueParts = explode(' - Chi tiết: ', $issueStr, 2);
+                    $issueTypeLabel = $issueParts[0];
+                    $issueDetail = $issueParts[1] ?? $issueStr;
+                ?>
+
                 <div class="detail-row">
                     <span class="detail-label">Loại sự cố</span>
-                    <span class="detail-value"><?= htmlspecialchars($dispute['issue_type'] ?? 'Khác') ?></span>
+                    <span class="detail-value" style="font-weight: 600; color: var(--danger);"><?= htmlspecialchars($issueTypeLabel) ?></span>
                 </div>
                 <div class="detail-row">
                     <span class="detail-label">Ngày Hẹn Lấy Hàng</span>
@@ -35,8 +48,17 @@
                 
                 <div style="margin-top: 16px;">
                     <span class="detail-label" style="font-size: 14px;">Nội dung phản ánh</span>
-                    <div class="detail-content-box">
-                        <?= nl2br(htmlspecialchars($dispute['issue_type'] ?? 'Không có nội dung chi tiết')) ?>
+                    <div class="detail-content-box" style="background: #f8fafc; border: 1px solid #e2e8f0; padding: 12px; border-radius: 6px; font-size: 14px; line-height: 1.6; color: #334155;">
+                        <?= nl2br(htmlspecialchars($issueDetail)) ?>
+                        
+                        <?php if ($proofUrl): ?>
+                            <div style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed #cbd5e1;">
+                                <strong style="color: #475569; font-size: 13px;">Ảnh đính kèm (Khách hàng cung cấp):</strong><br>
+                                <a href="<?= app_e($proofUrl) ?>" target="_blank" title="Nhấn để xem ảnh gốc">
+                                    <img src="<?= app_e($proofUrl) ?>" alt="Bằng chứng" style="max-width: 250px; border-radius: 4px; margin-top: 8px; border: 1px solid #cbd5e1; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                </a>
+                            </div>
+                        <?php endif; ?>
                     </div>
                 </div>
             </div>
@@ -62,7 +84,7 @@
                         <?php if (($dispute['reporter_no_show_count'] ?? 0) > 0): ?>
                             <div class="item-info-sub" style="color: var(--danger); font-weight: 600; margin-top: 4px;">
                                 <span class="material-symbols-outlined" style="font-size: 16px; color: var(--danger);">warning</span>
-                                Đã bom hàng: <?= htmlspecialchars($dispute['reporter_no_show_count']) ?> lần
+                                Vi phạm giao nhận: <?= htmlspecialchars($dispute['reporter_no_show_count']) ?> lần
                             </div>
                         <?php endif; ?>
                     </div>
@@ -102,13 +124,13 @@
                 </div>
 
                 <div class="form-group">
-                    <label class="form-label">Quyết định với Đơn hàng</label>
-                    <select name="order_status" class="form-control">
-                        <option value="">-- Không thay đổi (Giữ nguyên trạng thái) --</option>
-                        <option value="returning" <?= ($dispute['order_status'] ?? '') === 'returning' ? 'selected' : '' ?>>Tiếp tục chuyển hoàn (Tài xế báo cáo đúng)</option>
-                        <option value="returned" <?= ($dispute['order_status'] ?? '') === 'returned' ? 'selected' : '' ?>>Đã hoàn hàng về người gửi</option>
-                        <option value="completed" <?= ($dispute['order_status'] ?? '') === 'completed' ? 'selected' : '' ?>>Đã giao thành công (Khách đã nhận được hàng)</option>
-                        <option value="cancelled" <?= ($dispute['order_status'] ?? '') === 'cancelled' ? 'selected' : '' ?>>Hủy đơn (Lỗi tài xế, cần hoàn tiền cho khách)</option>
+                    <label class="form-label">Cập nhật trạng thái Đơn hàng liên quan</label>
+                    <select name="target_order_status" class="form-control">
+                        <option value="">-- Giữ nguyên trạng thái đơn hiện tại --</option>
+                        <option value="completed" <?= ($dispute['order_status'] ?? '') === 'completed' ? 'selected' : '' ?>>Hoàn thành (Giao thành công)</option>
+                        <option value="returning" <?= ($dispute['order_status'] ?? '') === 'returning' ? 'selected' : '' ?>>Chuyển hoàn (Đang gom quay đầu)</option>
+                        <option value="returned" <?= ($dispute['order_status'] ?? '') === 'returned' ? 'selected' : '' ?>>Đã hoàn hàng (Đóng chu trình trả người gửi)</option>
+                        <option value="cancelled" <?= ($dispute['order_status'] ?? '') === 'cancelled' ? 'selected' : '' ?>>Đã hủy đơn</option>
                     </select>
                     <span class="form-help">Nếu bạn chọn trạng thái mới, lịch sử đơn hàng sẽ tự động cập nhật và lưu vết sự can thiệp của Quản trị viên.</span>
                 </div>
@@ -131,7 +153,7 @@
                     <label class="form-label">Xác định người vi phạm (Tùy chọn)</label>
                     <select name="fault" class="form-control" onchange="togglePenalty(this.value)">
                         <option value="none" <?= $faultSelected === 'none' ? 'selected' : '' ?>>-- Không phạt ai --</option>
-                        <option value="customer" <?= $faultSelected === 'customer' ? 'selected' : '' ?>>Khách hàng vi phạm (Cộng 1 lần bom hàng)</option>
+                        <option value="customer" <?= $faultSelected === 'customer' ? 'selected' : '' ?>>Khách hàng vi phạm (Cộng 1 lần vi phạm giao nhận)</option>
                         <option value="driver" <?= $faultSelected === 'driver' ? 'selected' : '' ?>>Tài xế vi phạm (Phạt tiền)</option>
                     </select>
                     <span class="form-help">Chọn đối tượng để hệ thống tự động ghi nhận vi phạm. (Hệ thống chỉ xử lý phạt 1 lần duy nhất)</span>
@@ -160,6 +182,7 @@
     </form>
 
     <script>
+    // Ham togglePenalty: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     function togglePenalty(val) {
         document.getElementById('penalty_div').style.display = val === 'driver' ? 'block' : 'none';
     }

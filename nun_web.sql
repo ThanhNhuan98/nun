@@ -53,8 +53,6 @@ CREATE TABLE `driver_profiles` (
   `current_lat` decimal(10,7) DEFAULT NULL,
   `current_lng` decimal(10,7) DEFAULT NULL,
   `is_online` tinyint(1) NOT NULL DEFAULT 0,
-  `status` enum('pending','approved','rejected') NOT NULL DEFAULT 'approved',
-  `rating_avg` decimal(3,2) NOT NULL DEFAULT 0.00,
   `balance` decimal(12,2) NOT NULL DEFAULT 0.00,
   `max_concurrent_orders` tinyint(3) UNSIGNED NOT NULL DEFAULT 3,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
@@ -112,6 +110,7 @@ CREATE TABLE `orders` (
   `shipping_method` varchar(50) NOT NULL DEFAULT 'standard',
   `note` text DEFAULT NULL,
   `scheduled_at` datetime DEFAULT NULL,
+  `delivery_pin` varchar(4) DEFAULT NULL COMMENT 'Mã PIN 4 số nhận hàng',
   `is_archived` tinyint(1) NOT NULL DEFAULT 0,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp()
@@ -165,6 +164,7 @@ CREATE TABLE `order_deliveries` (
   `order_id` bigint(20) UNSIGNED NOT NULL,
   `driver_id` bigint(20) UNSIGNED DEFAULT NULL,
   `batch_code` varchar(50) DEFAULT NULL,
+  `batch_route_details` text DEFAULT NULL,
   `accepted_at` datetime DEFAULT NULL,
   `picked_up_at` datetime DEFAULT NULL,
   `delivered_at` datetime DEFAULT NULL,
@@ -285,7 +285,6 @@ CREATE TABLE `users` (
   `phone` varchar(30) NOT NULL,
   `password` varchar(255) NOT NULL,
   `avatar` varchar(500) DEFAULT NULL,
-  `address` varchar(255) DEFAULT NULL,
   `role` enum('user','driver','admin') NOT NULL DEFAULT 'user',
   `is_verified` tinyint(1) NOT NULL DEFAULT 1,
   `verification_token` varchar(20) DEFAULT NULL,
@@ -293,12 +292,9 @@ CREATE TABLE `users` (
   `blocked_reason` varchar(255) DEFAULT NULL,
   `blocked_by` bigint(20) UNSIGNED DEFAULT NULL,
   `blocked_at` datetime DEFAULT NULL,
-  `failed_delivery_count` int(10) UNSIGNED NOT NULL DEFAULT 0,
-  `trust_score` decimal(5,2) NOT NULL DEFAULT 100.00,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
   `updated_at` datetime NOT NULL DEFAULT current_timestamp() ON UPDATE current_timestamp(),
   `violation_count` int(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Number of violations (cancellations, no-shows, etc)',
-  `penalty_amount` decimal(12,2) NOT NULL DEFAULT 0.00 COMMENT 'Total penalties/fines amount',
   `no_show_count` int(10) UNSIGNED NOT NULL DEFAULT 0 COMMENT 'Number of times customer did not pick up'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

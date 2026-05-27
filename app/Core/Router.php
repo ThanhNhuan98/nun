@@ -9,12 +9,14 @@ class Router
     protected array $routes = [];
     protected array $middlewareGroups = [];
 
+    // Khởi tạo Router xử lý điều hướng URL với đối tượng Request và Response.
     public function __construct(Request $request, Response $response)
     {
         $this->request = $request;
         $this->response = $response;
     }
 
+    // Gom nhóm các route có chung một danh sách Middleware bảo vệ.
     public function group(array $middlewares, \Closure $callback)
     {
         $previousGroup = $this->middlewareGroups;
@@ -25,18 +27,21 @@ class Router
         $this->middlewareGroups = $previousGroup; // Khôi phục lại trạng thái cũ sau khi gom nhóm xong
     }
 
+    // Đăng ký một route mới xử lý yêu cầu GET.
     public function get($path, $callback, array $middlewares = [])
     {
         $middlewares = array_merge($this->middlewareGroups, $middlewares);
         $this->routes['get'][$path] = ['callback' => $callback, 'middlewares' => $middlewares];
     }
 
+    // Đăng ký một route mới xử lý yêu cầu POST.
     public function post($path, $callback, array $middlewares = [])
     {
         $middlewares = array_merge($this->middlewareGroups, $middlewares);
         $this->routes['post'][$path] = ['callback' => $callback, 'middlewares' => $middlewares];
     }
 
+    // Phân tích URL hiện tại và gọi Controller/Middleware tương ứng để xử lý và trả về phản hồi.
     public function resolve()
     {
         $path = $this->request->getPath();

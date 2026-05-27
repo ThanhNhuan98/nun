@@ -94,7 +94,13 @@
 
                     <div class="order-card-info">
                         <div style="font-weight: bold; font-size: 15px; margin-bottom: 10px; color: #1e293b;">
-                            <?= htmlspecialchars($d['issue_type'] ?? 'Sự cố khác') ?>
+                            <?php 
+                                $issueStr = $d['issue_type'] ?? '';
+                                $issueParts = explode(' - Chi tiết: ', $issueStr, 2);
+                                $displayIssue = $issueParts[0] ?: 'Sự cố khác';
+                            ?>
+                            <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: middle; color: var(--danger); margin-right: 4px;">warning</span>
+                            <?= htmlspecialchars($displayIssue) ?>
                         </div>
                         <div class="info-row">
                             <span class="material-symbols-outlined">person</span>

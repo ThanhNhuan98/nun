@@ -17,28 +17,32 @@
     <link rel="stylesheet" href="/assets/css/style.css">
     
 </head>
-<body>
+<body class="landing-page" style="display: flex; flex-direction: column; min-height: 100vh;">
 
-<header class="home-header">
-    <a href="/" class="home-header-logo">
+<header class="landing-header">
+    <a href="/" class="landing-logo">
         <span class="material-symbols-outlined" style="font-size: 28px;">local_shipping</span>
         NUN Express
     </a>
-    <nav class="home-header-nav">
-        <a href="/"><span class="material-symbols-outlined" style="font-size: 20px;">home</span> Trang chủ</a>
-        <a href="/tracking"><span class="material-symbols-outlined" style="font-size: 20px;">search</span> Tra cứu đơn hàng</a>
+    <nav class="landing-nav">
+        <a href="/">Trang chủ</a>
+        <a href="/tracking" class="active">Tra cứu đơn hàng</a>
+    </nav>
+    
+    <div class="header-actions">
         <?php if (!app_current_user('id')): ?>
-            <a href="/login" class="btn-header-login">Đăng nhập / Đăng ký</a>
+            <a href="/login" class="btn-login-text">Đăng nhập</a>
+            <a href="/register" class="btn-register-solid">Đăng ký</a>
         <?php else: ?>
             <?php 
                 $role = app_current_user('role', 'user');
-                $dashboardLink = '/user/dashboard';
+                $dashboardLink = '/user/orders';
                 if ($role === 'driver') $dashboardLink = '/driver/receive-orders';
                 if ($role === 'admin') $dashboardLink = '/admin/dashboard';
             ?>
-            <a href="<?= $dashboardLink ?>" class="btn-header-login">Hệ thống quản lý</a>
+            <a href="<?= $dashboardLink ?>" class="btn-register-solid">Hệ thống quản lý</a>
         <?php endif; ?>
-    </nav>
+    </div>
 </header>
 
 <div class="tracking-container">
@@ -120,12 +124,12 @@
                     <div class="tracking-info-box">
                         <div class="tracking-info-label">NGƯỜI GỬI</div>
                         <div class="tracking-info-value"><?= app_e($order['sender_name']) ?></div>
-                        <div class="tracking-info-desc"><?= app_e(app_format_address($order['sender_address'])) ?></div>
+                        <div class="tracking-info-desc"><?= app_e($order['sender_address']) ?></div>
                     </div>
                     <div class="tracking-info-box">
                         <div class="tracking-info-label">NGƯỜI NHẬN</div>
                         <div class="tracking-info-value"><?= app_e($order['receiver_name']) ?></div>
-                        <div class="tracking-info-desc"><?= app_e(app_format_address($order['receiver_address'])) ?></div>
+                        <div class="tracking-info-desc"><?= app_e($order['receiver_address']) ?></div>
                     </div>
                 </div>
             </div>
@@ -182,6 +186,7 @@
 <script>
 let myMapHelper = null;
 
+// Ham destroyTrackingMap: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
 function destroyTrackingMap() {
     if (myMapHelper) {
         myMapHelper.destroy();
@@ -189,6 +194,7 @@ function destroyTrackingMap() {
     }
 }
 
+// Ham initTrackingMap: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
 function initTrackingMap() {
     const mapDataEl = document.getElementById('tracking-map-data');
     const mapContainer = document.getElementById('route-map');

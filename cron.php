@@ -22,6 +22,11 @@ use App\Models\User;
 
 // Thiết lập đường dẫn file log
 $logFile = __DIR__ . '/cron.log';
+$logDir = __DIR__ . '/storage/logs';
+if (!is_dir($logDir)) {
+    mkdir($logDir, 0777, true);
+}
+$logFile = $logDir . '/cron.log';
 
 function logMessage($message) {
     global $logFile;
@@ -49,6 +54,24 @@ if (!empty($stuckOrders)) {
             logMessage("- [Cảnh báo] Đã thu hồi đơn hàng #{$stuckOrder['tracking_code']} từ tài xế ID {$stuckOrder['driver_id']}.");
         }
     }
+}
+
+// 4. Tự động "Xóa án tích" (Amnesty Policy) cho tài xế
+// Hệ thống sẽ quét qua toàn bộ tài xế, nếu các án phạt của họ đã trôi qua 3 tháng, 
+// cột violation_count của họ sẽ tự động lùi dần về 0.
+try {
+    $db = \App\Core\Database::getInstance();
+    $db->exec("
+        UPDATE users u
+        SET u.violation_count = (
+            SELECT COUNT(id) FROM driver_penalties dp 
+            WHERE dp.driver_id = u.id AND dp.created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
+        )
+        WHERE u.role = 'driver'
+    ");
+    logMessage("- [Thành công] Đã đồng bộ và xóa án tích cho các tài xế không vi phạm trong 3 tháng qua.");
+} catch (\Throwable $e) {
+    logMessage("- [Lỗi] Không thể xóa án tích: " . $e->getMessage());
 }
 
 logMessage("Hoàn thành Cron-job.\n--------------------------------------------------");

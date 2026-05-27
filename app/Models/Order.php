@@ -9,6 +9,7 @@ class Order
 {
     protected PDO $db;
 
+    // Ham __construct: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function __construct()
     {
         // **nun_ai**: Khởi tạo Model, kết nối cơ sở dữ liệu MySQL thông qua lớp Database (Singleton Pattern).
@@ -93,10 +94,13 @@ class Order
         return self::SHIPPING_METHOD_COLORS[$method ?: 'standard'] ?? 'var(--text-main)';
     }
 
+    // Ham create: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function create(array $data)
     {
         // **nun_ai**: Tạo mới một đơn hàng hoàn chỉnh. Sử dụng Database Transaction để phân bổ và ghi dữ liệu đồng thời vào 4 bảng (orders, order_addresses, order_finances, order_status_history), đảm bảo tính toàn vẹn (ACID).
-        $trackingCode = 'NUN' . time() . random_int(10, 99);
+        // TỐI ƯU HÓA: Tạo mã vận đơn Unique tuyệt đối
+        $randomPart = strtoupper(substr(uniqid(), -5));
+        $trackingCode = 'NUN' . ($data['customer_id'] ?? '0') . $randomPart . random_int(10, 99);
         $paymentMethod = $data['payment_method'] ?? 'cash';
         $initialStatus = $paymentMethod === 'transfer' ? 'awaiting_payment' : 'searching_driver';
         
@@ -106,7 +110,8 @@ class Order
             $scheduledAt = !empty($data['scheduled_at']) ? date('Y-m-d H:i:s', strtotime($data['scheduled_at'])) : null;
             $weight = isset($data['weight']) ? (float) $data['weight'] : 1.0;
             $shippingMethod = $data['shipping_method'] ?? 'standard';
-            $stmt = $this->db->prepare("INSERT INTO orders (customer_id, tracking_code, status, weight, shipping_method, note, scheduled_at, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
+            $deliveryPin = str_pad((string)random_int(0, 9999), 4, '0', STR_PAD_LEFT);
+            $stmt = $this->db->prepare("INSERT INTO orders (customer_id, tracking_code, status, weight, shipping_method, note, scheduled_at, delivery_pin, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
             $stmt->execute([
                 $data['customer_id'],
                 $trackingCode,
@@ -114,7 +119,8 @@ class Order
                 $weight,
                 $shippingMethod,
                 $data['description'] ?? ($data['note'] ?? ''),
-                $scheduledAt
+                $scheduledAt,
+                $deliveryPin
             ]);
             $orderId = $this->db->lastInsertId();
 
@@ -142,6 +148,20 @@ class Order
             $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())")->execute([$orderId, $initialStatus, $desc]);
 
             $this->db->commit();
+
+            // Tích hợp Pusher: Báo cho toàn bộ Radar của các tài xế biết có đơn mới
+            if (in_array($initialStatus, ['pending', 'searching_driver']) && class_exists('\App\Services\PusherService')) {
+                try {
+                    $pusher = new \App\Services\PusherService();
+                    $pusher->trigger('driver-radar', 'new_order_pending', [
+                        'tracking_code' => $trackingCode,
+                        'message' => 'Có đơn hàng mới tại khu vực của bạn!'
+                    ]);
+                } catch (\Throwable $e) {
+                    error_log('Lỗi Pusher Radar (Create): ' . $e->getMessage());
+                }
+            }
+
             return $trackingCode;
         } catch (\Throwable $e) {
             $this->db->rollBack();
@@ -149,6 +169,7 @@ class Order
         }
     }
 
+    // Ham findByIdAndUserId: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function findByIdAndUserId(int $orderId, int $userId)
     {
         // **nun_ai**: Lấy chi tiết một đơn hàng dựa trên ID đơn hàng và ID của khách hàng tạo đơn. Kết hợp (LEFT JOIN) lấy thông tin tài xế nếu đã có người tiếp nhận.
@@ -159,11 +180,14 @@ class Order
                 u.name AS driver_name, 
                 u.phone AS driver_phone, 
                 u.avatar AS driver_avatar,
-                dp.license_plate AS driver_license_plate
+                dp.license_plate AS driver_license_plate,
+                oa.sender_name, oa.sender_phone, oa.sender_address, oa.sender_lat, oa.sender_lng,
+                oa.receiver_name, oa.receiver_phone, oa.receiver_address, oa.receiver_lat, oa.receiver_lng
             FROM orders o 
             LEFT JOIN order_deliveries del ON del.order_id = o.id
             LEFT JOIN users u ON u.id = del.driver_id 
             LEFT JOIN driver_profiles dp ON dp.user_id = del.driver_id
+            LEFT JOIN order_addresses oa ON oa.order_id = o.id
             WHERE o.id = ? AND o.customer_id = ? AND o.is_archived = 0 
             LIMIT 1
         ";
@@ -172,44 +196,50 @@ class Order
         return $stmt->fetch();
     }
 
-    public function getPendingForDriver(int $driverId): array
+    /**
+     * TỐI ƯU HÓA (OPTIMIZATION): Spatial Bounding Box Pre-filtering
+     * Lọc trước các đơn hàng nằm ngoài bán kính cho phép (mặc định 20km) ngay tại tầng CSDL
+     * Giúp giảm tải đột phá (Search Space Reduction) cho tiến trình Python AI.
+     */
+    public function getPendingForDriver(int $driverId, ?array $driverLocation = null, int $radiusKm = 20): array
     {
-        // **nun_ai**: Truy vấn danh sách các đơn hàng đang ở trạng thái chờ (pending/searching_driver) trong vòng 2 tiếng gần nhất. Dữ liệu này làm đầu vào cho module Trí tuệ nhân tạo quét và gom cụm (AI Batching).
-        // Lấy thêm thông tin địa chỉ và phí ship để AI tính toán và hiển thị
+        $where = "o.status IN ('pending', 'searching_driver') AND o.is_archived = 0 
+              AND (o.scheduled_at IS NULL OR o.scheduled_at <= DATE_ADD(NOW(), INTERVAL 120 MINUTE))";
+
+        if ($driverLocation && isset($driverLocation['lat'], $driverLocation['lng'])) {
+            $lat = (float) $driverLocation['lat'];
+            $lng = (float) $driverLocation['lng'];
+            
+            // Lọc thô bằng Hình vuông bao quanh (Bounding Box)
+            // 1 độ Vĩ tuyến tương đương khoảng 111.045 km
+            $latDelta = $radiusKm / 111.045;
+            $lngDelta = $radiusKm / (111.045 * cos(deg2rad($lat)));
+            
+            $minLat = $lat - $latDelta;
+            $maxLat = $lat + $latDelta;
+            $minLng = $lng - $lngDelta;
+            $maxLng = $lng + $lngDelta;
+
+            // Dùng Index của MySQL để chặn đứng các bản ghi nằm ngoài hình vuông
+            $where .= " AND (oa.sender_lat BETWEEN $minLat AND $maxLat) AND (oa.sender_lng BETWEEN $minLng AND $maxLng)";
+        }
+
         $sql = "
             SELECT 
                 o.*, 
-                oa.sender_lat, oa.sender_lng, oa.sender_address AS pickup_address, oa.receiver_address AS delivery_address,
+                oa.sender_lat, oa.sender_lng, oa.sender_address AS pickup_address, 
+                oa.receiver_lat, oa.receiver_lng, oa.receiver_address AS delivery_address,
                 fin.shipping_fee
             FROM orders o
             LEFT JOIN order_addresses oa ON oa.order_id = o.id
             LEFT JOIN order_finances fin ON fin.order_id = o.id
-            WHERE o.status IN ('pending', 'searching_driver') AND o.is_archived = 0 
-              AND (o.scheduled_at IS NULL OR o.scheduled_at <= DATE_ADD(NOW(), INTERVAL 120 MINUTE))
+            WHERE $where
             ORDER BY o.created_at DESC
         ";
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
         
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
-    }
-
-    /**
-     * TỐI ƯU HÓA: Chỉ đếm số lượng đơn đang chờ, dùng cho API Polling
-     * Tránh việc dùng SELECT * và JOIN các bảng không cần thiết gây quá tải RAM.
-     */
-    public function countPendingOrders(): int
-    {
-        // **nun_ai**: Tối ưu hóa việc đếm số lượng đơn hàng chờ để phục vụ cho kỹ thuật AJAX Polling của chức năng Radar, tránh việc tải toàn bộ dữ liệu bảng vào RAM của PHP gây nghẽn cổ chai.
-        $sql = "
-            SELECT COUNT(id) 
-            FROM orders 
-            WHERE status IN ('pending', 'searching_driver') AND is_archived = 0 
-              AND (scheduled_at IS NULL OR scheduled_at <= DATE_ADD(NOW(), INTERVAL 120 MINUTE))
-        ";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute();
-        return (int) $stmt->fetchColumn();
     }
 
     /**
@@ -253,29 +283,22 @@ class Order
         // **nun_ai**: Lấy danh sách các đơn hàng ĐANG CHẠY (chưa hoàn thành) của một tài xế. Sắp xếp theo một trình tự trạng thái (CASE WHEN o.status...) để tài xế biết thứ tự điểm nào cần thao tác đi lấy/giao trước.
         $sql = "
             SELECT 
-                o.id, o.tracking_code, o.status, o.created_at, o.updated_at, od.accepted_at, o.weight, o.scheduled_at, o.shipping_method,
+                o.id, o.tracking_code, o.status, o.created_at, o.updated_at, od.accepted_at, o.weight, o.scheduled_at, o.shipping_method, o.note, od.batch_code, od.batch_route_details,
                 oa.sender_name, oa.sender_address AS pickup_address, oa.sender_lat, oa.sender_lng,
                 oa.receiver_name, oa.receiver_address AS delivery_address, oa.receiver_lat, oa.receiver_lng,
                 u.no_show_count AS customer_no_show_count,
-                fin.shipping_fee
+                fin.shipping_fee,
+                dp.current_lat AS driver_lat, dp.current_lng AS driver_lng
             FROM orders o
             JOIN order_deliveries od ON o.id = od.order_id
             LEFT JOIN users u ON o.customer_id = u.id
             LEFT JOIN order_addresses oa ON o.id = oa.order_id
             LEFT JOIN order_finances fin ON o.id = fin.order_id
+            LEFT JOIN driver_profiles dp ON od.driver_id = dp.user_id
             WHERE od.driver_id = ? 
               AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning')
               AND o.is_archived = 0
-            ORDER BY 
-                CASE o.status
-                    WHEN 'accepted' THEN 1
-                    WHEN 'picking_up' THEN 2
-                    WHEN 'in_transit' THEN 3
-                    WHEN 'shipping' THEN 4
-                    WHEN 'returning' THEN 5
-                    ELSE 6
-                END ASC,
-                od.accepted_at ASC
+            ORDER BY od.accepted_at ASC
         ";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$driverId]);
@@ -283,6 +306,7 @@ class Order
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
+    // Ham countDriverHistory: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function countDriverHistory(int $driverId, string $startDate = '', string $endDate = ''): int
     {
         // **nun_ai**: Đếm tổng số đơn hàng trong lịch sử của tài xế để tính toán số trang trong chức năng phân trang.
@@ -333,6 +357,7 @@ class Order
         return $stmt->fetch(\PDO::FETCH_ASSOC);
     }
 
+    // Ham assignDriver: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function assignDriver(int $orderId, int $driverId): bool
     {
         // **nun_ai**: Gán một đơn lẻ cho tài xế. Sử dụng mô hình Khóa Lạc quan (Optimistic Locking: WHERE status IN 'pending') và Transaction để phòng chống triệt để lỗi Tranh chấp Dữ liệu (Race Condition) khi 2 tài xế cùng bấm nhận 1 đơn.
@@ -358,6 +383,35 @@ class Order
             $this->db->prepare($sqlHistory)->execute([$orderId]);
             
             $this->db->commit();
+
+            // Gửi thông báo cho khách hàng
+            $stmtInfo = $this->db->prepare("SELECT tracking_code, customer_id, delivery_pin FROM orders WHERE id = ?");
+            $stmtInfo->execute([$orderId]);
+            if ($info = $stmtInfo->fetch(\PDO::FETCH_ASSOC)) {
+                $userModel = new \App\Models\User();
+                $msg = "Đơn hàng #{$info['tracking_code']} của bạn đã được tài xế tiếp nhận và đang trên đường đến điểm lấy hàng.";
+                if (!empty($info['delivery_pin'])) {
+                    $msg .= " MÃ PIN NHẬN HÀNG LÀ: " . $info['delivery_pin'] . ".";
+                }
+                $userModel->createNotification(
+                    $info['customer_id'],
+                    'Tài xế đã tiếp nhận đơn hàng',
+                    $msg,
+                    'order',
+                    "/user/orders/track/{$info['tracking_code']}"
+                );
+            }
+
+            // Tích hợp Pusher: Báo cho Radar của các tài xế khác ẩn đơn này đi
+            if (class_exists('\App\Services\PusherService')) {
+                try {
+                    $pusher = new \App\Services\PusherService();
+                    $pusher->trigger('driver-radar', 'order_taken', [
+                        'order_ids' => [$orderId]
+                    ]);
+                } catch (\Throwable $e) {}
+            }
+
             return true;
         } catch (\Throwable $e) {
             $this->db->rollBack();
@@ -368,7 +422,7 @@ class Order
     /**
      * Gán nhiều đơn hàng cho tài xế cùng lúc (Dùng cho ghép chuyến)
      */
-    public function assignMultipleOrdersToDriver(array $orderIds, int $driverId): array
+    public function assignMultipleOrdersToDriver(array $orderIds, int $driverId, ?string $batchCode = null, array $routeDetails = []): array
     {
         // **nun_ai**: Kỹ thuật cốt lõi trong xử lý AI Batching (Ghép chuyến). Gán hàng loạt đơn. Tuân thủ nguyên tắc All-or-Nothing: Nếu có dù chỉ 1 đơn trong cụm đã bị tài xế khác nhận mất, hệ thống sẽ Rollback (Hủy) thao tác gán của toàn bộ cụm.
         if (empty($orderIds)) {
@@ -381,9 +435,12 @@ class Order
         $this->db->beginTransaction();
         try {
             $stmtOrder = $this->db->prepare("UPDATE orders SET status = 'accepted', updated_at = ? WHERE id = ? AND status IN ('pending', 'searching_driver')");
-            $stmtDelivery = $this->db->prepare("UPDATE order_deliveries SET driver_id = ?, accepted_at = ? WHERE order_id = ?");
+            $stmtDelivery = $this->db->prepare("UPDATE order_deliveries SET driver_id = ?, accepted_at = ?, batch_code = ?, batch_route_details = ? WHERE order_id = ?");
             $stmtHistory = $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, 'accepted', 'Tài xế đã nhận đơn hàng và đang di chuyển đến điểm lấy hàng.', ?)");
             
+            $isFirst = true;
+            $routeDetailsJson = json_encode($routeDetails);
+
             foreach ($orderIds as $orderId) {
                 $stmtOrder->execute([$now, $orderId]);
                 
@@ -394,12 +451,45 @@ class Order
                     return [];
                 }
 
-                $stmtDelivery->execute([$driverId, $now, $orderId]);
+                $currentRouteDetails = $isFirst ? $routeDetailsJson : null;
+                $stmtDelivery->execute([$driverId, $now, $batchCode, $currentRouteDetails, $orderId]);
+                $isFirst = false;
+
                 $stmtHistory->execute([$orderId, $now]);
                 $assignedIds[] = $orderId;
             }
             
             $this->db->commit();
+
+            // Gửi thông báo cho khách hàng của tất cả các đơn trong chuyến ghép
+            $inClause = implode(',', array_fill(0, count($assignedIds), '?'));
+            $stmtInfo = $this->db->prepare("SELECT id, tracking_code, customer_id, delivery_pin FROM orders WHERE id IN ($inClause)");
+            $stmtInfo->execute($assignedIds);
+            $userModel = new \App\Models\User();
+            while ($info = $stmtInfo->fetch(\PDO::FETCH_ASSOC)) {
+                $msg = "Đơn hàng #{$info['tracking_code']} của bạn đã được tài xế tiếp nhận và đang trên đường đến điểm lấy hàng.";
+                if (!empty($info['delivery_pin'])) {
+                    $msg .= " MÃ PIN NHẬN HÀNG LÀ: " . $info['delivery_pin'] . ".";
+                }
+                $userModel->createNotification(
+                    $info['customer_id'],
+                    'Tài xế đã tiếp nhận đơn hàng',
+                    $msg,
+                    'order',
+                    "/user/orders/track/{$info['tracking_code']}"
+                );
+            }
+
+            // Tích hợp Pusher: Báo cho Radar của các tài xế khác ẩn cụm đơn này đi
+            if (class_exists('\App\Services\PusherService')) {
+                try {
+                    $pusher = new \App\Services\PusherService();
+                    $pusher->trigger('driver-radar', 'order_taken', [
+                        'order_ids' => $assignedIds
+                    ]);
+                } catch (\Throwable $e) {}
+            }
+
             return $assignedIds;
         } catch (\Throwable $e) {
             $this->db->rollBack();
@@ -407,6 +497,7 @@ class Order
         }
     }
 
+    // Ham findAllByUserId: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function findAllByUserId(int $userId, string $statusFilter = '', int $limit = 10, int $offset = 0): array
     {
         // **nun_ai**: Lấy danh sách đơn hàng có phân trang và bộ lọc trạng thái dành cho màn hình "Quản lý đơn hàng" của khách hàng (Customer).
@@ -440,6 +531,7 @@ class Order
         return $stmt->fetchAll();
     }
 
+    // Ham countAllByUserId: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function countAllByUserId(int $userId, string $statusFilter = ''): int
     {
         // **nun_ai**: Đếm số lượng đơn hàng của một khách hàng phục vụ cho phân trang.
@@ -457,32 +549,29 @@ class Order
         return (int) $stmt->fetchColumn();
     }
 
-    public function findByTrackingCodeForUser(string $trackingCode, int $userId)
+    // Ham findByTrackingCodeForUser: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
+    public function findByTrackingCodeForUser(string $code, int $userId)
     {
-        $sql = "
+        $stmt = $this->db->prepare("
             SELECT 
                 o.*, 
-                oa.*, 
-                fin.*, 
-                del.*,
-                u.name AS driver_name, 
-                u.phone AS driver_phone, 
-                u.avatar AS driver_avatar, 
-                dp.current_lat AS driver_lat, 
-                dp.current_lng AS driver_lng,
-                dp.license_plate AS driver_license_plate
+                f.payment_status, f.payment_method, f.shipping_fee,
+                oa.sender_name, oa.sender_phone, oa.sender_address, oa.sender_lat, oa.sender_lng,
+                oa.receiver_name, oa.receiver_phone, oa.receiver_address, oa.receiver_lat, oa.receiver_lng,
+                del.driver_id,
+                u.name AS driver_name, u.phone AS driver_phone, u.avatar AS driver_avatar,
+                dp.license_plate AS driver_license_plate, dp.current_lat AS driver_lat, dp.current_lng AS driver_lng
             FROM orders o 
-            LEFT JOIN order_addresses oa ON oa.order_id = o.id
-            LEFT JOIN order_finances fin ON fin.order_id = o.id
-            LEFT JOIN order_deliveries del ON del.order_id = o.id
-            LEFT JOIN users u ON u.id = del.driver_id 
-            LEFT JOIN driver_profiles dp ON dp.user_id = del.driver_id 
-            WHERE o.tracking_code = ? AND o.customer_id = ? AND o.is_archived = 0 
+            LEFT JOIN order_finances f ON o.id = f.order_id 
+            LEFT JOIN order_addresses oa ON o.id = oa.order_id
+            LEFT JOIN order_deliveries del ON o.id = del.order_id
+            LEFT JOIN users u ON del.driver_id = u.id
+            LEFT JOIN driver_profiles dp ON u.id = dp.user_id
+            WHERE o.tracking_code = ? AND o.customer_id = ? 
             LIMIT 1
-        ";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$trackingCode, $userId]);
-        return $stmt->fetch();
+        ");
+        $stmt->execute([$code, $userId]);
+        return $stmt->fetch(PDO::FETCH_ASSOC);
     }
 
     /**
@@ -533,6 +622,7 @@ class Order
         return $stmt->fetch(\PDO::FETCH_ASSOC);
     }
 
+    // Ham getOrderHistory: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function getOrderHistory(int $orderId): array
     {
         // **nun_ai**: Lấy toàn bộ timeline chuyển đổi trạng thái của đơn hàng từ lúc khởi tạo đến hiện tại (bảng order_status_history).
@@ -582,6 +672,7 @@ class Order
         return (int) $stmt->fetchColumn();
     }
 
+    // Ham getAllForAdmin: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function getAllForAdmin(string $statusFilter = '', string $search = '', int $limit = 15, int $offset = 0): array
     {
         // **nun_ai**: Lấy danh sách tổng hợp toàn bộ đơn hàng (kèm thông tin khách gửi, tài xế nhận, doanh thu) cho Bảng điều khiển (Dashboard) của Admin.
@@ -644,73 +735,79 @@ class Order
     /**
      * Cập nhật thông tin đơn hàng từ phía Admin
      */
-    public function updateForAdmin(int $orderId, array $data): bool
+    public function updateForAdmin(int $id, array $data): bool
     {
-        // **nun_ai**: Cấp quyền tối cao cho Admin can thiệp sâu vào đơn hàng (ép đổi trạng thái đơn, trạng thái thanh toán và sửa ghi chú). Đảm bảo dữ liệu các bảng liên kết (như order_finances) được đồng bộ hóa qua Transaction.
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) {
+            $this->db->beginTransaction();
+        }
+
         try {
-            $stmtCurrent = $this->db->prepare("
-                SELECT o.status, o.note, fin.payment_status
-                FROM orders o
-                LEFT JOIN order_finances fin ON fin.order_id = o.id
-                WHERE o.id = ?
-                LIMIT 1
-            ");
-            $stmtCurrent->execute([$orderId]);
-            $current = $stmtCurrent->fetch(PDO::FETCH_ASSOC);
-            if (!$current) {
-                $this->db->rollBack();
-                return false;
+            // Lấy dữ liệu cũ để đối chiếu sự thay đổi trạng thái hoặc thanh toán
+            $stmtOld = $this->db->prepare("SELECT o.status, f.payment_status FROM orders o LEFT JOIN order_finances f ON o.id = f.order_id WHERE o.id = ?");
+            $stmtOld->execute([$id]);
+            $oldData = $stmtOld->fetch(PDO::FETCH_ASSOC);
+
+            // 1. Cập nhật bảng orders
+            $status = $data['status'] ?? $oldData['status'];
+            $note = $data['note'] ?? '';
+
+            $stmtOrder = $this->db->prepare("UPDATE orders SET status = ?, note = ?, updated_at = NOW() WHERE id = ?");
+            $stmtOrder->execute([$status, $note, $id]);
+
+            // Nếu có thay đổi trạng thái, cập nhật mốc thời gian ở bảng deliveries
+            if ($status !== $oldData['status']) {
+                $timeColumn = null;
+                if ($status === 'completed') $timeColumn = "delivered_at";
+                elseif ($status === 'cancelled') $timeColumn = "cancelled_at";
+                elseif ($status === 'returning') $timeColumn = "return_started_at";
+                elseif ($status === 'returned') $timeColumn = "returned_at";
+
+                if ($timeColumn) {
+                    try {
+                        // Không thể bind tên cột, nhưng đã whitelist ở trên nên an toàn
+                        $deliverySql = "UPDATE order_deliveries SET {$timeColumn} = NOW() WHERE order_id = ?";
+                        $deliveryStmt = $this->db->prepare($deliverySql);
+                        $deliveryStmt->execute([$id]);
+                    } catch (\PDOException $e) {
+                        // Bỏ qua lỗi nếu cột mốc thời gian chưa được tạo trong CSDL để không làm gián đoạn luồng chính
+                    }
+                }
             }
 
-            $newStatus = $data['status'] ?? $current['status'];
-            $newNote = $data['description'] ?? ($data['note'] ?? ($current['note'] ?? ''));
-            $newPaymentStatus = $data['payment_status'] ?? ($current['payment_status'] ?? 'pending');
-            if ($newStatus === 'cancelled' && $newPaymentStatus === 'paid') {
-                $newPaymentStatus = 'refunded';
+            // 2. Cập nhật bảng order_finances
+            $paymentStatus = $data['payment_status'] ?? $oldData['payment_status'];
+            $financeTimeUpdate = "";
+            if ($paymentStatus !== $oldData['payment_status']) {
+                if ($paymentStatus === 'paid') $financeTimeUpdate = ", paid_at = NOW()";
+                elseif ($paymentStatus === 'refunded') $financeTimeUpdate = ", refunded_at = NOW()";
             }
 
-            $stmt = $this->db->prepare("UPDATE orders SET note = ?, updated_at = NOW() WHERE id = ?");
-            $stmt->execute([
-                $newNote,
-                $orderId
-            ]);
+            $stmtFinance = $this->db->prepare("UPDATE order_finances SET payment_status = ?, updated_at = NOW() {$financeTimeUpdate} WHERE order_id = ?");
+            $stmtFinance->execute([$paymentStatus, $id]);
 
-            $stmtFin = $this->db->prepare("
-                UPDATE order_finances
-                SET shipping_fee = ?,
-                    payment_method = ?,
-                    payment_status = ?,
-                    paid_at = CASE WHEN ? = 'paid' THEN COALESCE(paid_at, NOW()) ELSE paid_at END,
-                    refunded_at = CASE WHEN ? = 'refunded' THEN COALESCE(refunded_at, NOW()) ELSE refunded_at END
-                WHERE order_id = ?
-            ");
-            $stmtFin->execute([
-                isset($data['shipping_fee']) ? (float)$data['shipping_fee'] : 0,
-                $data['payment_method'] ?? 'cash',
-                $newPaymentStatus,
-                $newPaymentStatus,
-                $newPaymentStatus,
-                $orderId
-            ]);
-
-            if ($newStatus !== $current['status']) {
-                $this->updateStatus($orderId, $newStatus, 'Admin cập nhật trạng thái đơn hàng.');
-            }
-            if ($newPaymentStatus !== ($current['payment_status'] ?? 'pending')) {
-                $paymentLabels = [
-                    'pending' => 'Chờ thanh toán',
-                    'paid' => 'Đã thanh toán',
-                    'refunded' => 'Đã hoàn tiền'
-                ];
-                $paymentLabel = $paymentLabels[$newPaymentStatus] ?? $newPaymentStatus;
-                $this->addStatusHistory($orderId, $newStatus, 'Admin cập nhật trạng thái thanh toán thành: ' . $paymentLabel);
+            // 3. Nếu có thay đổi trạng thái, ghi nhận lịch sử rõ ràng phục vụ đối soát hội đồng chấm
+            if ($status !== $oldData['status']) {
+                $desc = "Quản trị viên thay đổi trạng thái đơn từ '" . \App\Models\Order::getStatusLabel($oldData['status']) . "' sang '" . \App\Models\Order::getStatusLabel($status) . "'. Lý do: Hệ thống Admin hiệu chỉnh.";
+                $stmtHist = $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())");
+                $stmtHist->execute([$id, $status, $desc]);
             }
 
-            $this->db->commit();
+            if ($paymentStatus !== $oldData['payment_status']) {
+                $descFinance = "Quản trị viên thay đổi trạng thái thanh toán thành: " . $paymentStatus;
+                $stmtHist = $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())");
+                $stmtHist->execute([$id, $status, $descFinance]);
+            }
+
+            if ($ownsTransaction) {
+                $this->db->commit();
+            }
             return true;
         } catch (\Throwable $e) {
-            $this->db->rollBack();
+            if ($ownsTransaction) {
+                $this->db->rollBack();
+            }
+            error_log('Order updateForAdmin failed: ' . $e->getMessage());
             return false;
         }
     }
@@ -720,48 +817,71 @@ class Order
      */
     public function updateStatus(int $orderId, string $status, string $description = ''): bool
     {
-        // **nun_ai**: Cập nhật trạng thái vật lý của đơn hàng (VD: Đang lấy -> Đang giao), ghi nhận mốc thời gian hành động và tự động sinh ra log vào bảng lịch sử.
-        // Transaction được quản lý ở Controller để gộp chung với logic hoàn tiền
-        $stmt = $this->db->prepare("UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?");
-        $stmt->execute([$status, $orderId]);
-
-        $stmtHist = $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())");
-        $stmtHist->execute([$orderId, $status, $description]);
-
-        $deliveryTimeColumns = [
-            'in_transit' => 'picked_up_at',
-            'shipping' => 'picked_up_at',
-            'completed' => 'delivered_at',
-            'cancelled' => 'cancelled_at',
-        ];
-        if (isset($deliveryTimeColumns[$status])) {
-            $column = $deliveryTimeColumns[$status];
-            $stmtDelivery = $this->db->prepare("UPDATE order_deliveries SET {$column} = COALESCE({$column}, NOW()) WHERE order_id = ?");
-            $stmtDelivery->execute([$orderId]);
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) {
+            $this->db->beginTransaction();
         }
 
-        // Tự động chuyển trạng thái thành "Đã thanh toán" nếu giao thành công bằng tiền mặt
-        if ($status === 'completed') {
-            $stmtFinance = $this->db->prepare("UPDATE order_finances SET payment_status = 'paid', paid_at = COALESCE(paid_at, NOW()) WHERE order_id = ? AND payment_method = 'cash'");
-            $stmtFinance->execute([$orderId]);
-        }
+        try {
+            // 1. Cập nhật trạng thái chính trong bảng `orders`
+            $sql = "UPDATE orders SET status = ?, updated_at = NOW() WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$status, $orderId]);
 
-        return true;
+            // 2. Cập nhật các cột mốc thời gian tương ứng trong bảng `order_deliveries`
+            $timeColumn = null;
+            if ($status === 'picking_up') $timeColumn = "picked_up_at";
+            elseif ($status === 'completed') $timeColumn = "delivered_at";
+            elseif ($status === 'cancelled') $timeColumn = "cancelled_at";
+            elseif ($status === 'returning') $timeColumn = "return_started_at";
+            elseif ($status === 'returned') $timeColumn = "returned_at";
+
+            if ($timeColumn) {
+                try {
+                    // Không thể bind tên cột, nhưng đã whitelist ở trên nên an toàn
+                    $deliverySql = "UPDATE order_deliveries SET {$timeColumn} = NOW() WHERE order_id = ?";
+                    $deliveryStmt = $this->db->prepare($deliverySql);
+                    $deliveryStmt->execute([$orderId]);
+                } catch (\PDOException $e) {
+                    // Bỏ qua lỗi nếu cột mốc thời gian chưa được tạo trong CSDL để không làm gián đoạn luồng chính
+                }
+            }
+
+            // 3. Ghi nhận lịch sử trạng thái (Order Status History) luôn luôn nhất quán
+            $stmtHist = $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())");
+            $stmtHist->execute([$orderId, $status, $description ?: \App\Models\Order::getStatusLabel($status)]);
+
+            if ($ownsTransaction) {
+                $this->db->commit();
+            }
+            return true;
+        } catch (\Throwable $e) {
+            if ($ownsTransaction) {
+                $this->db->rollBack();
+            }
+            error_log('Order updateStatus failed: ' . $e->getMessage());
+            return false;
+        }
     }
 
-    public function updatePaymentStatus(int $orderId, string $status): bool
+    /**
+     * Cập nhật trạng thái thanh toán và tự động ghi nhận mốc thời gian paid_at / refunded_at
+     */
+    public function updatePaymentStatus(int $orderId, string $paymentStatus): bool
     {
-        // **nun_ai**: Cập nhật trạng thái thanh toán của đơn (VD: pending -> paid). Tự động lưu vết thời gian thanh toán (paid_at) hoặc hoàn tiền (refunded_at).
-        $stmt = $this->db->prepare("
-            UPDATE order_finances
-            SET payment_status = ?,
-                paid_at = CASE WHEN ? = 'paid' THEN COALESCE(paid_at, NOW()) ELSE paid_at END,
-                refunded_at = CASE WHEN ? = 'refunded' THEN COALESCE(refunded_at, NOW()) ELSE refunded_at END
-            WHERE order_id = ?
-        ");
-        return $stmt->execute([$status, $status, $status, $orderId]);
+        $timeColumnUpdate = "";
+        if ($paymentStatus === 'paid') {
+            $timeColumnUpdate = ", paid_at = NOW()";
+        } elseif ($paymentStatus === 'refunded') {
+            $timeColumnUpdate = ", refunded_at = NOW()";
+        }
+
+        $sql = "UPDATE order_finances SET payment_status = ?, updated_at = NOW() {$timeColumnUpdate} WHERE order_id = ?";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([$paymentStatus, $orderId]);
     }
 
+    // Ham addStatusHistory: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function addStatusHistory(int $orderId, string $status, string $description): bool
     {
         // **nun_ai**: Đẩy thêm một dòng ghi chú sự kiện tùy chỉnh (Event log) vào lịch sử timeline của đơn hàng.
@@ -769,6 +889,7 @@ class Order
         return $stmt->execute([$orderId, $status, $description]);
     }
 
+    // Ham refundPaidOrder: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function refundPaidOrder(int $orderId): bool
     {
         // **nun_ai**: Hoàn tiền trực tuyến (Chuyển trạng thái 'paid' thành 'refunded') trong bảng order_finances khi khách hàng hủy đơn đã thanh toán.
@@ -783,6 +904,7 @@ class Order
         return $stmt->rowCount() > 0;
     }
 
+    // Ham getPreviousStatus: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function getPreviousStatus(int $orderId): string
     {
         // **nun_ai**: Tìm trạng thái hợp lệ ngay trước đó của đơn hàng (Bỏ qua trạng thái Đang khiếu nại - 'disputed' nếu có). Thường dùng khi giải quyết xong khiếu nại và muốn trả đơn về bình thường.
@@ -792,6 +914,7 @@ class Order
         return $row ? $row['status'] : 'cancelled';
     }
 
+    // Ham getShippingFees: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function getShippingFees(array $orderIds): array
     {
         // **nun_ai**: Lấy phí ship (Cước phí) của một danh sách các ID đơn hàng. Hỗ trợ cho việc tính toán tổng cước của cụm đơn hàng (Batch) bên Controller.
@@ -1164,7 +1287,7 @@ class Order
                 $userModel->createNotification(
                     $info['customer_id'],
                     'Đang tìm lại tài xế',
-                    "Đơn hàng #{$info['tracking_code']} đang được hệ thống tự động tìm lại tài xế mới do tài xế trước đó không đến lấy hàng.",
+                    "Hệ thống đang tự động tìm lại tài xế mới cho đơn hàng #{$info['tracking_code']} do tài xế trước đó không thể tiếp tục thực hiện.",
                     'order',
                     "/user/orders/track/{$info['tracking_code']}"
                 );
@@ -1218,7 +1341,7 @@ class Order
                 $userModel->createNotification(
                     $order['customer_id'],
                     'Hủy đơn hàng tự động',
-                    "Đơn hàng #{$order['tracking_code']} của bạn đã bị hủy tự động do không có tài xế nhận sau 24 giờ.",
+                    "Hệ thống đã tự động hủy đơn hàng #{$order['tracking_code']} do không có tài xế tiếp nhận sau 24 giờ. Rất mong bạn thông cảm vì sự bất tiện này.",
                     'system',
                     "/user/orders/track/{$order['tracking_code']}"
                 );

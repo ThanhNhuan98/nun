@@ -89,8 +89,8 @@
 
                 <div class="settings-row">
                     <div class="settings-label-col">
-                        <label for="no_show_threshold_for_ban">Giới hạn "Bom hàng" (Lần)</label>
-                        <p>Số lần từ chối nhận hàng (bom hàng) tối đa trước khi tài khoản khách hàng bị hệ thống tự động khóa vĩnh viễn.</p>
+                        <label for="no_show_threshold_for_ban">Giới hạn "Vi phạm giao nhận" (Lần)</label>
+                        <p>Số lần từ chối gửi/nhận hàng hoặc không liên lạc được tối đa trước khi tài khoản khách hàng bị hệ thống tự động khóa vĩnh viễn.</p>
                     </div>
                     <div class="settings-input-col">
                         <input type="number" id="no_show_threshold_for_ban" name="no_show_threshold_for_ban" class="form-control" min="1" step="1" value="<?= app_e($settings['no_show_threshold_for_ban'] ?? '3') ?>" required style="text-align: right;">

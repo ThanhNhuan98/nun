@@ -8,6 +8,7 @@ use App\Models\Order;
 
 class TrackingController extends BaseController
 {
+    // Hiển thị trang tra cứu vận đơn công khai cho khách hàng (không cần đăng nhập).
     public function index(Request $request, Response $response)
     {
         $query = $request->getBody();

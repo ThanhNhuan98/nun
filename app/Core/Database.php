@@ -9,9 +9,12 @@ class Database
 {
     private static ?PDO $instance = null;
 
+    // Ngăn chặn khởi tạo đối tượng bằng từ khóa new bên ngoài (Singleton Pattern).
     private function __construct() {}
+    // Ngăn chặn clone đối tượng (Singleton Pattern).
     private function __clone() {}
 
+    // Tạo và trả về duy nhất một instance kết nối cơ sở dữ liệu PDO.
     public static function getInstance(): PDO
     {
         if (self::$instance === null) {
@@ -26,7 +29,11 @@ class Database
                     PDO::ATTR_EMULATE_PREPARES   => false,
                 ]);
             } catch (PDOException $e) {
-                die("Lỗi kết nối cơ sở dữ liệu: " . $e->getMessage());
+                // Không bao giờ die() trong ứng dụng. Ném ngoại lệ để tầng cao hơn (index.php) bắt và xử lý.
+                // Điều này cho phép hiển thị một trang lỗi thân thiện với người dùng.
+                // Ghi lại lỗi chi tiết cho lập trình viên.
+                error_log("Database Connection Error: " . $e->getMessage());
+                throw new PDOException("Không thể kết nối đến cơ sở dữ liệu. Vui lòng thử lại sau.", (int)$e->getCode());
             }
         }
         return self::$instance;

@@ -39,26 +39,6 @@
             </a>
         </div>
 
-        <div class="task-card-large warning">
-            <div class="task-card-top">
-                <div class="task-icon-box">
-                    <span class="material-symbols-outlined">account_balance_wallet</span>
-                </div>
-                <div class="task-count-number">
-                    <?= str_pad(htmlspecialchars($stats['pending_cod_settlements'] ?? 0), 2, '0', STR_PAD_LEFT) ?>
-                </div>
-            </div>
-            
-            <div class="task-card-title">Đối soát COD Pending</div>
-            <div class="task-card-desc">
-                Yêu cầu rút tiền từ tài xế hoặc đối tác đang chờ duyệt để tiến hành thanh toán.
-            </div>
-            
-            <a href="/admin/cod-settlements" class="btn-task-action solid-warning">
-                Kiểm tra ngay <span class="material-symbols-outlined" style="font-size: 18px;">qr_code_scanner</span>
-            </a>
-        </div>
-
         <div class="task-card-large primary">
             <div class="task-card-top">
                 <div class="task-icon-box">

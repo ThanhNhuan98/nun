@@ -25,8 +25,7 @@ class ProfileController extends BaseController
 
         if (!$targetUser) {
             $response->setStatusCode(404);
-            // Tạo một view riêng cho trường hợp không tìm thấy user
-            return $this->notFound($response);
+            return $response->render('layouts/404');
         }
 
         $ratingInfo = null;
@@ -224,6 +223,13 @@ class ProfileController extends BaseController
         }
 
         $data = $request->getBody();
+        $acceptRules = isset($data['accept_rules']) ? (bool) $data['accept_rules'] : false;
+
+        if (!$acceptRules) {
+            $_SESSION['flash_error'] = 'Bạn phải đọc và đồng ý với các Quy tắc vận hành của nền tảng trước khi đăng ký làm tài xế.';
+            return $response->redirect('/profile/' . $userId);
+        }
+        
         $licensePlate = trim($data['license_plate'] ?? '');
 
         if (empty($licensePlate)) {
@@ -259,7 +265,7 @@ class ProfileController extends BaseController
         if (isset($_FILES['vehicle_registration']) && $_FILES['vehicle_registration']['error'] === UPLOAD_ERR_OK) {
             $validation = app_validate_uploaded_image($_FILES['vehicle_registration']);
             if (!$validation['valid']) {
-                throw new \RuntimeException($validation['error'] ?? 'Ảnh giấy đăng ký xe không hợp lệ.');
+                throw new \RuntimeException($validation['error'] ?? 'Ảnh hồ sơ không hợp lệ.');
             }
             
             try {
@@ -273,6 +279,6 @@ class ProfileController extends BaseController
                 throw new \RuntimeException('Lỗi upload ảnh lên Cloudinary: ' . $e->getMessage());
             }
         }
-        throw new \RuntimeException('Vui lòng tải lên ảnh giấy đăng ký xe (Cavet).');
+        throw new \RuntimeException('Vui lòng tải lên ảnh Hồ sơ tổng hợp (CCCD, Bằng lái, Cà vẹt).');
     }
 }

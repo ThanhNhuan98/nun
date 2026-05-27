@@ -7,6 +7,7 @@ use App\Core\Response;
 
 class AuthMiddleware implements Middleware
 {
+    // Kiểm tra trạng thái đăng nhập, chặn và yêu cầu đăng nhập nếu người dùng chưa xác thực.
     public function handle(Request $request, Response $response, \Closure $next)
     {
         // Kiểm tra xem người dùng đã đăng nhập chưa

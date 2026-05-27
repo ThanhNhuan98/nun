@@ -9,6 +9,7 @@ use App\Models\Wallet;
 
 class WithdrawalController extends BaseController
 {
+    // Hiển thị giao diện rút tiền từ ví tài xế về tài khoản ngân hàng.
     public function index(Request $request, Response $response)
     {
 
@@ -23,6 +24,7 @@ class WithdrawalController extends BaseController
         ]);
     }
 
+    // Xử lý yêu cầu rút tiền của tài xế (Thực hiện mô phỏng trừ tiền trong ví).
     public function store(Request $request, Response $response)
     {
         $driverId = $this->userId();

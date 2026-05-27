@@ -13,6 +13,7 @@
     
 </head>
 <body>
+    <?= app_render_toast(); ?>
 
     <div class="auth-card">
         <div class="card-top-accent"></div>
@@ -23,14 +24,6 @@
 
         <h2 class="auth-title">Xác thực tài khoản</h2>
         <p class="auth-desc">Mã OTP gồm 6 chữ số đã được gửi đến email<br><strong><?= app_e($email ?? 'của bạn') ?></strong>.</p>
-
-        <?php if ($message = app_flash('flash_error')): ?>
-            <div class="alert-danger"><?= app_e($message) ?></div>
-        <?php endif; ?>
-        
-        <?php if ($message = app_flash('flash_info')): ?>
-            <div class="alert-success-soft"><?= app_e($message) ?></div>
-        <?php endif; ?>
 
         <form action="/auth/verify" method="POST">
             
@@ -43,7 +36,7 @@
                 <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]*">
             </div>
 
-            <input type="hidden" id="real-otp" name="otp" required pattern="\d{6}" title="Mã OTP phải là 6 chữ số.">
+            <input type="text" id="real-otp" name="otp" required pattern="\d{6}" title="Mã OTP phải là 6 chữ số." oninvalid="this.setCustomValidity('Vui lòng nhập đủ 6 chữ số mã OTP.')" oninput="this.setCustomValidity('')" style="position: absolute; opacity: 0; width: 0; height: 0; border: none; padding: 0;">
 
             <div class="info-box">
                 <span class="material-symbols-outlined unfilled info-box-icon">info</span>

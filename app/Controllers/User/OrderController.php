@@ -16,9 +16,12 @@ use App\Models\Wallet;
 use App\Core\Validator;
 use App\Exceptions\ValidationException;
 use App\Services\ShippingFeeService;
+use Cloudinary\Configuration\Configuration;
+use Cloudinary\Api\Upload\UploadApi;
 
 class OrderController extends BaseController
 {
+    // Lấy thông tin chi tiết đơn hàng của khách hàng, báo lỗi nếu không tìm thấy.
     private function getOrderOrFail(string $trackingCode): ?array
     {
         $orderModel = new Order();
@@ -29,11 +32,13 @@ class OrderController extends BaseController
         return $order ?: null;
     }
 
+    // Hiển thị giao diện tạo đơn hàng mới cho khách hàng.
     public function create(Request $request, Response $response)
     {
         return $this->renderCreateForm($response);
     }
 
+    // Xử lý kiểm tra dữ liệu đầu vào và lưu đơn hàng mới vào cơ sở dữ liệu.
     public function store(Request $request, Response $response)
     {
         $data = app_sanitize($request->getBody());
@@ -58,6 +63,15 @@ class OrderController extends BaseController
                 'note' => 'max:1000',
                 'scheduled_at' => 'required|after_now|before_one_week',
             ])->throw();
+
+            // Yêu cầu 1: Không cho phép địa chỉ lấy và giao trùng nhau
+            if (
+                !empty($data['sender_lat']) && !empty($data['receiver_lat']) &&
+                (float)$data['sender_lat'] == (float)$data['receiver_lat'] &&
+                (float)$data['sender_lng'] == (float)$data['receiver_lng']
+            ) {
+                throw new ValidationException(['Địa chỉ lấy hàng và địa chỉ giao hàng không được trùng nhau.'], $data);
+            }
 
             if (in_array($data['shipping_method'] ?? '', ['fast', 'express'])) {
                 if (!empty($data['scheduled_at'])) {
@@ -84,6 +98,7 @@ class OrderController extends BaseController
         }
     }
 
+    // Thực hiện tính cước, tạo mã vận đơn và tiến hành lưu dữ liệu đơn hàng vào hệ thống.
     private function createOrder(Response $response, array $data)
     {
         $originalData = $data;
@@ -92,12 +107,17 @@ class OrderController extends BaseController
             $data['customer_id'] = $this->userId();
             $data['sender_name'] = $this->resolveSenderField($data['sender_name'] ?? '', 'name');
             $data['sender_phone'] = $this->resolveSenderField($data['sender_phone'] ?? '', 'phone');
+
+            // Định dạng địa chỉ từ bản đồ trước khi ghép với địa chỉ chi tiết
+            $formattedPickup = app_format_address($data['pickup_address'] ?? '');
+            $formattedDelivery = app_format_address($data['delivery_address'] ?? '');
+
             $data['pickup_address'] = $this->mergeDetailedAddress(
-                $data['pickup_address'] ?? '',
+                $formattedPickup,
                 $data['pickup_address_detail'] ?? ''
             );
             $data['delivery_address'] = $this->mergeDetailedAddress(
-                $data['delivery_address'] ?? '',
+                $formattedDelivery,
                 $data['delivery_address_detail'] ?? ''
             );
 
@@ -128,6 +148,7 @@ class OrderController extends BaseController
         }
     }
 
+    // Render giao diện form tạo đơn hàng kèm theo các dữ liệu lỗi hoặc nhập lại nếu có.
     private function renderCreateForm(Response $response, array $params = [])
     {
         $defaults = [
@@ -137,6 +158,7 @@ class OrderController extends BaseController
         return $response->render('user/orders/create', array_merge($defaults, $params));
     }
 
+    // Tự động lấy tên/SĐT của khách hàng đang đăng nhập nếu họ để trống form người gửi.
     private function resolveSenderField(string $value, string $sessionKey): string
     {
         $value = trim($value);
@@ -147,6 +169,7 @@ class OrderController extends BaseController
         return (string) $this->currentUser($sessionKey, '');
     }
 
+    // Gộp địa chỉ chi tiết (số nhà, hẻm) với địa chỉ trên bản đồ thành một chuỗi hoàn chỉnh.
     private function mergeDetailedAddress(string $baseAddress, string $detailAddress): string
     {
         $baseAddress = trim(trim($baseAddress), ", ");
@@ -168,6 +191,39 @@ class OrderController extends BaseController
         return $detailAddress . ', ' . $baseAddress;
     }
 
+    // Chuẩn hóa và sửa lỗi đảo ngược tọa độ Vĩ độ - Kinh độ (nếu có).
+    private function normalizeCoordinates($lat, $lng): ?array
+    {
+        if (!is_numeric($lat) || !is_numeric($lng)) {
+            return null;
+        }
+
+        $normalizedLat = (float) $lat;
+        $normalizedLng = (float) $lng;
+
+        if (!$this->isValidCoordinates($normalizedLat, $normalizedLng)
+            && $this->isValidCoordinates($normalizedLng, $normalizedLat)) {
+            [$normalizedLat, $normalizedLng] = [$normalizedLng, $normalizedLat];
+        }
+
+        if (!$this->isValidCoordinates($normalizedLat, $normalizedLng)) {
+            return null;
+        }
+
+        return ['lat' => $normalizedLat, 'lng' => $normalizedLng];
+    }
+
+    // Kiểm tra tính hợp lệ của tọa độ trên bản đồ thế giới.
+    private function isValidCoordinates(float $lat, float $lng): bool
+    {
+        return is_finite($lat)
+            && is_finite($lng)
+            && $lat >= -90 && $lat <= 90
+            && $lng >= -180 && $lng <= 180
+            && !($lat === 0.0 && $lng === 0.0);
+    }
+
+    // Hiển thị danh sách các đơn hàng của khách hàng (có hỗ trợ phân trang và lọc trạng thái).
     public function index(Request $request, Response $response)
     {
         $query = $request->getBody();
@@ -191,6 +247,7 @@ class OrderController extends BaseController
         ]);
     }
 
+    // Hiển thị trang theo dõi hành trình chi tiết của một đơn hàng thông qua mã vận đơn.
     public function track(Request $request, Response $response)
     {
         $trackingCode = $request->getRouteParam('code');
@@ -223,6 +280,7 @@ class OrderController extends BaseController
         ]);
     }
 
+    // Trả về tọa độ GPS hiện tại của tài xế thông qua API để hiển thị real-time trên bản đồ.
     public function apiDriverLocation(Request $request, Response $response)
     {
         $trackingCode = $request->getRouteParam('code');
@@ -230,17 +288,22 @@ class OrderController extends BaseController
         
         $location = $orderModel->getDriverLocationByTrackingCode($trackingCode);
         
-        if ($location && $location['current_lat'] !== null) {
+        $coordinates = $location
+            ? $this->normalizeCoordinates($location['current_lat'] ?? null, $location['current_lng'] ?? null)
+            : null;
+
+        if ($coordinates) {
             return $response->json([
                 'success' => true,
-                'lat' => (float) $location['current_lat'],
-                'lng' => (float) $location['current_lng']
+                'lat' => $coordinates['lat'],
+                'lng' => $coordinates['lng']
             ]);
         }
 
         return $response->json(['success' => false]);
     }
 
+    // Tính toán cước phí vận chuyển dự kiến dựa trên AI OSRM và bảng giá hệ thống (API).
     public function apiCalculateFee(Request $request, Response $response)
     {
         $data = $request->getJsonBody() ?: $request->getBody();
@@ -273,6 +336,7 @@ class OrderController extends BaseController
         return $response->json(['success' => false, 'message' => $quote['message']]);
     }
 
+    // Hiển thị giao diện cho khách hàng đánh giá tài xế sau khi đơn hàng đã hoàn thành.
     public function review(Request $request, Response $response)
     {
         $orderId = (int) $request->getRouteParam('id');
@@ -313,6 +377,7 @@ class OrderController extends BaseController
         ]);
     }
 
+    // Lưu đánh giá (số sao, thẻ nhận xét, bình luận) của khách hàng dành cho tài xế vào CSDL.
     public function storeReview(Request $request, Response $response)
     {
         $orderId = (int) $request->getRouteParam('id');
@@ -361,6 +426,7 @@ class OrderController extends BaseController
         return $response->redirect("/user/orders/review/{$orderId}");
     }
 
+    // Hiển thị giao diện thanh toán trực tuyến qua mã QR cho đơn hàng trả trước.
     public function payment(Request $request, Response $response)
     {
         $trackingCode = $request->getRouteParam('code');
@@ -380,6 +446,7 @@ class OrderController extends BaseController
         ]);
     }
 
+    // Xử lý ghi nhận đã thanh toán và chuyển trạng thái đơn sang tìm tài xế (mô phỏng).
     public function processPayment(Request $request, Response $response)
     {
         $trackingCode = $request->getRouteParam('code');
@@ -398,6 +465,7 @@ class OrderController extends BaseController
         return $response->redirect('/user/orders/track/' . $trackingCode);
     }
 
+    // Xử lý khách hàng tự hủy đơn hàng và hoàn tiền (nếu đã thanh toán) vào ví/tài khoản.
     public function cancel(Request $request, Response $response)
     {
         $trackingCode = $request->getRouteParam('code');
@@ -431,8 +499,8 @@ class OrderController extends BaseController
                     $userModel = new User();
                     $userModel->createNotification(
                         $order['driver_id'],
-                        'Cộng tiền - Hoàn phí',
-                        "Đơn hàng #{$order['tracking_code']} đã bị khách hủy. Ví của bạn được cộng " . number_format($feePerOrder, 0, ',', '.') . "đ (hoàn phí).",
+                        'Hoàn phí nền tảng',
+                        "Hệ thống đã hoàn lại " . number_format($feePerOrder, 0, ',', '.') . "đ phí nền tảng do khách hàng đã chủ động hủy đơn hàng #{$order['tracking_code']}.",
                         'wallet',
                         "/driver/orders/view/{$order['id']}"
                     );
@@ -441,7 +509,7 @@ class OrderController extends BaseController
                     $userModel->createNotification(
                         $order['driver_id'],
                         'Khách hàng hủy đơn',
-                        "Đơn hàng #{$order['tracking_code']} đã bị hủy bởi khách hàng.",
+                        "Khách hàng đã chủ động hủy đơn hàng #{$order['tracking_code']}. Rất mong bạn thông cảm.",
                         'order',
                         "/driver/orders/view/{$order['id']}"
                     );
@@ -466,17 +534,21 @@ class OrderController extends BaseController
         return $response->redirect('/user/orders');
     }
 
+    // Tạo yêu cầu khiếu nại đối với các đơn hàng đã hoàn thành, hoàn trả hoặc bị hủy.
     public function dispute(Request $request, Response $response)
     {
         $trackingCode = $request->getRouteParam('code');
         $userId = $this->userId();
         $data = $request->getBody();
+        $issueType = app_sanitize($data['issue_type'] ?? '');
         $reason = app_sanitize($data['reason'] ?? '');
 
-        if (empty($reason)) {
-            $_SESSION['flash_error'] = "Vui lòng nhập lý do khiếu nại.";
+        if (empty($reason) || empty($issueType)) {
+            $_SESSION['flash_error'] = "Vui lòng chọn loại sự cố và nhập chi tiết khiếu nại.";
             return $response->redirect('/user/orders/track/' . $trackingCode);
         }
+
+        $fullReason = $issueType . " - Chi tiết: " . $reason;
 
         $order = $this->getOrderOrFail($trackingCode);
         if (!$order) return $response->redirect('/user/orders');
@@ -488,16 +560,38 @@ class OrderController extends BaseController
         }
 
         try {
-            $description = "Khách hàng khiếu nại: " . $reason;
+            $dbReason = $fullReason;
+            $proofImagePath = '';
+            
+            // Tận dụng SDK Cloudinary để upload file an toàn
+            if (isset($_FILES['proof_image']) && $_FILES['proof_image']['error'] === UPLOAD_ERR_OK) {
+                $validation = app_validate_uploaded_image($_FILES['proof_image']);
+                if ($validation['valid']) {
+                    Configuration::instance($_ENV['CLOUDINARY_URL']);
+                    $uploadApi = new UploadApi();
+                    $result = $uploadApi->upload($_FILES['proof_image']['tmp_name'], [
+                        'folder' => 'nun_express/proofs',
+                        'public_id' => 'dispute_' . $order['id'] . '_' . time()
+                    ]);
+                    $proofImagePath = $result['secure_url'];
+                    $dbReason .= "||PROOF||" . $proofImagePath;
+                }
+            }
+
+            $description = "Khách hàng khiếu nại: " . $fullReason;
+            if (!empty($proofImagePath)) {
+                $description .= "<br><br><div class='proof-image-wrapper'><strong>Ảnh đính kèm:</strong><br><a href='" . $proofImagePath . "' target='_blank' title='Nhấn để xem ảnh lớn'><img src='" . $proofImagePath . "' alt='Ảnh minh chứng' class='proof-image' style='max-width: 200px; margin-top: 8px; border-radius: 4px;'></a></div>";
+            }
+
             $orderModel = new Order();
             $orderModel->updateStatus($order['id'], 'disputed', $description);
 
             $disputeModel = new Dispute();
-            $disputeModel->create($order['id'], $userId, $reason);
+            $disputeModel->create($order['id'], $userId, $dbReason);
 
             (new Notification())->notifyAdmins(
                 'Khiếu nại mới',
-                "Đơn hàng #{$order['tracking_code']} vừa bị khách hàng khiếu nại.",
+                "Khách hàng vừa gửi yêu cầu khiếu nại đối với đơn hàng #{$order['tracking_code']}.",
                 'system',
                 "/admin/orders/view/{$order['id']}"
             );
@@ -510,6 +604,7 @@ class OrderController extends BaseController
         return $response->redirect('/user/orders/track/' . $trackingCode);
     }
 
+    // Khách hàng tự rút lại yêu cầu khiếu nại, đóng tranh chấp và khôi phục trạng thái cũ.
     public function withdrawDispute(Request $request, Response $response)
     {
         $trackingCode = $request->getRouteParam('code');

@@ -8,9 +8,12 @@ use App\Core\Response;
 use App\Core\Validator;
 use App\Exceptions\ValidationException;
 use App\Models\User;
+use Cloudinary\Configuration\Configuration;
+use Cloudinary\Api\Upload\UploadApi;
 
 class UserController extends BaseController
 {
+    // Xử lý upload ảnh giấy tờ xe lên Cloudinary và trả về đường dẫn URL.
     private function uploadVehicleImage(): string
     {
         if (!isset($_FILES['vehicle_registration']) || $_FILES['vehicle_registration']['error'] !== UPLOAD_ERR_OK) {
@@ -22,21 +25,23 @@ class UserController extends BaseController
             throw new \RuntimeException($validation['error'] ?? 'Ảnh giấy đăng ký xe không hợp lệ.');
         }
 
-        $uploadDir = dirname(__DIR__, 3) . '/public/uploads/vehicles/';
-        if (!is_dir($uploadDir)) {
-            @mkdir($uploadDir, 0777, true);
+        try {
+            // Đồng bộ lưu trữ lên Cloudinary
+            Configuration::instance($_ENV['CLOUDINARY_URL']);
+            $uploadApi = new UploadApi();
+            
+            $result = $uploadApi->upload($_FILES['vehicle_registration']['tmp_name'], [
+                'folder' => 'nun_express/vehicles',
+                'public_id' => 'reg_' . time() . '_' . uniqid()
+            ]);
+            
+            return $result['secure_url'];
+        } catch (\Exception $e) {
+            throw new \RuntimeException('Lỗi đồng bộ ảnh lên Cloudinary: ' . $e->getMessage());
         }
-
-        $ext = $validation['extension'] ?? 'jpg';
-        $filename = 'reg_' . time() . '_' . uniqid('', true) . '.' . $ext;
-
-        if (!move_uploaded_file($_FILES['vehicle_registration']['tmp_name'], $uploadDir . $filename)) {
-            throw new \RuntimeException('Không thể lưu ảnh giấy đăng ký xe.');
-        }
-
-        return '/uploads/vehicles/' . $filename;
     }
 
+    // Hiển thị danh sách người dùng trên hệ thống (có hỗ trợ phân trang và bộ lọc vai trò).
     public function index(Request $request, Response $response)
     {
         $query = $request->getBody();
@@ -61,6 +66,7 @@ class UserController extends BaseController
         ]);
     }
 
+    // Hiển thị form và xử lý lưu cập nhật thông tin người dùng / tài xế.
     public function edit(Request $request, Response $response)
     {
         $id = (int) $request->getRouteParam('id');
@@ -162,6 +168,7 @@ class UserController extends BaseController
         ]);
     }
 
+    // Thực hiện thao tác Khóa (Block) hoặc Mở khóa (Unblock) tài khoản người dùng.
     public function toggleBlock(Request $request, Response $response)
     {
         $id = (int) $request->getRouteParam('id');
@@ -199,6 +206,7 @@ class UserController extends BaseController
         return $response->redirect('/admin/users?t=' . time());
     }
 
+    // Xử lý tạo mới tài khoản người dùng hoặc tài xế từ bảng điều khiển của Admin.
     public function create(Request $request, Response $response)
     {
         if ($request->isPost()) {

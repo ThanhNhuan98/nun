@@ -17,7 +17,6 @@ $router->get('/', [\App\Controllers\HomeController::class, 'index']);
 $router->get('/tracking', [\App\Controllers\TrackingController::class, 'index']);
 
 
-// --- AUTH ROUTES ---
 $router->get('/login', [AuthController::class, 'showLoginForm']);
 $router->post('/login', [AuthController::class, 'login']);
 $router->get('/logout', [AuthController::class, 'logout']);
@@ -25,8 +24,6 @@ $router->get('/register', [AuthController::class, 'showRegisterForm']);
 $router->post('/register', [AuthController::class, 'register']);
 $router->get('/auth/verify', [AuthController::class, 'showVerifyForm']);
 $router->post('/auth/verify', [AuthController::class, 'verify']);
-
-// --- FORGOT PASSWORD ROUTES ---
 $router->get('/forgot-password', [AuthController::class, 'showForgotPasswordForm']);
 $router->post('/request-otp', [AuthController::class, 'requestOTP']);
 $router->get('/verify-otp', [AuthController::class, 'showVerifyOTPForm']);
@@ -34,7 +31,6 @@ $router->post('/verify-otp', [AuthController::class, 'verifyOTP']);
 $router->get('/reset-password', [AuthController::class, 'showResetPasswordForm']);
 $router->post('/reset-password', [AuthController::class, 'resetPassword']);
 
-// --- PROFILE ROUTE ---
 $router->get('/profile/{id}', [ProfileController::class, 'show']);
 
 $router->group([AuthMiddleware::class], function($router) {
@@ -44,14 +40,12 @@ $router->group([AuthMiddleware::class], function($router) {
     $router->get('/notifications/read', [ProfileController::class, 'readAllNotifications']);
 });
 
-// --- USER ROUTES ---
 $router->get('/api/orders/driver-location/{code}', [OrderController::class, 'apiDriverLocation']);
 $router->post('/api/orders/calculate-fee', [OrderController::class, 'apiCalculateFee']);
 
-$router->group([AuthMiddleware::class], function($router) {
+$router->group([RoleMiddleware::class . ':user'], function($router) {
     $router->get('/user/dashboard', [OrderController::class, 'index']);
     $router->get('/user/orders', [OrderController::class, 'index']);
-    // Quản lý đơn hàng
     $router->get('/user/orders/create', [OrderController::class, 'create']);
     $router->post('/user/orders/create', [OrderController::class, 'store']);
     $router->get('/user/orders/track/{code}', [OrderController::class, 'track']);
@@ -64,9 +58,7 @@ $router->group([AuthMiddleware::class], function($router) {
     $router->post('/user/orders/withdraw-dispute/{code}', [OrderController::class, 'withdrawDispute']);
 });
 
-// --- DRIVER ROUTES ---
-$router->post('/profile/register-driver', [ProfileController::class, 'registerDriver'], [AuthMiddleware::class]); // Profile route cho user
-
+$router->post('/profile/register-driver', [ProfileController::class, 'registerDriver'], [AuthMiddleware::class]); 
 $router->group([RoleMiddleware::class . ':driver'], function($router) {
     $router->get('/driver/receive-orders', [DriverOrderController::class, 'receiveOrders']);
     $router->post('/driver/receive-orders', [DriverOrderController::class, 'acceptOrder']);
@@ -83,41 +75,31 @@ $router->group([RoleMiddleware::class . ':driver'], function($router) {
     $router->post('/driver/orders/report-noshow/{id}', [DriverOrderController::class, 'reportNoShow']);
 });
 
-// --- CHAT ROUTES ---
-$router->get('/api/chat/{order_id}', [\App\Controllers\ChatController::class, 'getMessages']);
-$router->post('/api/chat/{order_id}', [\App\Controllers\ChatController::class, 'sendMessage']);
+$router->get('/api/chat/{order_id}', [\App\Controllers\ChatController::class, 'getMessages'], [AuthMiddleware::class]);
+$router->post('/api/chat/{order_id}', [\App\Controllers\ChatController::class, 'sendMessage'], [AuthMiddleware::class]);
 
-// --- ADMIN ROUTES ---
 $router->group([RoleMiddleware::class . ':admin'], function($router) {
     $router->get('/admin/dashboard', [AdminController::class, 'dashboard']);
-    // NEW ADMIN ROUTES START
     $router->get('/admin/users', [UserController::class, 'index']);
-    // Quản lý đơn hàng
     $router->get('/admin/orders', [AdminController::class, 'orders']);
     $router->get('/admin/orders/view/{id}', [AdminController::class, 'viewOrder']);
     $router->post('/admin/orders/view/{id}', [AdminController::class, 'viewOrder']);
     $router->post('/admin/orders/penalize-driver/{id}', [AdminController::class, 'penalizeDriver']);
     $router->get('/admin/settings', [SettingController::class, 'index']);
     $router->post('/admin/settings', [SettingController::class, 'index']);
-    // Đường dẫn thêm mới
     $router->get('/admin/users/create', [UserController::class, 'create']);
     $router->post('/admin/users/create', [UserController::class, 'create']);
-    // Các đường dẫn động (có truyền ID)
     $router->get('/admin/users/edit/{id}', [UserController::class, 'edit']);
     $router->post('/admin/users/edit/{id}', [UserController::class, 'edit']);
     $router->get('/admin/users/block/{id}', [UserController::class, 'toggleBlock']);
     $router->get('/admin/users/unblock/{id}', [UserController::class, 'toggleBlock']);
-    // 1. Route cho trang "Các công việc"
     $router->get('/admin/tasks', [AdminController::class, 'tasks']);
-    // 2. Route cho "Quản lý Khiếu nại"
     $router->get('/admin/disputes', [\App\Controllers\Admin\DisputeController::class, 'index']);
     $router->get('/admin/disputes/view/{id}', [\App\Controllers\Admin\DisputeController::class, 'view']);
     $router->post('/admin/disputes/view/{id}', [\App\Controllers\Admin\DisputeController::class, 'view']);
-    // 3. Route cho "Chỉnh sửa đơn hàng"
     $router->get('/admin/orders/edit/{id}', [AdminController::class, 'editOrder']);
     $router->post('/admin/orders/edit/{id}', [AdminController::class, 'editOrder']);
 });
 
-// --- CRON JOB ROUTE ---
 $router->get('/cron/auto-reassign', [\App\Controllers\CronController::class, 'autoReassign']);
-$router->get('/notifications', [\App\Controllers\NotificationController::class, 'index']);
+$router->get('/notifications', [\App\Controllers\NotificationController::class, 'index'], [AuthMiddleware::class]);

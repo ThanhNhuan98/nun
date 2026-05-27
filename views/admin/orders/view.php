@@ -55,15 +55,21 @@
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
                 <div class="data-value-large">#<?= htmlspecialchars($order['tracking_code']) ?></div>
                 
-                <?php 
-                    $statusColors = [
-                        'awaiting_payment' => 'status-pending', 'pending' => 'status-pending', 'searching_driver' => 'status-warning',
-                        'in_transit' => 'status-shipping', 'completed' => 'status-completed',
-                        'cancelled' => 'status-cancelled', 'disputed' => 'status-cancelled'
-                    ];
-                    $badgeClass = $statusColors[$order['status']] ?? 'status-pending';
-                ?>
-                <span class="card-badge <?= $badgeClass ?>"><?= app_e(app_status_label($order['status'])) ?></span>
+                <div style="display: flex; gap: 8px;">
+                    <?php if (($order['payment_status'] ?? '') === 'refunded'): ?>
+                        <span class="card-badge status-warning">ĐÃ HOÀN TIỀN</span>
+                    <?php endif; ?>
+                    
+                    <?php 
+                        $statusColors = [
+                            'awaiting_payment' => 'status-pending', 'pending' => 'status-pending', 'searching_driver' => 'status-warning',
+                            'in_transit' => 'status-shipping', 'completed' => 'status-completed',
+                            'cancelled' => 'status-cancelled', 'disputed' => 'status-cancelled'
+                        ];
+                        $badgeClass = $statusColors[$order['status']] ?? 'status-pending';
+                    ?>
+                    <span class="card-badge <?= $badgeClass ?>"><?= app_e(app_status_label($order['status'])) ?></span>
+                </div>
             </div>
 
             <div style="display: flex; gap: 40px;">
@@ -143,7 +149,7 @@
                     <?php if (($order['customer_no_show_count'] ?? 0) > 0): ?>
                         <span class="user-info-sub" style="color: var(--danger); font-weight: 600;">
                             <span class="material-symbols-outlined" style="color: var(--danger);">warning</span>
-                            Đã bom hàng: <?= htmlspecialchars($order['customer_no_show_count']) ?> lần
+                            Vi phạm giao nhận: <?= htmlspecialchars($order['customer_no_show_count']) ?> lần
                         </span>
                     <?php endif; ?>
                 </div>
@@ -205,7 +211,7 @@
                 <div class="timeline-item">
                     <div class="timeline-icon pickup"></div>
                     <div class="timeline-title">Điểm lấy hàng</div>
-                    <div class="timeline-address"><?= htmlspecialchars(app_format_address($order['sender_address'] ?? 'Chưa cập nhật')) ?></div>
+                    <div class="timeline-address"><?= htmlspecialchars($order['sender_address'] ?? 'Chưa cập nhật') ?></div>
                     <div class="timeline-contact">
                         <span class="material-symbols-outlined" style="font-size: 14px;">person</span> 
                         <?= htmlspecialchars($order['sender_name'] ?? '') ?> - <?= htmlspecialchars($order['sender_phone'] ?? '') ?>
@@ -215,7 +221,7 @@
                 <div class="timeline-item">
                     <div class="timeline-icon dropoff"></div>
                     <div class="timeline-title">Điểm giao hàng</div>
-                    <div class="timeline-address"><?= htmlspecialchars(app_format_address($order['receiver_address'] ?? 'Chưa cập nhật')) ?></div>
+                    <div class="timeline-address"><?= htmlspecialchars($order['receiver_address'] ?? 'Chưa cập nhật') ?></div>
                     <div class="timeline-contact">
                         <span class="material-symbols-outlined" style="font-size: 14px;">person</span> 
                         <?= htmlspecialchars($order['receiver_name'] ?? '') ?> - <?= htmlspecialchars($order['receiver_phone'] ?? '') ?>
@@ -274,8 +280,8 @@
         receiverLng: <?= (float)($order['receiver_lng'] ?? 0) ?>,
         driverLat: <?= (float)($order['driver_lat'] ?? 0) ?>,
         driverLng: <?= (float)($order['driver_lng'] ?? 0) ?>,
-        senderAddress: <?= json_encode(htmlspecialchars(app_format_address($order['sender_address'] ?? ''))) ?>,
-        receiverAddress: <?= json_encode(htmlspecialchars(app_format_address($order['receiver_address'] ?? ''))) ?>,
+        senderAddress: <?= json_encode(htmlspecialchars($order['sender_address'] ?? '')) ?>,
+        receiverAddress: <?= json_encode(htmlspecialchars($order['receiver_address'] ?? '')) ?>,
         trackingCode: <?= json_encode(htmlspecialchars($order['tracking_code'] ?? '')) ?>
     };
 </script>

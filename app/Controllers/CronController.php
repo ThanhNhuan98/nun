@@ -10,13 +10,9 @@ use App\Models\User;
 
 class CronController extends BaseController
 {
-    /**
-     * Chạy nghiệp vụ chống giam đơn (Auto-Reassignment)
-     * Route: GET /cron/auto-reassign
-     */
+    // Chạy nghiệp vụ chống ôm đơn
     public function autoReassign(Request $request, Response $response)
     {
-        // Bảo mật: Chỉ cho phép chạy khi có mã khóa bí mật
         $secretKey = 'NUN_CRON_SECRET_2024';
         $data = $request->getBody();
         if (($data['key'] ?? '') !== $secretKey) {
@@ -27,7 +23,6 @@ class CronController extends BaseController
         $walletModel = new Wallet();
         $userModel = new User();
         
-        // Lấy các đơn hàng đã được nhận quá 15 phút
         $stuckOrders = $orderModel->getStuckAcceptedOrders(15);
         $processedCount = 0;
 
@@ -36,15 +31,13 @@ class CronController extends BaseController
             $driverId = $order['driver_id'];
             
             if ($orderModel->autoReassignOrder($orderId)) {
-                // 1. Phạt tiền tài xế (VD: 10.000đ)
                 $penaltyAmount = 10000;
                 $walletModel->deduct($driverId, $penaltyAmount, 'penalty', "Phạt giam đơn hàng #{$order['tracking_code']}");
                 
-                // 2. Gửi thông báo cảnh cáo cho tài xế
                 $userModel->createNotification(
                     $driverId,
-                    'Trừ tiền - Phạt giam đơn',
-                    "Đơn #{$order['tracking_code']} bị thu hồi do bạn quá hạn không lấy hàng. Bạn bị trừ " . number_format($penaltyAmount, 0, ',', '.') . "đ phạt.",
+                    'Thông báo chế tài',
+                    "Hệ thống đã thu hồi đơn hàng #{$order['tracking_code']} do quá thời gian quy định không lấy hàng, đồng thời khấu trừ " . number_format($penaltyAmount, 0, ',', '.') . "đ từ ví của bạn.",
                     'wallet',
                     "/driver/history"
                 );

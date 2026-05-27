@@ -9,9 +9,11 @@ use App\Models\Order;
 use App\Models\DashboardModel;
 use App\Models\Wallet;
 use App\Models\User;
+use App\Models\DriverPenalty;
 
 class AdminController extends BaseController
 {
+    // Lấy thông tin chi tiết đơn hàng
     private function getOrderOrFail(int $id)
     {
         $orderModel = new Order();
@@ -25,6 +27,7 @@ class AdminController extends BaseController
         return $order;
     }
 
+    // Hiển thị trang Tổng quan 
     public function dashboard(Request $request, Response $response)
     {
         $dashboardModel = new DashboardModel();
@@ -36,6 +39,7 @@ class AdminController extends BaseController
         ]);
     }
 
+    // Hiển thị danh sách các công việc 
     public function tasks(Request $request, Response $response)
     {
         $dashboardModel = new DashboardModel();
@@ -47,6 +51,7 @@ class AdminController extends BaseController
         ]);
     }
 
+    // Hiển thị danh sách đơn hàng 
     public function orders(Request $request, Response $response)
     {
         $query = $request->getBody();
@@ -72,6 +77,7 @@ class AdminController extends BaseController
         ]);
     }
 
+    // Xem chi tiết một đơn hàng
     public function viewOrder(Request $request, Response $response)
     {
         $id = (int) $request->getRouteParam('id');
@@ -86,10 +92,6 @@ class AdminController extends BaseController
             $data = $request->getBody();
             
             if ($orderModel->updateForAdmin($id, $data)) {
-                if (isset($data['status']) && $data['status'] !== $order['status']) {
-                    $desc = "Admin cập nhật trạng thái đơn hàng.";
-                    $orderModel->updateStatus($id, $data['status'], $desc);
-                }
                 $_SESSION['flash_success'] = 'Cập nhật thông tin đơn hàng thành công!';
                 return $response->redirect("/admin/orders/view/{$id}");
             } else {
@@ -113,6 +115,7 @@ class AdminController extends BaseController
         ]);
     }
 
+    // Hiển thị giao diện chỉnh sửa 
     public function editOrder(Request $request, Response $response)
     {
         $id = (int) $request->getRouteParam('id');
@@ -139,6 +142,7 @@ class AdminController extends BaseController
         ]);
     }
 
+    // Phạt tiền tài xế 
     public function penalizeDriver(Request $request, Response $response)
     {
         $orderId = (int) $request->getRouteParam('id');
@@ -157,37 +161,24 @@ class AdminController extends BaseController
             return $response->redirect("/admin/orders/view/{$orderId}");
         }
 
-        $db = \App\Core\Database::getInstance();
-        $db->beginTransaction();
-
-        try {
-            $walletModel = new Wallet();
-            $deducted = $walletModel->deduct($driverId, $penaltyAmount, 'penalty', $reason);
-            
-            if (!$deducted) {
-                $walletModel->forceDeduct($driverId, $penaltyAmount, 'penalty', $reason);
-            }
-            
-            $currentBalance = $walletModel->getBalance($driverId);
-            $userModel = new User();
-            
-            if ($currentBalance < 0) {
-                $userModel->updateBlockStatus($driverId, 1);
-            }
-
+        $penaltyModel = new DriverPenalty();
+        
+        if ($penaltyModel->applyPenalty($driverId, 'admin_penalty', $penaltyAmount, $reason, $this->userId())) {
+            $currentBalance = (new Wallet())->getBalance($driverId);
             $desc = "Admin đã phạt tài xế " . number_format($penaltyAmount, 0, ',', '.') . "đ. Lý do: " . $reason;
+            
             if ($currentBalance < 0) {
                 $desc .= " (Tài khoản tài xế đã tự động bị khóa do số dư ví âm).";
+                (new User())->updateBlockStatus($driverId, 1);
             }
+            
+            $db = \App\Core\Database::getInstance();
             $db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())")->execute([$orderId, $order['status'], $desc]);
+            (new User())->createNotification($driverId, 'Thông báo chế tài', "Hệ thống đã khấu trừ " . number_format($penaltyAmount, 0, ',', '.') . "đ từ ví của bạn tại đơn #{$order['tracking_code']} (Lý do: {$reason}).", 'wallet', "/driver/orders/view/{$orderId}");
 
-            $userModel->createNotification($driverId, 'Trừ tiền - Phạt vi phạm', "Hệ thống đã trừ " . number_format($penaltyAmount, 0, ',', '.') . "đ của bạn tại đơn #{$order['tracking_code']}. Lý do: {$reason}.", 'wallet', "/driver/orders/view/{$orderId}");
-
-            $db->commit();
             $_SESSION['flash_success'] = 'Đã phạt tài xế thành công.';
-        } catch (\Exception $e) {
-            $db->rollBack();
-            $_SESSION['flash_error'] = 'Có lỗi xảy ra khi phạt tài xế: ' . $e->getMessage();
+        } else {
+            $_SESSION['flash_error'] = 'Có lỗi xảy ra khi phạt tài xế.';
         }
         return $response->redirect("/admin/orders/view/{$orderId}");
     }

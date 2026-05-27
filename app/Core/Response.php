@@ -4,11 +4,13 @@ namespace App\Core;
 
 class Response
 {
+    // Thiết lập mã trạng thái HTTP (200, 404, 500,...) cho phản hồi.
     public function setStatusCode(int $code)
     {
         http_response_code($code);
     }
 
+    // Xử lý render file View (.php) và truyền các tham số dữ liệu ra giao diện.
     public function render($view, $params = [])
     {
         // Đảm bảo luôn có biến pageTitle mặc định nếu controller quên truyền vào (đặc biệt ở trang 404)
@@ -29,6 +31,7 @@ class Response
         return $content;
     }
 
+    // Trả về dữ liệu dưới định dạng JSON kèm thiết lập Content-Type (thường dùng cho API).
     public function json(array $data, int $statusCode = 200): string
     {
         $this->setStatusCode($statusCode);
@@ -37,6 +40,7 @@ class Response
         return json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
     }
 
+    // Chuyển hướng trình duyệt đến một URL khác và ngắt thực thi PHP.
     public function redirect($url)
     {
         // Tự động thêm tiền tố thư mục nếu chạy trên XAMPP
@@ -49,6 +53,7 @@ class Response
         exit;
     }
 
+    // Lấy các tham số dữ liệu mặc định (số thông báo chưa đọc, avatar người dùng) dùng chung cho khung Layout chính.
     private function layoutParams(): array
     {
         $user = $_SESSION['user'] ?? null;

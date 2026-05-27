@@ -11,6 +11,7 @@ class ShippingFeeService
         'express' => 55000,
     ];
 
+    // Báo giá cước phí vận chuyển tổng hợp (Kích hoạt AI nếu đủ tọa độ, ngược lại dùng phí dự phòng).
     public function quote(array $data): array
     {
         $missing = $this->missingCoordinates($data);
@@ -51,12 +52,14 @@ class ShippingFeeService
         ];
     }
 
+    // Lấy nhanh cước phí vận chuyển, trả về mức phí mặc định nếu có lỗi tính toán.
     public function feeOrFallback(array $data): float
     {
         $quote = $this->quote($data);
         return (float) ($quote['shipping_fee'] ?? self::FALLBACK_FEE);
     }
 
+    // Kiểm tra xem mảng dữ liệu có bị thiếu bất kỳ tọa độ Lấy/Giao hàng nào không.
     private function missingCoordinates(array $data): array
     {
         $required = ['sender_lat', 'sender_lng', 'receiver_lat', 'receiver_lng'];
@@ -66,6 +69,7 @@ class ShippingFeeService
         }));
     }
 
+    // Thực thi script Python AI bằng Command Line để tính khoảng cách và thời gian di chuyển.
     private function runOptimizer(array $data): array
     {
         $scriptPath = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'ai' . DIRECTORY_SEPARATOR . 'route_optimizer.py';
@@ -100,11 +104,13 @@ class ShippingFeeService
         ];
     }
 
+    // Kiểm tra chuỗi phản hồi từ Python AI có thành công và chứa cước phí hay không.
     private function isSuccessfulResult(array $result): bool
     {
         return ($result['status'] ?? '') === 'success' && isset($result['shipping_fee']);
     }
 
+    // Trích xuất và định dạng thông báo lỗi từ kết quả trả về của script Python.
     private function resolveErrorMessage(array $result): string
     {
         if (!empty($result['message'])) {
@@ -118,6 +124,7 @@ class ShippingFeeService
         return 'Lỗi AI: Không có phản hồi từ Python.';
     }
 
+    // Lọc và trả về loại hình dịch vụ hợp lệ (standard, fast, express).
     private function resolveServiceType(array $data): string
     {
         $serviceType = (string) ($data['service_type'] ?? $data['shipping_method'] ?? 'standard');
@@ -129,6 +136,7 @@ class ShippingFeeService
         return 'standard';
     }
 
+    // Lấy mức phí dự phòng cố định theo từng loại hình dịch vụ (Dùng khi AI gặp sự cố).
     private function fallbackFee(array $data): float
     {
         $method = $this->resolveServiceType($data);

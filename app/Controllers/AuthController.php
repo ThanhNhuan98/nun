@@ -12,10 +12,7 @@ use App\Controllers\BaseController;
 
 class AuthController extends BaseController
 {
-    /**
-     * Helper xử lý upload ảnh giấy đăng ký xe
-     */
-
+    // Hiển thị trang đăng nhập cho người dùng.
     public function showLoginForm(Request $request, Response $response)
     {
         if (isset($_SESSION['user'])) {
@@ -27,6 +24,7 @@ class AuthController extends BaseController
         ]);
     }
 
+    // Xử lý xác thực thông tin đăng nhập và cấp phiên làm việc (Session) cho người dùng.
     public function login(Request $request, Response $response)
     {
         $data = $request->getBody();
@@ -46,9 +44,9 @@ class AuthController extends BaseController
             if ($user && password_verify($password, $user['password'])) {
                 if (!empty($user['is_blocked'])) {
                     $reason = !empty($user['blocked_reason']) ? $user['blocked_reason'] : 'Vui lòng liên hệ quản trị viên.';
+                    $_SESSION['flash_error'] = 'Tài khoản của bạn đã bị khóa. Lý do: ' . $reason;
                     return $response->render('auth/login', [
                         'pageTitle' => 'Đăng nhập - NUN Express',
-                        'error' => 'Tài khoản của bạn đã bị khóa. Lý do: ' . $reason,
                         'old' => ['account' => $account]
                     ]);
                 }
@@ -59,6 +57,8 @@ class AuthController extends BaseController
 
                 $_SESSION['user'] = $sessionUser;
                 $_SESSION['user_id'] = $user['id'];
+                
+                $_SESSION['flash_success'] = 'Đăng nhập thành công! Chào mừng trở lại.';
 
                 return $this->redirectBasedOnRole($response, $user['role']);
             }
@@ -71,14 +71,15 @@ class AuthController extends BaseController
                 $firstError = is_array($firstVal) ? reset($firstVal) : $firstVal;
             }
 
+            $_SESSION['flash_error'] = $firstError;
             return $response->render('auth/login', [
                 'pageTitle' => 'Đăng nhập - NUN Express',
-                'error' => $firstError,
                 'old' => $data
             ]);
         }
     }
 
+    // Hiển thị giao diện đăng ký tài khoản khách hàng mới.
     public function showRegisterForm(Request $request, Response $response)
     {
         if (isset($_SESSION['user'])) {
@@ -90,6 +91,7 @@ class AuthController extends BaseController
         ]);
     }
 
+    // Xử lý kiểm tra dữ liệu form và ủy quyền khởi tạo tài khoản mới.
     public function register(Request $request, Response $response)
     {
         $rawData = $request->getBody();
@@ -127,6 +129,7 @@ class AuthController extends BaseController
         }
     }
 
+    // Tạo tài khoản trong cơ sở dữ liệu và gửi email chứa mã OTP xác thực.
     private function createUserAndSendMail(Response $response, array $data, string $vehicleImage = '')
     {
         $name = $data['name'];
@@ -159,7 +162,7 @@ class AuthController extends BaseController
                 $_SESSION['verification_email'] = $email;
                 $_SESSION['verification_otp'] = (string) $otp;
                 $_SESSION['verification_otp_expires_at'] = time() + (15 * 60);
-                $_SESSION['flash_info'] = 'Đăng ký thành công! Một mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra và xác thực.';
+                $_SESSION['flash_success'] = 'Đăng ký thành công! Một mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra và xác thực.';
                 return $response->redirect('/auth/verify');
             }
 
@@ -173,6 +176,7 @@ class AuthController extends BaseController
         }
     }
 
+    // Hiển thị form nhập mã OTP để xác minh địa chỉ email khi đăng ký.
     public function showVerifyForm(Request $request, Response $response)
     {
         if (empty($_SESSION['verification_email'])) {
@@ -191,6 +195,7 @@ class AuthController extends BaseController
         ]);
     }
 
+    // Xác thực mã OTP người dùng nhập vào và kích hoạt tài khoản.
     public function verify(Request $request, Response $response)
     {
         $data = $request->getBody();
@@ -220,12 +225,16 @@ class AuthController extends BaseController
         return $response->redirect('/auth/verify');
     }
 
+    // Xóa phiên làm việc hiện tại và đăng xuất người dùng khỏi hệ thống.
     public function logout(Request $request, Response $response)
     {
-        session_destroy();
+        unset($_SESSION['user'], $_SESSION['user_id']);
+        session_regenerate_id(true);
+        $_SESSION['flash_success'] = 'Bạn đã đăng xuất thành công.';
         return $response->redirect('/login');
     }
 
+    // Hiển thị form yêu cầu cấp lại mật khẩu (quên mật khẩu).
     public function showForgotPasswordForm(Request $request, Response $response)
     {
         if (isset($_SESSION['user'])) {
@@ -237,6 +246,7 @@ class AuthController extends BaseController
         ]);
     }
 
+    // Tạo và gửi mã OTP qua email cho người dùng muốn đặt lại mật khẩu.
     public function requestOTP(Request $request, Response $response)
     {
         if (isset($_SESSION['user'])) {
@@ -247,9 +257,9 @@ class AuthController extends BaseController
         $emailOrPhone = trim($data['email_or_phone'] ?? '');
 
         if (empty($emailOrPhone)) {
+            $_SESSION['flash_error'] = 'Vui lòng nhập email hoặc số điện thoại';
             return $response->render('auth/forgot-password', [
                 'pageTitle' => 'Quên mật khẩu - NUN Express',
-                'error' => 'Vui lòng nhập email hoặc số điện thoại',
                 'old' => $data
             ]);
         }
@@ -258,9 +268,9 @@ class AuthController extends BaseController
         $result = $passwordResetModel->generateAndSendOTP($emailOrPhone);
 
         if (!$result['success']) {
+            $_SESSION['flash_error'] = $result['message'];
             return $response->render('auth/forgot-password', [
                 'pageTitle' => 'Quên mật khẩu - NUN Express',
-                'error' => $result['message'],
                 'old' => $data
             ]);
         }
@@ -272,6 +282,7 @@ class AuthController extends BaseController
         return $response->redirect('/verify-otp');
     }
 
+    // Hiển thị form xác thực mã OTP trong tiến trình đặt lại mật khẩu.
     public function showVerifyOTPForm(Request $request, Response $response)
     {
         if (isset($_SESSION['user'])) {
@@ -288,6 +299,7 @@ class AuthController extends BaseController
         ]);
     }
 
+    // Xác nhận mã OTP đặt lại mật khẩu là hợp lệ và chuyển sang bước nhập mật khẩu mới.
     public function verifyOTP(Request $request, Response $response)
     {
         if (isset($_SESSION['user'])) {
@@ -302,9 +314,9 @@ class AuthController extends BaseController
         $otpCode = trim($data['otp'] ?? '');
 
         if (empty($otpCode)) {
+            $_SESSION['flash_error'] = 'Vui lòng nhập mã OTP';
             return $response->render('auth/verify-otp', [
                 'pageTitle' => 'Xác thực OTP - NUN Express',
-                'error' => 'Vui lòng nhập mã OTP',
                 'email_hint' => $_SESSION['otp_email_hint'] ?? ''
             ]);
         }
@@ -313,9 +325,9 @@ class AuthController extends BaseController
         $result = $passwordResetModel->verifyOTP((int) $_SESSION['otp_user_id'], $otpCode);
 
         if (!$result['success']) {
+            $_SESSION['flash_error'] = $result['message'];
             return $response->render('auth/verify-otp', [
                 'pageTitle' => 'Xác thực OTP - NUN Express',
-                'error' => $result['message'],
                 'email_hint' => $_SESSION['otp_email_hint'] ?? ''
             ]);
         }
@@ -326,6 +338,7 @@ class AuthController extends BaseController
         return $response->redirect('/reset-password');
     }
 
+    // Hiển thị form nhập mật khẩu mới sau khi đã xác thực OTP thành công.
     public function showResetPasswordForm(Request $request, Response $response)
     {
         if (isset($_SESSION['user'])) {
@@ -341,6 +354,7 @@ class AuthController extends BaseController
         ]);
     }
 
+    // Xử lý cập nhật mật khẩu mới của người dùng vào cơ sở dữ liệu.
     public function resetPassword(Request $request, Response $response)
     {
         if (isset($_SESSION['user'])) {
@@ -372,9 +386,9 @@ class AuthController extends BaseController
             );
 
             if (!$result['success']) {
+                $_SESSION['flash_error'] = $result['message'];
                 return $response->render('auth/reset-password', [
                     'pageTitle' => 'Đặt lại mật khẩu - NUN Express',
-                    'error' => $result['message']
                 ]);
             }
 
@@ -390,6 +404,7 @@ class AuthController extends BaseController
         }
     }
 
+    // Điều hướng người dùng đến trang quản trị tương ứng với vai trò của họ sau khi đăng nhập.
     private function redirectBasedOnRole(Response $response, string $role)
     {
         if ($role === 'driver') {
@@ -398,6 +413,6 @@ class AuthController extends BaseController
         if ($role === 'admin') {
             return $response->redirect('/admin/dashboard');
         }
-        return $response->redirect('/user/dashboard');
+        return $response->redirect('/user/orders');
     }
 }

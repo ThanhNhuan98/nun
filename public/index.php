@@ -27,32 +27,29 @@ if (class_exists('Dotenv\Dotenv') && file_exists(__DIR__ . '/../.env')) {
     $dotenv = Dotenv\Dotenv::createImmutable(__DIR__ . '/../');
     $dotenv->load();
 }
-
-// Cấu hình tự động tải class (Autoloading) theo chuẩn PSR-4
-// (Thay thế cho require_once thủ công khắp nơi)
-spl_autoload_register(function ($class) {
-    $prefix = 'App\\';
-    $base_dir = __DIR__ . '/../app/';
-    $len = strlen($prefix);
-    
-    if (strncmp($prefix, $class, $len) !== 0) return;
-    
-    $relative_class = substr($class, $len);
-    $file = $base_dir . str_replace('\\', '/', $relative_class) . '.php';
-    
-    if (file_exists($file)) require $file;
-});
-
 use App\Core\Request;
 use App\Core\Response;
 use App\Core\Router;
 
-$request = new Request();
-$response = new Response($request);
-$router = new Router($request, $response);
+try {
+    $request = new Request();
+    $response = new Response();
+    $router = new Router($request, $response);
+    
+    // Nạp danh sách các đường dẫn (Routes)
+    require_once __DIR__ . '/../routes/web.php';
+    
+    // Thực thi Router
+    $router->resolve();
 
-// Nạp danh sách các đường dẫn (Routes)
-require_once __DIR__ . '/../routes/web.php';
-
-// Thực thi Router
-$router->resolve();
+} catch (\PDOException $e) {
+    // Xử lý lỗi kết nối CSDL một cách duyên dáng
+    http_response_code(503); // Service Unavailable
+    echo "<h1>Lỗi hệ thống</h1>";
+    echo "<p>Không thể kết nối đến máy chủ dữ liệu. Vui lòng liên hệ quản trị viên hoặc thử lại sau ít phút.</p>";
+} catch (\Throwable $e) {
+    // Bắt tất cả các lỗi khác chưa được xử lý
+    http_response_code(500); // Internal Server Error
+    echo "<h1>Đã có lỗi không mong muốn xảy ra</h1>";
+    error_log("Unhandled Exception: " . $e->getMessage() . "\n" . $e->getTraceAsString());
+}

@@ -29,9 +29,16 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
     <!-- Filter Pills (Cuộn ngang trên Mobile) -->
     <div class="order-filters">
         <a href="/user/orders" class="filter-pill <?= empty($statusFilter) ? 'active' : '' ?>">Tất cả</a>
+        <a href="/user/orders?status=pending" class="filter-pill <?= ($statusFilter === 'pending') ? 'active' : '' ?>">Chờ xử lý</a>
+        <a href="/user/orders?status=awaiting_payment" class="filter-pill <?= ($statusFilter === 'awaiting_payment') ? 'active' : '' ?>">Chờ thanh toán</a>
+        <a href="/user/orders?status=searching_driver" class="filter-pill <?= ($statusFilter === 'searching_driver') ? 'active' : '' ?>">Tìm tài xế</a>
+        <a href="/user/orders?status=accepted" class="filter-pill <?= ($statusFilter === 'accepted') ? 'active' : '' ?>">Đã nhận</a>
         <a href="/user/orders?status=picking_up" class="filter-pill <?= ($statusFilter === 'picking_up') ? 'active' : '' ?>">Đang lấy hàng</a>
-        <a href="/user/orders?status=in_transit" class="filter-pill <?= ($statusFilter === 'in_transit' || $statusFilter === 'shipping') ? 'active' : '' ?>">Đang giao</a>
-        <a href="/user/orders?status=completed" class="filter-pill <?= ($statusFilter === 'completed') ? 'active' : '' ?>">Đã giao</a>
+        <a href="/user/orders?status=in_transit" class="filter-pill <?= ($statusFilter === 'shipping' || $statusFilter === 'in_transit') ? 'active' : '' ?>">Đang giao</a>
+        <a href="/user/orders?status=completed" class="filter-pill <?= ($statusFilter === 'completed') ? 'active' : '' ?>">Hoàn thành</a>
+        <a href="/user/orders?status=returning" class="filter-pill <?= ($statusFilter === 'returning') ? 'active' : '' ?>">Đang chuyển hoàn</a>
+        <a href="/user/orders?status=returned" class="filter-pill <?= ($statusFilter === 'returned') ? 'active' : '' ?>">Đã hoàn hàng</a>
+        <a href="/user/orders?status=disputed" class="filter-pill <?= ($statusFilter === 'disputed') ? 'active' : '' ?>">Khiếu nại</a>
         <a href="/user/orders?status=cancelled" class="filter-pill <?= ($statusFilter === 'cancelled') ? 'active' : '' ?>">Đã hủy</a>
     </div>
 
@@ -73,7 +80,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                             <span class="material-symbols-outlined">location_on</span>
                             <div class="info-text">
                                 <strong>Giao đến:</strong>
-                                <span style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;"><?= app_e(app_format_address($order['receiver_address'] ?? 'Chưa cập nhật')) ?></span>
+                                <span style="display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;"><?= app_e($order['receiver_address'] ?? 'Chưa cập nhật') ?></span>
                             </div>
                         </div>
 

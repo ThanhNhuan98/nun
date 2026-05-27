@@ -90,6 +90,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
 </div>
 
 <script>
+// Sao chép nội dung thanh toán vào khay nhớ tạm và hiển thị hiệu ứng thành công.
 function copyToClipboard(elementId) {
     const textToCopy = document.getElementById(elementId).innerText;
     navigator.clipboard.writeText(textToCopy).then(() => {

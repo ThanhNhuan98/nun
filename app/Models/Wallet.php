@@ -8,35 +8,31 @@ use PDO;
 class Wallet
 {
     private PDO $db;
+    private const ALLOWED_TRANSACTION_TYPES = ['deposit', 'platform_fee', 'refund', 'adjustment', 'penalty'];
 
+    // Khởi tạo model Wallet và kết nối cơ sở dữ liệu.
     public function __construct()
     {
         $this->db = Database::getInstance();
     }
 
+    // Lấy số dư ví hiện hành của tài xế.
     public function getBalance(int $userId): float
     {
         $stmt = $this->db->prepare("SELECT balance FROM driver_profiles WHERE user_id = ?");
         $stmt->execute([$userId]);
-
         return (float) ($stmt->fetchColumn() ?: 0);
     }
 
-    public function deduct(
-        int $userId,
-        float $amount,
-        string $type = 'platform_fee',
-        string $description = '',
-        ?int $orderId = null
-    ): bool {
-        if ($amount <= 0) {
-            return false;
-        }
+    /**
+     * Khấu trừ tiền ví tài xế an toàn kèm theo xử lý ánh xạ ENUM CSDL
+     */
+    public function deduct(int $userId, float $amount, string $type = 'platform_fee', string $description = '', ?int $orderId = null): bool
+    {
+        if ($amount <= 0) return false;
 
         $ownsTransaction = !$this->db->inTransaction();
-        if ($ownsTransaction) {
-            $this->db->beginTransaction();
-        }
+        if ($ownsTransaction) $this->db->beginTransaction();
 
         try {
             $stmt = $this->db->prepare("SELECT balance FROM driver_profiles WHERE user_id = ? FOR UPDATE");
@@ -44,185 +40,89 @@ class Wallet
             $currentBalance = (float) ($stmt->fetchColumn() ?: 0);
 
             if ($currentBalance < $amount) {
-                if ($ownsTransaction) {
-                    $this->db->rollBack();
-                }
-
+                if ($ownsTransaction) $this->db->rollBack();
                 return false;
             }
 
             $balanceAfter = $currentBalance - $amount;
-            $stmt = $this->db->prepare("UPDATE driver_profiles SET balance = ? WHERE user_id = ?");
-            $stmt->execute([$balanceAfter, $userId]);
+            $stmtUpdate = $this->db->prepare("UPDATE driver_profiles SET balance = ? WHERE user_id = ?");
+            $stmtUpdate->execute([$balanceAfter, $userId]);
 
-            $this->recordTransaction($userId, $orderId, -$amount, $type, $description ?: 'Platform fee', $balanceAfter);
+            $this->logTransaction($userId, $orderId, -$amount, $type, $description, $balanceAfter);
 
-            if ($ownsTransaction) {
-                $this->db->commit();
-            }
-
+            if ($ownsTransaction) $this->db->commit();
             return true;
         } catch (\Throwable $e) {
-            if ($ownsTransaction && $this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
-
+            if ($ownsTransaction) $this->db->rollBack();
             error_log('Wallet deduct failed: ' . $e->getMessage());
             return false;
         }
     }
 
-    public function forceDeduct(
-        int $userId,
-        float $amount,
-        string $type = 'penalty',
-        string $description = '',
-        ?int $orderId = null
-    ): bool {
-        if ($amount <= 0) {
-            return false;
-        }
-
+    /**
+     * Ép buộc trừ tiền (Bất kể số dư có bị âm hay không - dùng cho việc Admin ra quyết định phạt nặng)
+     */
+    public function forceDeduct(int $userId, float $amount, string $type = 'platform_fee', string $description = '', ?int $orderId = null): bool
+    {
         $ownsTransaction = !$this->db->inTransaction();
-        if ($ownsTransaction) {
-            $this->db->beginTransaction();
-        }
+        if ($ownsTransaction) $this->db->beginTransaction();
 
         try {
             $stmt = $this->db->prepare("SELECT balance FROM driver_profiles WHERE user_id = ? FOR UPDATE");
             $stmt->execute([$userId]);
             $currentBalance = (float) ($stmt->fetchColumn() ?: 0);
 
-            // Ép trừ: Không kiểm tra số dư, cho phép ví xuống mức âm
             $balanceAfter = $currentBalance - $amount;
-            $stmt = $this->db->prepare("UPDATE driver_profiles SET balance = ? WHERE user_id = ?");
-            $stmt->execute([$balanceAfter, $userId]);
+            $stmtUpdate = $this->db->prepare("UPDATE driver_profiles SET balance = ? WHERE user_id = ?");
+            $stmtUpdate->execute([$balanceAfter, $userId]);
 
-            $this->recordTransaction($userId, $orderId, -$amount, $type, $description ?: 'Force deduction', $balanceAfter);
+            $this->logTransaction($userId, $orderId, -$amount, $type, $description, $balanceAfter);
 
-            if ($ownsTransaction) {
-                $this->db->commit();
-            }
-
+            if ($ownsTransaction) $this->db->commit();
             return true;
         } catch (\Throwable $e) {
-            if ($ownsTransaction && $this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
-
-            error_log('Wallet force deduct failed: ' . $e->getMessage());
+            if ($ownsTransaction) $this->db->rollBack();
+            error_log('Wallet forceDeduct failed: ' . $e->getMessage());
             return false;
         }
     }
 
-    public function add(
-        int $userId,
-        float $amount,
-        string $type = 'refund',
-        string $description = '',
-        ?int $orderId = null
-    ): bool {
-        if ($amount <= 0) {
-            return false;
-        }
+    // Cộng tiền vào ví tài xế và lưu lại lịch sử biến động số dư.
+    public function add(int $userId, float $amount, string $type = 'deposit', string $description = '', ?int $orderId = null): bool
+    {
+        if ($amount <= 0) return false;
 
         $ownsTransaction = !$this->db->inTransaction();
-        if ($ownsTransaction) {
-            $this->db->beginTransaction();
-        }
+        if ($ownsTransaction) $this->db->beginTransaction();
 
         try {
             $stmt = $this->db->prepare("SELECT balance FROM driver_profiles WHERE user_id = ? FOR UPDATE");
             $stmt->execute([$userId]);
             $currentBalance = (float) ($stmt->fetchColumn() ?: 0);
+
             $balanceAfter = $currentBalance + $amount;
+            $stmtUpdate = $this->db->prepare("UPDATE driver_profiles SET balance = ? WHERE user_id = ?");
+            $stmtUpdate->execute([$balanceAfter, $userId]);
 
-            $stmt = $this->db->prepare("UPDATE driver_profiles SET balance = ? WHERE user_id = ?");
-            $stmt->execute([$balanceAfter, $userId]);
+            $this->logTransaction($userId, $orderId, $amount, $type, $description, $balanceAfter);
 
-            $this->recordTransaction($userId, $orderId, $amount, $type, $description ?: 'Wallet credit', $balanceAfter);
-
-            if ($ownsTransaction) {
-                $this->db->commit();
-            }
-
+            if ($ownsTransaction) $this->db->commit();
             return true;
         } catch (\Throwable $e) {
-            if ($ownsTransaction && $this->db->inTransaction()) {
-                $this->db->rollBack();
-            }
-
-            error_log('Wallet credit failed: ' . $e->getMessage());
+            if ($ownsTransaction) $this->db->rollBack();
+            error_log('Wallet add failed: ' . $e->getMessage());
             return false;
         }
     }
 
-    private function recordTransaction(
-        int $userId,
-        ?int $orderId,
-        float $amount,
-        string $type,
-        string $description,
-        float $balanceAfter
-    ): void {
-        try {
-            $stmt = $this->db->prepare("
-                INSERT INTO wallet_transactions (user_id, order_id, amount, type, description, balance_after, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, NOW())
-            ");
-            $stmt->execute([$userId, $orderId, $amount, $type, $description, $balanceAfter]);
-        } catch (\Throwable $e) {
-            error_log('Wallet transaction log failed: ' . $e->getMessage());
-        }
-    }
-
-    /**
-     * Credit driver earnings based on percentage of order value
-     * Called when order is completed
-     */
-    public function creditDriverEarnings(int $driverId, int $orderId, float $shippingFee): bool
+    // Ghi nhận chi tiết một giao dịch (nạp/trừ/hoàn tiền) vào bảng wallet_transactions.
+    private function logTransaction(int $userId, ?int $orderId, float $amount, string $type, string $description, float $balanceAfter): void
     {
-        if ($shippingFee <= 0) {
-            return false;
-        }
-
-        try {
-            // Get commission percentage from settings (default 15%)
-            $settingModel = new Setting();
-            $commissionPercentage = (float) $settingModel->get('driver_commission_percentage', 15);
-
-            // Calculate driver earnings
-            $driverEarnings = $shippingFee * ($commissionPercentage / 100);
-
-            // Credit to driver wallet
-            return $this->add(
-                $driverId,
-                $driverEarnings,
-                'adjustment',
-                "Earnings from order #{$orderId} ({$commissionPercentage}%)",
-                $orderId
-            );
-        } catch (\Throwable $e) {
-            error_log('Driver earnings credit failed: ' . $e->getMessage());
-            return false;
-        }
-    }
-
-    /**
-     * Get driver commission percentage
-     */
-    public static function getCommissionPercentage(): float
-    {
-        $settingModel = new Setting();
-        return (float) $settingModel->get('driver_commission_percentage', 15);
-    }
-
-    /**
-     * Calculate driver earnings from shipping fee
-     */
-    public static function calculateEarnings(float $shippingFee): float
-    {
-        $percentage = self::getCommissionPercentage();
-        return $shippingFee * ($percentage / 100);
+        $normalizedType = in_array($type, self::ALLOWED_TRANSACTION_TYPES, true) ? $type : 'adjustment';
+        $stmt = $this->db->prepare("
+            INSERT INTO wallet_transactions (user_id, order_id, amount, type, description, balance_after, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, NOW())
+        ");
+        $stmt->execute([$userId, $orderId, $amount, $normalizedType, $description, $balanceAfter]);
     }
 }

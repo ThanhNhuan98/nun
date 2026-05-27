@@ -9,6 +9,7 @@ class User
 {
     protected PDO $db;
 
+    // Ham __construct: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function __construct()
     {
         // **nun_ai**: Khởi tạo model, lấy instance của kết nối cơ sở dữ liệu PDO thông qua class Database (mô hình Singleton).
@@ -29,6 +30,7 @@ class User
         return $roles[$role] ?? $role;
     }
 
+    // Ham findByAccount: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function findByAccount(string $account)
     {
         // **nun_ai**: Tìm kiếm một người dùng dựa trên tài khoản đăng nhập (có thể là email hoặc số điện thoại). Trả về bản ghi đầu tiên tìm thấy.
@@ -37,6 +39,7 @@ class User
         return $stmt->fetch();
     }
 
+    // Ham findById: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function findById(int $id)
     {
         // **nun_ai**: Lấy thông tin chi tiết của một người dùng theo ID. Bao gồm các trường cơ bản từ bảng `users` và kết hợp (LEFT JOIN) với bảng `driver_profiles` để lấy thêm thông tin (ví dụ biển số xe) nếu người dùng đó là tài xế.
@@ -50,6 +53,7 @@ class User
         return $stmt->fetch();
     }
 
+    // Ham findByIdWithPassword: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function findByIdWithPassword(int $id)
     {
         // **nun_ai**: Chỉ lấy ID và mật khẩu (đã băm) của người dùng. Thường được sử dụng trong các tác vụ kiểm tra mật khẩu cũ trước khi đổi mật khẩu mới nhằm tối ưu hiệu suất truy vấn.
@@ -58,6 +62,7 @@ class User
         return $stmt->fetch();
     }
 
+    // Ham getDriverRating: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function getDriverRating(int $driverId): array
     {
         // **nun_ai**: Tính toán điểm đánh giá trung bình và tổng số lượt đánh giá của một tài xế dựa trên các dữ liệu trong bảng `driver_reviews`.
@@ -78,6 +83,7 @@ class User
         ];
     }
 
+    // Ham getDriverReviews: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function getDriverReviews(int $driverId): array
     {
         // **nun_ai**: Lấy danh sách tất cả các bài đánh giá về một tài xế, kèm theo tên của khách hàng đã đánh giá, sắp xếp theo thời gian mới nhất.
@@ -92,6 +98,7 @@ class User
         return $stmt->fetchAll();
     }
 
+    // Ham getDriverProfile: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function getDriverProfile(int $userId)
     {
         // **nun_ai**: Lấy toàn bộ thông tin cấu hình và hồ sơ tài xế (bảng `driver_profiles`) dựa trên ID của người dùng.
@@ -100,22 +107,7 @@ class User
         return $stmt->fetch(PDO::FETCH_ASSOC) ?: null;
     }
 
-    public function emailExists(string $email): bool
-    {
-        // **nun_ai**: Kiểm tra xem một địa chỉ email đã tồn tại trong hệ thống (bảng `users`) hay chưa. Trả về true nếu đã có.
-        $stmt = $this->db->prepare("SELECT id FROM users WHERE email = ? LIMIT 1");
-        $stmt->execute([$email]);
-        return (bool) $stmt->fetch();
-    }
-
-    public function phoneExists(string $phone): bool
-    {
-        // **nun_ai**: Kiểm tra xem một số điện thoại đã tồn tại trong hệ thống (bảng `users`) hay chưa. Trả về true nếu đã có.
-        $stmt = $this->db->prepare("SELECT id FROM users WHERE phone = ? LIMIT 1");
-        $stmt->execute([$phone]);
-        return (bool) $stmt->fetch();
-    }
-
+    // Ham create: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function create(string $name, string $email, string $phone, string $password, string $role = 'user', ?string $licensePlate = null, string $vehicleImage = ''): int|false
     {
         // **nun_ai**: Hàm bọc (wrapper) cho `createWithDriverProfile`. Định dạng lại các tham số đầu vào thành một mảng dữ liệu để gọi hàm tạo mới.
@@ -265,6 +257,7 @@ class User
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }
 
+    // Ham countAll: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function countAll(string $roleFilter = '', string $search = ''): int
     {
         // **nun_ai**: Đếm tổng số lượng người dùng thỏa mãn điều kiện lọc. Kết quả của hàm này thường được Controller sử dụng để tính toán tổng số trang trong tính năng phân trang.
@@ -336,6 +329,7 @@ class User
         }
     }
 
+    // Ham updateLicensePlate: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function updateLicensePlate(int $userId, string $licensePlate): bool
     {
         // **nun_ai**: Cập nhật riêng lẻ trường thông tin biển số xe cho một tài xế.
@@ -400,6 +394,7 @@ class User
         return null;
     }
 
+    // Ham updateAvatar: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function updateAvatar(int $id, string $avatarUrl): bool
     {
         // **nun_ai**: Cập nhật đường dẫn URL tới ảnh đại diện (avatar) của người dùng.
@@ -407,6 +402,7 @@ class User
         return $stmt->execute([$avatarUrl, $id]);
     }
 
+    // Ham setVerificationToken: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     public function setVerificationToken(int $userId, string $token): bool
     {
         // **nun_ai**: Gán một mã xác thực (OTP/Token) cho người dùng và đánh dấu trạng thái tài khoản là chưa xác minh (`is_verified = 0`). Thường được gọi trong luồng quên mật khẩu hoặc cần xác minh email.
@@ -436,31 +432,30 @@ class User
     }
 
     /**
-     * Xóa người dùng (Dùng trong trường hợp tạo tài khoản nhưng gửi mail lỗi)
-     */
-    public function delete(int $id): bool
-    {
-        // **nun_ai**: Xóa vĩnh viễn một người dùng khỏi hệ thống thông qua ID (Hành động xóa vật lý).
-        $stmt = $this->db->prepare("DELETE FROM users WHERE id = ?");
-        return $stmt->execute([$id]);
-    }
-
-    /**
      * Tạo thông báo mới cho người dùng
      */
     public function createNotification(int $userId, string $title, string $message, string $type = 'system', ?string $link = null): bool
     {
         // **nun_ai**: Ủy quyền (delegate) việc tạo thông báo đẩy (Notification) vào CSDL thông qua Model `Notification`.
-        return (new Notification())->create($userId, $title, $message, $type, $link);
-    }
+        $result = (new Notification())->create($userId, $title, $message, $type, $link);
 
-    /**
-     * Đánh dấu tất cả thông báo của người dùng là đã đọc
-     */
-    public function markNotificationsAsRead(int $userId): bool
-    {
-        // **nun_ai**: Ủy quyền việc đánh dấu tất cả thông báo của người dùng thành trạng thái "Đã đọc" thông qua Model `Notification`.
-        return (new Notification())->markAllAsRead($userId);
+        // Tích hợp Pusher: Bắn thông báo Real-time ngay sau khi lưu DB thành công
+        if ($result && class_exists('\App\Services\PusherService')) {
+            try {
+                $pusher = new \App\Services\PusherService();
+                // Đổi thành kênh Public để Frontend dễ bắt sự kiện mà không cần API Auth
+                $pusher->trigger('notify-user-' . $userId, 'new_notification', [
+                    'title' => $title,
+                    'message' => $message,
+                    'type' => $type,
+                    'link' => $link
+                ]);
+            } catch (\Throwable $e) {
+                error_log('Lỗi Pusher: ' . $e->getMessage());
+            }
+        }
+
+        return $result;
     }
 
     /**
@@ -468,10 +463,13 @@ class User
      */
     public function getAdminIds(): array
     {
-        // **nun_ai**: Ủy quyền lấy danh sách ID của tất cả người dùng có quyền Quản trị viên (Admin), thường dùng để gửi thông báo báo cáo sự cố hàng loạt.
-        return (new Notification())->adminIds();
+        // **nun_ai**: Lấy danh sách ID của tất cả người dùng có quyền Quản trị viên (Admin), thường dùng để gửi thông báo sự kiện quan trọng.
+        $stmt = $this->db->prepare("SELECT id FROM users WHERE role = 'admin' AND is_blocked = 0");
+        $stmt->execute();
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
     }
 
+    // Ham normalizeEmail: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
     private function normalizeEmail(?string $email): ?string
     {
         // **nun_ai**: Hàm hỗ trợ nội bộ giúp làm sạch chuỗi email. Chuyển các chuỗi chỉ có khoảng trắng thành `null` để tránh lỗi vi phạm Ràng buộc Duy nhất (Unique Constraint) trong Database.
@@ -486,7 +484,7 @@ class User
      */
     public function recordNoShow(int $userId): bool
     {
-        // **nun_ai**: Ghi nhận một lần vi phạm "bom hàng" của người dùng. Nếu tổng số lần vi phạm vượt qua ngưỡng cấu hình (trong bảng `settings`), thuật toán sẽ tự động khóa tài khoản (`is_blocked = 1`). Chạy trong Transaction để đảm bảo tính an toàn hệ thống.
+        // **nun_ai**: Ghi nhận một lần "vi phạm giao nhận" của người dùng. Nếu tổng số lần vi phạm vượt qua ngưỡng cấu hình (trong bảng `settings`), thuật toán sẽ tự động khóa tài khoản (`is_blocked = 1`). Chạy trong Transaction để đảm bảo tính an toàn hệ thống.
         $ownsTransaction = !$this->db->inTransaction();
         try {
             if ($ownsTransaction) {
@@ -539,7 +537,7 @@ class User
      */
     public function getNoShowCount(int $userId): int
     {
-        // **nun_ai**: Lấy tổng số lần một khách hàng đã có hành vi "bom hàng" từ trước đến nay.
+        // **nun_ai**: Lấy tổng số lần một khách hàng đã có hành vi "vi phạm giao nhận" từ trước đến nay.
         $stmt = $this->db->prepare("SELECT no_show_count FROM users WHERE id = ?");
         $stmt->execute([$userId]);
         $result = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -551,32 +549,17 @@ class User
      */
     public function resetNoShowCount(int $userId): bool
     {
-        // **nun_ai**: Đặt lại bộ đếm số lần "bom hàng" về mốc 0 (Thường được Admin thực hiện sau khi giải quyết tranh chấp thành công hoặc ân xá).
+        // **nun_ai**: Đặt lại bộ đếm số lần "vi phạm giao nhận" về mốc 0 (Thường được Admin thực hiện sau khi giải quyết tranh chấp thành công hoặc ân xá).
         $stmt = $this->db->prepare("UPDATE users SET no_show_count = 0 WHERE id = ?");
         return $stmt->execute([$userId]);
     }
 
     /**
-     * Check if user should be blocked
+     * Cập nhật trạng thái Sẵn sàng nhận đơn của tài xế
      */
-    public function isUserBlocked(int $userId): bool
+    public function updateOnlineStatus(int $userId, int $isOnline): bool
     {
-        // **nun_ai**: Kiểm tra trạng thái hiện tại của tài khoản có đang bị khóa (`is_blocked = 1`) hay không.
-        $stmt = $this->db->prepare("SELECT is_blocked FROM users WHERE id = ?");
-        $stmt->execute([$userId]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return (bool) ($result['is_blocked'] ?? false);
-    }
-
-    /**
-     * Get user's block reason
-     */
-    public function getBlockReason(int $userId): ?string
-    {
-        // Lấy lý do khóa tài khoản thực tế từ CSDL
-        $stmt = $this->db->prepare("SELECT blocked_reason FROM users WHERE id = ?");
-        $stmt->execute([$userId]);
-        $result = $stmt->fetch(PDO::FETCH_ASSOC);
-        return $result['blocked_reason'] ?? null;
+        $stmt = $this->db->prepare("UPDATE driver_profiles SET is_online = ? WHERE user_id = ?");
+        return $stmt->execute([$isOnline, $userId]);
     }
 }

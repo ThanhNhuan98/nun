@@ -161,6 +161,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
             const roleInputs = document.querySelectorAll('input[name="role"]');
             const driverFieldsWrapper = document.getElementById('driver_fields_wrapper');
 
+            // Hiển thị hoặc ẩn các trường thông tin xe dựa trên Role (Tài xế/Khách) đang được chọn.
             function toggleDriverFields() {
                 const selectedRole = document.querySelector('input[name="role"]:checked')?.value;
                 if (selectedRole === 'driver') {
