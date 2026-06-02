@@ -28,17 +28,6 @@
         </a>
     </div>
 
-    <?php if (isset($_SESSION['flash_success'])): ?>
-        <div class="alert-banner" style="background: var(--success-light); color: var(--success); padding: 12px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #bbf7d0;">
-            <?= htmlspecialchars($_SESSION['flash_success']); unset($_SESSION['flash_success']); ?>
-        </div>
-    <?php endif; ?>
-    <?php if (isset($_SESSION['flash_error'])): ?>
-        <div class="alert-banner" style="background: var(--danger-light); color: var(--danger); padding: 12px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #fecaca;">
-            <?= htmlspecialchars($_SESSION['flash_error']); unset($_SESSION['flash_error']); ?>
-        </div>
-    <?php endif; ?>
-
     <?php if ($order['status'] === 'disputed' || ($order['has_dispute'] ?? false)): ?>
         <div class="alert-banner danger" style="margin-bottom: 24px; display: flex; gap: 12px; padding: 16px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 4px; color: #b91c1c;">
             <span class="material-symbols-outlined" style="font-size: 24px;">warning</span>

@@ -161,8 +161,8 @@
 
                 <div class="form-group" id="penalty_div" style="display: <?= $faultSelected === 'driver' ? 'block' : 'none' ?>;">
                     <label class="form-label">Số tiền phạt tài xế (đ)</label>
-                    <input type="number" name="penalty_amount" class="form-control" placeholder="Ví dụ: 50000" min="0" step="1000" value="<?= htmlspecialchars($penaltyAmountValue) ?>">
-                    <span class="form-help">Số tiền này sẽ được trừ thẳng vào ví của tài xế và có thông báo đi kèm.</span>
+                    <input type="number" name="penalty_amount" class="form-control" placeholder="Ví dụ: 0 để cảnh cáo" min="0" step="1000" value="<?= htmlspecialchars($penaltyAmountValue) ?>">
+                    <span class="form-help">Số tiền này sẽ được trừ thẳng vào ví của tài xế. Nhập 0 nếu chỉ muốn Cảnh cáo (tăng số lần vi phạm nhưng không trừ tiền).</span>
                 </div>
 
                 <div class="form-group" style="margin-bottom: 0;">

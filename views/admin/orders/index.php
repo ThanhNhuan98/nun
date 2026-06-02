@@ -36,7 +36,6 @@
         <?php 
         // Danh sách trạng thái cần hiển thị trên thanh filter
         $filterOptions = [
-            'pending' => 'Chờ xử lý',
             'awaiting_payment' => 'Chờ thanh toán',
             'searching_driver' => 'Đang tìm tài xế',
             'accepted' => 'Đã nhận đơn',
@@ -148,31 +147,14 @@
         <?php endif; ?>
     </div>
 
-    <?php if (($totalPages ?? 1) > 1): ?>
-        <div class="pagination-container" style="margin-bottom: 30px;">
-            <?php
-            $queryParams = [];
-            if (!empty($statusFilter)) $queryParams['status'] = $statusFilter;
-            if (!empty($search)) $queryParams['search'] = $search;
-            ?>
-
-            <?php if ($currentPage > 1): ?>
-                <a href="?<?= http_build_query(array_merge($queryParams, ['page' => $currentPage - 1])) ?>" class="pagination-link">&laquo; Trước</a>
-            <?php else: ?>
-                <span class="pagination-link disabled">&laquo; Trước</span>
-            <?php endif; ?>
-
-            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                <a href="?<?= http_build_query(array_merge($queryParams, ['page' => $i])) ?>" class="pagination-link <?= $i == $currentPage ? 'active' : '' ?>"><?= $i ?></a>
-            <?php endfor; ?>
-
-            <?php if ($currentPage < $totalPages): ?>
-                <a href="?<?= http_build_query(array_merge($queryParams, ['page' => $currentPage + 1])) ?>" class="pagination-link">Sau &raquo;</a>
-            <?php else: ?>
-                <span class="pagination-link disabled">Sau &raquo;</span>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
+    <?= app_component('pagination', [
+        'currentPage' => $currentPage ?? 1,
+        'totalPages' => $totalPages ?? 1,
+        'queryParams' => array_filter([
+            'status' => $statusFilter ?? '',
+            'search' => $search ?? ''
+        ])
+    ]) ?>
 
 </div>
 

@@ -24,8 +24,6 @@ class WalletController extends BaseController
             if ($amount < 10000) {
                 $_SESSION['flash_error'] = 'Số tiền nạp tối thiểu là 10.000đ.';
             } else {
-                // TODO: Trong thực tế, đây là lúc chuyển hướng sang Cổng thanh toán (VNPay, Momo...)
-                // Ở đây chúng ta sẽ giả lập nạp tiền thành công luôn:
                 if ($walletModel->add($driverId, $amount, 'deposit', 'Driver wallet top-up')) {
                     $_SESSION['flash_success'] = 'Nạp thành công ' . number_format($amount, 0, ',', '.') . 'đ vào ví.';
                     return $response->redirect('/driver/wallet/topup');

@@ -120,7 +120,7 @@ class Dispute
         return $stmt->execute([$orderId, $reporterId, $reason]);
     }
 
-    // Cho phép khách hàng tự rút/hủy khiếu nại đã tạo trước đó.
+    // Cho phép khách hàng tự rút/hủy khiếu nại.
     public function withdrawByOrderId(int $orderId): bool
     {
         $stmt = $this->db->prepare("UPDATE order_disputes SET status = 'closed', resolution_note = 'Khách hàng tự rút khiếu nại', resolved_at = NOW() WHERE order_id = ? AND status = 'open'");

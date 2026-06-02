@@ -20,24 +20,13 @@
     
 </head>
 <body>
+    <?= app_render_toast(); ?>
     <div class="auth-page-wrapper">
         <div class="auth-container">
             <div class="auth-header">
                 <h2 class="auth-title">Xác thực OTP</h2>
                 <p class="auth-subtitle">Mã OTP gồm 6 chữ số đã được gửi đến email <strong><?= app_e($email_hint) ?></strong></p>
             </div>
-
-            <?php if (!empty($error)): ?>
-                <div class="alert-error-small">
-                    <span class="alert-icon">⚠️</span>
-                    <?= app_e($error) ?>
-                </div>
-            <?php endif; ?>
-            <?php if ($message = app_flash('flash_success')): ?>
-                <div style="background: #ecfdf5; color: #059669; padding: 12px; border-radius: 8px; margin-bottom: 20px; font-size: 14px; border: 1px solid #a7f3d0;">
-                    <?= app_e($message) ?>
-                </div>
-            <?php endif; ?>
 
             <form action="/verify-otp" method="POST" class="auth-form">
                 <div class="form-group-auth">

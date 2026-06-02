@@ -21,13 +21,6 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
         </p>
     </div>
 
-    <?php if ($message = app_flash('flash_error')): ?>
-        <div class="alert-banner danger" style="background: var(--danger-light); color: var(--danger); padding: 12px; border-radius: 4px; margin-bottom: 24px; border: 1px solid #fecaca; display: flex; align-items: center; gap: 8px;">
-            <span class="material-symbols-outlined">error</span>
-            <?= app_e($message) ?>
-        </div>
-    <?php endif; ?>
-
     <div class="create-user-layout">
         
         <div class="role-guide-box">

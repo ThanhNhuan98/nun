@@ -64,7 +64,7 @@ class PasswordReset
                 'success' => true,
                 'message' => 'Mã OTP đã được gửi đến email của bạn. Vui lòng kiểm tra.',
                 'user_id' => $user['id'],
-                'email_hint' => $this->maskEmail($user['email'] ?? '')
+                'email_hint' => app_mask_email($user['email'] ?? '')
             ];
         } catch (\Throwable $e) {
             error_log('Generate OTP failed: ' . $e->getMessage());
@@ -182,23 +182,6 @@ class PasswordReset
     }
 
     /**
-     * Clean up expired tokens
-     */
-    public function cleanupExpiredTokens(): void
-    {
-        try {
-            $stmt = $this->db->prepare("
-                DELETE FROM password_reset_tokens 
-                WHERE (otp_expires_at < NOW() OR token_expires_at < NOW())
-                AND is_used = 0
-            ");
-            $stmt->execute();
-        } catch (\Throwable $e) {
-            error_log('Cleanup tokens failed: ' . $e->getMessage());
-        }
-    }
-
-    /**
      * Send OTP to email
      */
     private function sendOTPEmail(string $email, string $name, string $otp): bool
@@ -219,24 +202,5 @@ class PasswordReset
             error_log('Send OTP email failed: ' . $e->getMessage());
             return false;
         }
-    }
-
-
-    // Che giấu một phần địa chỉ email (VD: abc***@gmail.com) để bảo vệ quyền riêng tư.
-    private function maskEmail(string $email): string
-    {
-        if (empty($email)) {
-            return '';
-        }
-        $parts = explode('@', $email);
-        $username = $parts[0];
-        $domain = $parts[1] ?? '';
-        $len = strlen($username);
-        
-        if ($len <= 3) {
-            return str_repeat('*', $len) . '@' . $domain;
-        }
-        
-        return substr($username, 0, 3) . str_repeat('*', $len - 3) . '@' . $domain;
     }
 }

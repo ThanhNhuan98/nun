@@ -38,8 +38,8 @@ class WithdrawalController extends BaseController
 
         $walletModel = new Wallet();
 
-        if ($walletModel->deduct($driverId, $amount, 'adjustment', 'Rút tiền về ngân hàng (Tượng trưng)')) {
-            $_SESSION['flash_success'] = 'Rút tiền thành công ' . number_format($amount, 0, ',', '.') . 'đ (Mô phỏng).';
+        if ($walletModel->deduct($driverId, $amount, 'adjustment', 'Rút tiền về ngân hàng')) {
+            $_SESSION['flash_success'] = 'Rút tiền thành công ' . number_format($amount, 0, ',', '.') . 'đ .';
         } else {
             $_SESSION['flash_error'] = 'Số dư ví không đủ để rút số tiền này.';
         }

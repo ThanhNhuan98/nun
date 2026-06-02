@@ -8,8 +8,6 @@ use App\Core\Response;
 use App\Core\Validator;
 use App\Exceptions\ValidationException;
 use App\Models\User;
-use Cloudinary\Configuration\Configuration;
-use Cloudinary\Api\Upload\UploadApi;
 
 class UserController extends BaseController
 {
@@ -25,20 +23,7 @@ class UserController extends BaseController
             throw new \RuntimeException($validation['error'] ?? 'Ảnh giấy đăng ký xe không hợp lệ.');
         }
 
-        try {
-            // Đồng bộ lưu trữ lên Cloudinary
-            Configuration::instance($_ENV['CLOUDINARY_URL']);
-            $uploadApi = new UploadApi();
-            
-            $result = $uploadApi->upload($_FILES['vehicle_registration']['tmp_name'], [
-                'folder' => 'nun_express/vehicles',
-                'public_id' => 'reg_' . time() . '_' . uniqid()
-            ]);
-            
-            return $result['secure_url'];
-        } catch (\Exception $e) {
-            throw new \RuntimeException('Lỗi đồng bộ ảnh lên Cloudinary: ' . $e->getMessage());
-        }
+        return $this->uploadToCloudinary($_FILES['vehicle_registration'], 'nun_express/vehicles', 'reg_' . time() . '_' . uniqid());
     }
 
     // Hiển thị danh sách người dùng trên hệ thống (có hỗ trợ phân trang và bộ lọc vai trò).
@@ -86,6 +71,16 @@ class UserController extends BaseController
 
         if ($request->isPost()) {
             $data = app_sanitize($request->getBody());
+
+            // --- TÍNH NĂNG XÓA ÁN TÍCH TÀI XẾ ---
+            if (isset($data['action']) && $data['action'] === 'clear_violations' && $user['role'] === 'driver') {
+                $db = \App\Core\Database::getInstance();
+                $db->prepare("DELETE FROM driver_penalties WHERE driver_id = ?")->execute([$id]);
+                $db->prepare("UPDATE users SET violation_count = 0 WHERE id = ?")->execute([$id]);
+                $_SESSION['flash_success'] = 'Đã xóa toàn bộ án tích (lịch sử vi phạm) của tài xế này thành công!';
+                return $response->redirect("/admin/users/edit/{$id}");
+            }
+
             $role = $data['role'] ?? 'user';
 
             if ($role === 'admin' && $user['role'] !== 'admin') {
@@ -145,6 +140,16 @@ class UserController extends BaseController
                 }
 
                 if ($userModel->update($id, $updateData)) {
+                    // Tự động gửi thông báo cho khách hàng khi được Admin phê duyệt nâng cấp thành Tài xế
+                    if ($role === 'driver' && $user['role'] !== 'driver') {
+                        (new \App\Models\User())->createNotification(
+                            $id,
+                            'Nâng cấp Tài xế thành công',
+                            'Chúc mừng! Yêu cầu nâng cấp tài khoản của bạn đã được phê duyệt. Hãy đăng nhập lại để bắt đầu nhận các chuyến giao hàng mới.',
+                            'system',
+                            '/driver/receive-orders'
+                        );
+                    }
                     $_SESSION['flash_success'] = 'Cập nhật thông tin người dùng thành công.';
                     return $response->redirect('/admin/users');
                 }
@@ -153,18 +158,25 @@ class UserController extends BaseController
             } catch (ValidationException | \RuntimeException $e) {
                 $_SESSION['flash_error'] = $e instanceof ValidationException ? implode('. ', $e->errors) : $e->getMessage();
                 $user = array_merge($user, $data);
+            } catch (\Exception $e) {
+                error_log("Lỗi hệ thống (Admin Edit User): " . $e->getMessage());
+                $_SESSION['flash_error'] = 'Lỗi hệ thống CSDL. Vui lòng thử lại sau.';
             }
         }
 
         $driverProfile = null;
+        $violations = [];
         if ($user['role'] === 'driver') {
             $driverProfile = $userModel->getDriverProfile($id);
+            $penaltyModel = new \App\Models\DriverPenalty();
+            $violations = $penaltyModel->getViolations($id, 20); // Lấy 20 vi phạm gần nhất
         }
 
         return $response->render('admin/users/edit', [
             'pageTitle' => 'Chỉnh sửa người dùng',
             'user' => $user,
             'driverProfile' => $driverProfile,
+            'violations' => $violations,
         ]);
     }
 
@@ -254,7 +266,8 @@ class UserController extends BaseController
             } catch (ValidationException | \RuntimeException $e) {
                 $_SESSION['flash_error'] = $e instanceof ValidationException ? implode('. ', $e->errors) : $e->getMessage();
             } catch (\Exception $e) {
-                $_SESSION['flash_error'] = 'Lỗi hệ thống CSDL: ' . $e->getMessage();
+                error_log('Lỗi hệ thống CSDL (Admin Create User): ' . $e->getMessage());
+                $_SESSION['flash_error'] = 'Lỗi hệ thống CSDL. Không thể tạo người dùng lúc này.';
             }
         }
 

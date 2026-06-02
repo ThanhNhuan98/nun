@@ -13,12 +13,6 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
 <div class="admin-container">
     <div class="review-card-v2">
         
-        <?php if (!empty($flashMessage)): ?>
-            <div style="background: var(--success-light); color: var(--success); padding: 12px; border-radius: 4px; margin-bottom: 20px;">
-                <?= app_e($flashMessage) ?>
-            </div>
-        <?php endif; ?>
-
         <?php if (!empty($error)): ?>
             <div style="background: var(--danger-light); color: var(--danger); padding: 12px; border-radius: 4px; margin-bottom: 20px;">
                 <?= app_e($error) ?>

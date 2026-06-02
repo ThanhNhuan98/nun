@@ -54,17 +54,10 @@
                 </button>
             </form>
 
-            <div class="divider">Hoặc đăng nhập bằng</div>
-
-            
-
             <p class="register-text">
                 Chưa có tài khoản? <a href="/register" class="register-link">Đăng ký ngay</a>
             </p>
         </div>
-
-        <div class="warehouse-background"></div>
-        <div class="warehouse-gradient"></div>
 
     </main>
 

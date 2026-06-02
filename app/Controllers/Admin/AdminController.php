@@ -132,7 +132,7 @@ class AdminController extends BaseController
                 $_SESSION['flash_success'] = 'Cập nhật đơn hàng thành công!';
                 return $response->redirect('/admin/orders/view/' . $id);
             } else {
-                $order['error'] = 'Có lỗi xảy ra, không thể cập nhật đơn hàng. Vui lòng kiểm tra lại.';
+                $_SESSION['flash_error'] = 'Có lỗi xảy ra, không thể cập nhật đơn hàng. Vui lòng kiểm tra lại.';
             }
         }
 
@@ -152,8 +152,8 @@ class AdminController extends BaseController
         }
 
         $data = $request->getBody();
-        $penaltyAmount = (float) ($data['penalty_amount'] ?? 50000);
-        $reason = app_sanitize($data['reason'] ?? 'Báo cáo/Hủy đơn sai sự thật');
+        $penaltyAmount = (float) ($data['penalty_amount'] ?? 0);
+        $reason = app_sanitize($data['reason'] ?? 'Vi phạm quy định giao nhận');
         $driverId = $order['driver_id'];
 
         if (!$driverId) {
@@ -165,16 +165,20 @@ class AdminController extends BaseController
         
         if ($penaltyModel->applyPenalty($driverId, 'admin_penalty', $penaltyAmount, $reason, $this->userId())) {
             $currentBalance = (new Wallet())->getBalance($driverId);
-            $desc = "Admin đã phạt tài xế " . number_format($penaltyAmount, 0, ',', '.') . "đ. Lý do: " . $reason;
+            $desc = "Admin đã " . ($penaltyAmount > 0 ? "phạt tài xế " . number_format($penaltyAmount, 0, ',', '.') . "đ" : "cảnh cáo tài xế (0đ)") . ". Lý do: " . $reason;
             
-            if ($currentBalance < 0) {
+            if ($penaltyAmount > 0 && $currentBalance < 0) {
                 $desc .= " (Tài khoản tài xế đã tự động bị khóa do số dư ví âm).";
                 (new User())->updateBlockStatus($driverId, 1);
             }
             
             $db = \App\Core\Database::getInstance();
             $db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())")->execute([$orderId, $order['status'], $desc]);
-            (new User())->createNotification($driverId, 'Thông báo chế tài', "Hệ thống đã khấu trừ " . number_format($penaltyAmount, 0, ',', '.') . "đ từ ví của bạn tại đơn #{$order['tracking_code']} (Lý do: {$reason}).", 'wallet', "/driver/orders/view/{$orderId}");
+            if ($penaltyAmount > 0) {
+                (new User())->createNotification($driverId, 'Thông báo chế tài', "Hệ thống đã khấu trừ " . number_format($penaltyAmount, 0, ',', '.') . "đ từ ví của bạn tại đơn #{$order['tracking_code']} (Lý do: {$reason}).", 'wallet', "/driver/orders/view/{$orderId}");
+            } else {
+                (new User())->createNotification($driverId, 'Cảnh cáo vi phạm', "Bạn đã nhận 1 cảnh cáo tại đơn #{$order['tracking_code']} (Lý do: {$reason}).", 'system', "/driver/orders/view/{$orderId}");
+            }
 
             $_SESSION['flash_success'] = 'Đã phạt tài xế thành công.';
         } else {

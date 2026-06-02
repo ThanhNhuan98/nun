@@ -15,7 +15,11 @@ class PusherService
         if (class_exists(Pusher::class)) {
             $options = [
                 'cluster' => $_ENV['PUSHER_APP_CLUSTER'] ?? 'ap1',
-                'useTLS' => true
+                'useTLS' => true,
+                'curl_options' => [
+                    CURLOPT_TIMEOUT => 2, // Đặt Timeout cực ngắn (2s) để tránh treo tiến trình PHP
+                    CURLOPT_CONNECTTIMEOUT => 1
+                ]
             ];
 
             $this->pusher = new Pusher(
@@ -30,10 +34,10 @@ class PusherService
     /**
      * Gửi sự kiện thời gian thực đến một kênh cụ thể
      */
-    public function trigger(string $channel, string $event, array $data): void
+    public function trigger($channels, string $event, array $data): void
     {
         if ($this->pusher) {
-            $this->pusher->trigger($channel, $event, $data);
+            $this->pusher->trigger($channels, $event, $data);
         }
     }
 }

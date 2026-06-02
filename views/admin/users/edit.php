@@ -71,6 +71,12 @@ if (!isset($driverProfile) && isset($user['id'])) {
                         </a>
                     <?php endif; ?>
                     <p style="margin-bottom: 0; margin-top: 10px; font-size: 13px; color: #64748b;">* Để duyệt, hãy đổi "Vai trò" thành <strong>Tài xế</strong> và tích chọn <strong>Xác nhận tài xế đã cung cấp giấy tờ hợp lệ</strong> ở bên dưới.</p>
+                    
+                    <div style="margin-top: 15px;">
+                        <button type="button" onclick="autoApproveDriver()" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 4px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; box-shadow: 0 2px 4px rgba(16, 185, 129, 0.2); transition: 0.2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">check_circle</span> Phê duyệt nhanh Tài xế
+                        </button>
+                    </div>
                 </div>
             <?php endif; ?>
 
@@ -209,6 +215,51 @@ if (!isset($driverProfile) && isset($user['id'])) {
                 </div>
             </div>
 
+            <?php if (($user['role'] ?? '') === 'driver'): ?>
+                <div style="margin-top: 30px; border-top: 1px solid #e2e8f0; padding-top: 20px;">
+                    <h3 style="font-size: 16px; color: #be123c; margin-bottom: 15px; display: flex; align-items: center; gap: 8px;">
+                        <span class="material-symbols-outlined">gavel</span>
+                        Lịch sử vi phạm của Tài xế
+                    </h3>
+                    
+                    <div style="background: #fff1f2; padding: 12px 16px; border-radius: 6px; border: 1px dashed #fca5a5; margin-bottom: 16px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+                        <div>
+                            <strong>Số lần vi phạm trong 3 tháng qua:</strong> 
+                            <span style="font-size: 18px; color: #e11d48; margin-left: 5px;"><?= (int)($user['violation_count'] ?? 0) ?></span> / 5 lần 
+                            <div style="font-size: 13px; color: #64748b; margin-top: 4px;">(Nếu >= 5 lần sẽ tự động khóa tài khoản)</div>
+                        </div>
+                        <?php if ((int)($user['violation_count'] ?? 0) > 0): ?>
+                            <button type="button" onclick="confirmClearViolations()" style="background: #e11d48; color: #fff; border: none; padding: 8px 16px; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: 600; display: flex; align-items: center; gap: 6px; height: fit-content; transition: 0.2s;" onmouseover="this.style.background='#be123c'" onmouseout="this.style.background='#e11d48'">
+                                <span class="material-symbols-outlined" style="font-size: 16px;">cleaning_services</span> Xóa án tích
+                            </button>
+                        <?php endif; ?>
+                    </div>
+            
+                    <?php if (empty($violations)): ?>
+                        <p style="color: #10b981; font-size: 14px;">Tài xế này chưa có lịch sử vi phạm nào.</p>
+                    <?php else: ?>
+                        <table class="table-admin" style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                            <thead>
+                                <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0; text-align: left;">
+                                    <th style="padding: 10px;">Thời gian</th>
+                                    <th style="padding: 10px;">Lý do phạt</th>
+                                    <th style="padding: 10px;">Số tiền phạt</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($violations as $v): ?>
+                                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                                        <td style="padding: 10px;"><?= date('H:i d/m/Y', strtotime($v['created_at'])) ?></td>
+                                        <td style="padding: 10px; color: #334155;"><?= app_e($v['reason']) ?></td>
+                                        <td style="padding: 10px; color: #be123c; font-weight: bold;">-<?= app_money($v['amount']) ?></td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
+
             <div class="form-actions" style="margin-top: 32px; padding-top: 24px; border-top: 1px solid var(--border-color); display: flex; justify-content: flex-end; gap: 12px;">
                 <a href="/admin/users" class="btn-cancel">Hủy bỏ</a>
                 <button type="submit" class="btn-submit">
@@ -218,9 +269,40 @@ if (!isset($driverProfile) && isset($user['id'])) {
         </form>
     </div>
 
+    <!-- Custom Confirm Modal thay thế thông báo cứng (native alert/confirm) -->
+    <div id="custom-confirm-modal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.5); z-index:99999; align-items:center; justify-content:center; backdrop-filter: blur(2px);">
+        <div style="background:#fff; padding:24px; border-radius:8px; width:100%; max-width:400px; box-shadow:0 10px 25px rgba(0,0,0,0.1); text-align: center;">
+            <span class="material-symbols-outlined" style="font-size: 48px; color: var(--warning); margin-bottom: 16px;">help</span>
+            <h3 style="margin-top:0; color:var(--text-main); font-size:18px; margin-bottom: 12px;">Xác nhận thao tác</h3>
+            <p id="custom-confirm-message" style="color:var(--text-muted); font-size:14px; margin-bottom:24px; line-height:1.5;"></p>
+            <div style="display:flex; justify-content:center; gap:12px;">
+                <button type="button" onclick="closeCustomConfirm()" style="background:#fff; border:1px solid var(--border-color); padding:10px 20px; border-radius:4px; cursor:pointer; font-weight: 600;">Hủy bỏ</button>
+                <button type="button" id="custom-confirm-btn" style="background:var(--primary); color:#fff; border:none; padding:10px 20px; border-radius:4px; cursor:pointer; font-weight: 600;">Đồng ý</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
+let currentConfirmCallback = null;
+
+function showCustomConfirm(message, callback, btnColor = 'var(--primary)') {
+    document.getElementById('custom-confirm-message').innerHTML = message;
+    document.getElementById('custom-confirm-btn').style.background = btnColor;
+    currentConfirmCallback = callback;
+    document.getElementById('custom-confirm-modal').style.display = 'flex';
+}
+
+function closeCustomConfirm() {
+    document.getElementById('custom-confirm-modal').style.display = 'none';
+    currentConfirmCallback = null;
+}
+
+document.getElementById('custom-confirm-btn').addEventListener('click', function() {
+    if (currentConfirmCallback) currentConfirmCallback();
+    closeCustomConfirm();
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     const roleRadios = document.querySelectorAll('input[name="role"]');
     const driverFields = document.getElementById('driver-fields');
@@ -234,6 +316,30 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
+    
+    // Xử lý phê duyệt nhanh Tài xế
+    window.autoApproveDriver = function() {
+        showCustomConfirm('Bạn có chắc chắn muốn phê duyệt và nâng cấp khách hàng này thành Tài xế?', function() {
+            const driverRadio = document.getElementById('role_driver');
+            if (driverRadio) driverRadio.checked = true;
+            
+            const verifyCheckbox = document.querySelector('input[name="is_driver_verified"]');
+            if (verifyCheckbox) verifyCheckbox.checked = true;
+            
+            // Tự động lưu form ngay lập tức
+            document.querySelector('form').submit();
+        });
+    };
 });
+
+function confirmClearViolations() {
+    showCustomConfirm('Bạn có chắc chắn muốn <b>XÓA TOÀN BỘ</b> án tích của tài xế này không?', function() {
+        const form = document.querySelector('form');
+        const input = document.createElement('input');
+        input.type = 'hidden'; input.name = 'action'; input.value = 'clear_violations';
+        form.appendChild(input);
+        form.submit();
+    }, 'var(--danger)');
+}
 </script>
 <?php require_once __DIR__ . '/../../layouts/user_footer.php'; ?>

@@ -17,20 +17,6 @@
         <h2 class="admin-page-title" style="color: var(--primary); font-weight: 700;"><?= htmlspecialchars($pageTitle ?? 'Quản lý Khiếu nại') ?></h2>
     </div>
 
-    <?php if (isset($_SESSION['flash_success'])): ?>
-        <div style="background: var(--success-light); color: var(--success); padding: 12px; border-radius: 4px; margin-bottom: 20px; font-weight: 500;">
-            <?= htmlspecialchars($_SESSION['flash_success']) ?>
-        </div>
-        <?php unset($_SESSION['flash_success']); ?>
-    <?php endif; ?>
-
-    <?php if (isset($_SESSION['flash_error'])): ?>
-        <div style="background: var(--danger-light); color: var(--danger); padding: 12px; border-radius: 4px; margin-bottom: 20px; font-weight: 500;">
-            <?= htmlspecialchars($_SESSION['flash_error']) ?>
-        </div>
-        <?php unset($_SESSION['flash_error']); ?>
-    <?php endif; ?>
-
     <form method="GET" action="/admin/disputes" class="order-search-form">
         <span class="material-symbols-outlined search-icon">search</span>
         <input type="text" name="search" value="<?= htmlspecialchars($search) ?>" placeholder="Tìm mã đơn, tên khách hàng...">
@@ -131,31 +117,14 @@
         <?php endif; ?>
     </div>
 
-    <?php if (($totalPages ?? 1) > 1): ?>
-        <div class="pagination-container" style="margin-bottom: 30px;">
-            <?php
-            $queryParams = [];
-            if (!empty($statusFilter)) $queryParams['status'] = $statusFilter;
-            if (!empty($search)) $queryParams['search'] = $search;
-            ?>
-
-            <?php if ($currentPage > 1): ?>
-                <a href="?<?= http_build_query(array_merge($queryParams, ['page' => $currentPage - 1])) ?>" class="pagination-link">&laquo; Trước</a>
-            <?php else: ?>
-                <span class="pagination-link disabled">&laquo; Trước</span>
-            <?php endif; ?>
-
-            <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                <a href="?<?= http_build_query(array_merge($queryParams, ['page' => $i])) ?>" class="pagination-link <?= $i == $currentPage ? 'active' : '' ?>"><?= $i ?></a>
-            <?php endfor; ?>
-
-            <?php if ($currentPage < $totalPages): ?>
-                <a href="?<?= http_build_query(array_merge($queryParams, ['page' => $currentPage + 1])) ?>" class="pagination-link">Sau &raquo;</a>
-            <?php else: ?>
-                <span class="pagination-link disabled">Sau &raquo;</span>
-            <?php endif; ?>
-        </div>
-    <?php endif; ?>
+    <?= app_component('pagination', [
+        'currentPage' => $currentPage ?? 1,
+        'totalPages' => $totalPages ?? 1,
+        'queryParams' => array_filter([
+            'status' => $statusFilter ?? '',
+            'search' => $search ?? ''
+        ])
+    ]) ?>
 
 </div>
 

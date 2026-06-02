@@ -33,9 +33,6 @@
                     <span class="material-symbols-outlined input-icon-prefix">mail</span>
                     <input type="text" name="email_or_phone" value="<?= app_e($old['email_or_phone'] ?? '') ?>" placeholder="Nhập email hoặc số điện thoại" required class="auth-input" oninvalid="this.setCustomValidity('Vui lòng nhập email hoặc số điện thoại.')" oninput="this.setCustomValidity('')">
                 </div>
-                <?php if (!empty($errors['email_or_phone'])): ?>
-                    <small class="form-error" style="color: var(--danger); font-size: 12px; margin-top: 4px; display: block;"><?= app_e($errors['email_or_phone']) ?></small>
-                <?php endif; ?>
             </div>
 
             <button type="submit" class="auth-btn-primary">

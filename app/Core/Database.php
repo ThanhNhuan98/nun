@@ -33,7 +33,7 @@ class Database
                 // Điều này cho phép hiển thị một trang lỗi thân thiện với người dùng.
                 // Ghi lại lỗi chi tiết cho lập trình viên.
                 error_log("Database Connection Error: " . $e->getMessage());
-                throw new PDOException("Không thể kết nối đến cơ sở dữ liệu. Vui lòng thử lại sau.", (int)$e->getCode());
+                throw new PDOException("Không thể kết nối đến Cơ sở dữ liệu lúc này. Vui lòng thử lại sau.", (int)$e->getCode());
             }
         }
         return self::$instance;

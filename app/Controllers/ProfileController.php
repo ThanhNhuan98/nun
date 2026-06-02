@@ -7,8 +7,6 @@ use App\Core\Response;
 use App\Models\Notification;
 use App\Models\User;
 use App\Core\Validator;
-use Cloudinary\Configuration\Configuration;
-use Cloudinary\Api\Upload\UploadApi;
 
 class ProfileController extends BaseController
 {
@@ -58,20 +56,10 @@ class ProfileController extends BaseController
     {
         if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
             try {
-                // Cấu hình Cloudinary từ biến môi trường .env
-                Configuration::instance($_ENV['CLOUDINARY_URL']);
-
-                $uploadApi = new UploadApi();
-                
-                // Upload file trực tiếp lên thư mục 'nun_express/avatars'
-                $result = $uploadApi->upload($_FILES['avatar']['tmp_name'], [
-                    'folder' => 'nun_express/avatars',
-                    'transformation' => [
-                        'width' => 400, 'height' => 400, 'crop' => 'fill' // Tự động crop vuông
-                    ]
+                $avatarUrl = $this->uploadToCloudinary($_FILES['avatar'], 'nun_express/avatars', null, [
+                    'transformation' => ['width' => 400, 'height' => 400, 'crop' => 'fill']
                 ]);
-
-                $avatarUrl = $result['secure_url'];
+                
                 $userId = $this->userId();
 
                 $userModel = new User();
@@ -268,16 +256,7 @@ class ProfileController extends BaseController
                 throw new \RuntimeException($validation['error'] ?? 'Ảnh hồ sơ không hợp lệ.');
             }
             
-            try {
-                Configuration::instance($_ENV['CLOUDINARY_URL']);
-                $uploadApi = new UploadApi();
-                $result = $uploadApi->upload($_FILES['vehicle_registration']['tmp_name'], [
-                    'folder' => 'nun_express/vehicles',
-                ]);
-                return $result['secure_url'];
-            } catch (\Exception $e) {
-                throw new \RuntimeException('Lỗi upload ảnh lên Cloudinary: ' . $e->getMessage());
-            }
+            return $this->uploadToCloudinary($_FILES['vehicle_registration'], 'nun_express/vehicles');
         }
         throw new \RuntimeException('Vui lòng tải lên ảnh Hồ sơ tổng hợp (CCCD, Bằng lái, Cà vẹt).');
     }

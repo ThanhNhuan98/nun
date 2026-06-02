@@ -47,6 +47,7 @@ try {
     http_response_code(503); // Service Unavailable
     echo "<h1>Lỗi hệ thống</h1>";
     echo "<p>Không thể kết nối đến máy chủ dữ liệu. Vui lòng liên hệ quản trị viên hoặc thử lại sau ít phút.</p>";
+    echo "<p style='color:red;'><b>Chi tiết lỗi (Dành cho Lập trình viên):</b> " . $e->getMessage() . "</p>";
 } catch (\Throwable $e) {
     // Bắt tất cả các lỗi khác chưa được xử lý
     http_response_code(500); // Internal Server Error

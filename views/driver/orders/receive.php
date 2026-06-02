@@ -25,16 +25,6 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
         <p class="active-page-subtitle">Hệ thống AI đang quét các đơn hàng phù hợp xung quanh bạn.</p>
     </div>
 
-    <?php if ($errorMsg = app_flash('flash_error')): ?>
-        <div class="alert-banner danger" style="margin-bottom: 24px;">
-            <p><?= app_e($errorMsg) ?></p>
-        </div>
-    <?php endif; ?>
-    <?php if ($successMsg = app_flash('flash_success')): ?>
-        <div class="alert-banner" style="background: var(--success-light); color: var(--success); padding: 12px; border-radius: 4px; margin-bottom: 24px; border: 1px solid #bbf7d0;">
-            <?= app_e($successMsg) ?>
-        </div>
-    <?php endif; ?>
 
     <!-- Nút Bật/Tắt Nhận Đơn -->
     <div class="online-toggle-container" style="background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 4px; padding: 16px 24px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
@@ -58,6 +48,16 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
             <a href="/driver/wallet/topup" class="btn-topup-outline">Nạp tiền</a>
         </div>
     </div>
+
+    <!-- THÊM ĐOẠN NÀY: Hiển thị cảnh báo lỗi của AI Microservice ngay cả khi đang chạy Fallback -->
+    <?php if (!empty($message) && !empty($batches)): ?>
+        <div style="background: #fee2e2; border: 1px solid #fca5a5; padding: 16px; border-radius: 4px; margin-bottom: 24px; color: #b91c1c;">
+            <div style="display: flex; align-items: center; gap: 8px; font-weight: bold; margin-bottom: 4px;">
+                <span class="material-symbols-outlined">warning</span> Sự cố ghép chuyến AI
+            </div>
+            <?= app_e($message) ?>
+        </div>
+    <?php endif; ?>
 
     <?php if (empty($batches)): ?>
         <div class="text-center text-muted py-5" style="background: #fff; border: 1px solid var(--border-color); border-radius: 4px; padding: 40px 20px;">
@@ -164,25 +164,10 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
             </div>
         <?php endforeach; ?>
 
-        <?php if (($totalPages ?? 1) > 1): ?>
-            <div class="pagination-container" style="margin-top: 30px; margin-bottom: 30px;">
-                <?php if ($currentPage > 1): ?>
-                    <a href="?page=<?= $currentPage - 1 ?>" class="pagination-link">&laquo;</a>
-                <?php else: ?>
-                    <span class="pagination-link disabled">&laquo;</span>
-                <?php endif; ?>
-
-                <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-                    <a href="?page=<?= $i ?>" class="pagination-link <?= $i == $currentPage ? 'active' : '' ?>"><?= $i ?></a>
-                <?php endfor; ?>
-
-                <?php if ($currentPage < $totalPages): ?>
-                    <a href="?page=<?= $currentPage + 1 ?>" class="pagination-link">&raquo;</a>
-                <?php else: ?>
-                    <span class="pagination-link disabled">&raquo;</span>
-                <?php endif; ?>
-            </div>
-        <?php endif; ?>
+        <?= app_component('pagination', [
+            'currentPage' => $currentPage ?? 1,
+            'totalPages' => $totalPages ?? 1
+        ]) ?>
     <?php endif; ?>
 </div>
 

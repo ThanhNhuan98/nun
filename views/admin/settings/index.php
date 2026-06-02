@@ -11,18 +11,6 @@
         </p>
     </div>
 
-    <?php if ($message = app_flash('flash_success')): ?>
-        <div class="alert-banner" style="background: var(--success-light); color: var(--success); padding: 12px; border-radius: 4px; margin-bottom: 24px; border: 1px solid #bbf7d0;">
-            <?= app_e($message) ?>
-        </div>
-    <?php endif; ?>
-
-    <?php if ($message = app_flash('flash_error')): ?>
-        <div class="alert-banner" style="background: var(--danger-light); color: var(--danger); padding: 12px; border-radius: 4px; margin-bottom: 24px; border: 1px solid #fecaca;">
-            <?= app_e($message) ?>
-        </div>
-    <?php endif; ?>
-
     <form action="/admin/settings" method="POST">
         <div class="settings-layout">
             
@@ -94,6 +82,82 @@
                     </div>
                     <div class="settings-input-col">
                         <input type="number" id="no_show_threshold_for_ban" name="no_show_threshold_for_ban" class="form-control" min="1" step="1" value="<?= app_e($settings['no_show_threshold_for_ban'] ?? '3') ?>" required style="text-align: right;">
+                    </div>
+                </div>
+
+                <div class="settings-row">
+                    <div class="settings-label-col">
+                        <label>Cước phí: Giao tiêu chuẩn</label>
+                        <p>Lần lượt: Giá nền, Giá mỗi kg, Giá mỗi km.</p>
+                    </div>
+                    <div class="settings-input-col" style="width: auto; display: flex; gap: 10px;">
+                        <div class="input-suffix-group" style="width: 120px;">
+                            <input type="number" name="price_standard_base" class="form-control" min="0" value="<?= app_e($settings['price_standard_base'] ?? '12000') ?>" required>
+                            <span class="suffix">đ</span>
+                        </div>
+                        <div class="input-suffix-group" style="width: 120px;">
+                            <input type="number" name="price_standard_weight" class="form-control" min="0" value="<?= app_e($settings['price_standard_weight'] ?? '5000') ?>" required>
+                            <span class="suffix">đ/kg</span>
+                        </div>
+                        <div class="input-suffix-group" style="width: 120px;">
+                            <input type="number" name="price_standard_distance" class="form-control" min="0" value="<?= app_e($settings['price_standard_distance'] ?? '3000') ?>" required>
+                            <span class="suffix">đ/km</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-row">
+                    <div class="settings-label-col">
+                        <label>Cước phí: Giao nhanh</label>
+                        <p>Lần lượt: Giá nền, Giá mỗi kg, Giá mỗi km.</p>
+                    </div>
+                    <div class="settings-input-col" style="width: auto; display: flex; gap: 10px;">
+                        <div class="input-suffix-group" style="width: 120px;">
+                            <input type="number" name="price_fast_base" class="form-control" min="0" value="<?= app_e($settings['price_fast_base'] ?? '18000') ?>" required>
+                            <span class="suffix">đ</span>
+                        </div>
+                        <div class="input-suffix-group" style="width: 120px;">
+                            <input type="number" name="price_fast_weight" class="form-control" min="0" value="<?= app_e($settings['price_fast_weight'] ?? '6200') ?>" required>
+                            <span class="suffix">đ/kg</span>
+                        </div>
+                        <div class="input-suffix-group" style="width: 120px;">
+                            <input type="number" name="price_fast_distance" class="form-control" min="0" value="<?= app_e($settings['price_fast_distance'] ?? '3800') ?>" required>
+                            <span class="suffix">đ/km</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-row">
+                    <div class="settings-label-col">
+                        <label>Cước phí: Giao siêu tốc</label>
+                        <p>Lần lượt: Giá nền, Giá mỗi kg, Giá mỗi km.</p>
+                    </div>
+                    <div class="settings-input-col" style="width: auto; display: flex; gap: 10px;">
+                        <div class="input-suffix-group" style="width: 120px;">
+                            <input type="number" name="price_express_base" class="form-control" min="0" value="<?= app_e($settings['price_express_base'] ?? '25000') ?>" required>
+                            <span class="suffix">đ</span>
+                        </div>
+                        <div class="input-suffix-group" style="width: 120px;">
+                            <input type="number" name="price_express_weight" class="form-control" min="0" value="<?= app_e($settings['price_express_weight'] ?? '7500') ?>" required>
+                            <span class="suffix">đ/kg</span>
+                        </div>
+                        <div class="input-suffix-group" style="width: 120px;">
+                            <input type="number" name="price_express_distance" class="form-control" min="0" value="<?= app_e($settings['price_express_distance'] ?? '4800') ?>" required>
+                            <span class="suffix">đ/km</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-row">
+                    <div class="settings-label-col">
+                        <label for="vehicle_speed_kmh">Tốc độ xe giả định (km/h)</label>
+                        <p>Dùng để tính thời gian di chuyển nếu API Bản đồ gặp sự cố.</p>
+                    </div>
+                    <div class="settings-input-col">
+                        <div class="input-suffix-group">
+                            <input type="number" id="vehicle_speed_kmh" name="vehicle_speed_kmh" class="form-control" min="1" step="0.1" value="<?= app_e($settings['vehicle_speed_kmh'] ?? '28.0') ?>" required style="text-align: right;">
+                            <span class="suffix">km/h</span>
+                        </div>
                     </div>
                 </div>
 

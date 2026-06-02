@@ -135,7 +135,7 @@ class Validator
     // Kiểm tra định dạng số điện thoại Việt Nam (10 số, bắt đầu bằng 03, 05, 07, 08, 09).
     protected function rulePhone(string $field, $value): bool
     {
-        return empty($value) || preg_match('/^(0[3|5|7|8|9])+([0-9]{8})$/', (string)$value);
+        return empty($value) || preg_match('/^(0[35789])[0-9]{8}$/', (string)$value);
     }
 
     // Kiểm tra độ dài tối thiểu của chuỗi.
@@ -186,6 +186,12 @@ class Validator
         [$table, $column, $excludeId] = array_pad(explode(',', $param), 3, null);
         $column = $column ?? $field;
 
+        // BẢO MẬT: Ngăn chặn SQL Injection ở tham số Tên Bảng và Tên Cột (Bắt buộc)
+        // PDO không hỗ trợ bindParam cho tên Bảng/Cột, nên phải dùng Regex Whitelist (Chỉ cho phép chữ cái, số, dấu _)
+        if (!preg_match('/^[a-zA-Z0-9_]+$/', $table) || !preg_match('/^[a-zA-Z0-9_]+$/', $column)) {
+            throw new \InvalidArgumentException("Tên bảng hoặc cột trong Rule Unique không hợp lệ (Phát hiện rủi ro SQL Injection).");
+        }
+
         $db = Database::getInstance();
         $sql = "SELECT id FROM {$table} WHERE {$column} = ? LIMIT 1";
         $params = [$value];
@@ -216,5 +222,17 @@ class Validator
         if (empty($value)) return true; // Cho phép rỗng, rule 'required' sẽ kiểm tra rỗng sau
         $scheduledTime = strtotime((string)$value);
         return $scheduledTime !== false && $scheduledTime <= strtotime('+7 days');
+    }
+
+    // Kiểm tra giá trị (số) có lớn hơn hoặc bằng một mức cụ thể hay không.
+    protected function ruleGte(string $field, $value, string $param): bool
+    {
+        return is_numeric($value) && (float)$value >= (float)$param;
+    }
+
+    // Kiểm tra định dạng ngày giờ (datetime) hợp lệ.
+    protected function ruleDatetime(string $field, $value): bool
+    {
+        return empty($value) || strtotime((string)$value) !== false;
     }
 }

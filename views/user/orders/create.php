@@ -9,9 +9,19 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
 
+<style>
+    /* Tối ưu hóa khoảng cách Header trên thiết bị di động */
+    @media (max-width: 768px) {
+        .create-page-header { margin-bottom: 12px !important; }
+        .create-page-header h2 { font-size: 20px !important; margin-bottom: 4px !important; }
+        .create-page-header p { display: none; } /* Ẩn bớt dòng mô tả phụ để tiết kiệm không gian */
+        .order-create-layout { margin-top: 0 !important; }
+    }
+</style>
+
 <div class="admin-container">
     
-    <div style="margin-bottom: 24px;">
+    <div class="create-page-header" style="margin-bottom: 24px;">
         <h2 style="font-size: 24px; font-weight: 700; color: var(--text-main); margin: 0 0 8px 0;"><?= app_e($pageTitle ?? 'Tạo Đơn Hàng Mới') ?></h2>
         <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Điền thông tin chi tiết về địa điểm và gói hàng để tạo đơn.</p>
     </div>
@@ -20,13 +30,13 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 <?php foreach ($errors as $err): ?>
-                showJsToast('<?= app_e($err) ?>', 'error');
+                if (typeof showToast === 'function') showToast('<?= app_e($err) ?>', 'error');
                 <?php endforeach; ?>
             });
         </script>
     <?php endif; ?>
 
-    <div id="draft-notice" style="display: none; background: #e0f2fe; color: #0284c7; padding: 12px 16px; border-radius: 4px; margin-bottom: 24px; border: 1px solid #bae6fd; font-size: 14px; align-items: center; justify-content: space-between;">
+    <div id="draft-notice" style="display: none; background: #e0f2fe; color: #0284c7; padding: 12px 16px; border-radius: 4px; margin-bottom: 24px; border: 1px solid #bae6fd; font-size: 14px; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
         <span style="display: flex; align-items: center; gap: 6px;"><span class="material-symbols-outlined" style="font-size: 18px;">restore_page</span> Đã khôi phục dữ liệu bạn đang nhập dở.</span>
         <button type="button" onclick="clearDraft()" style="background: none; border: none; color: #0284c7; font-weight: bold; cursor: pointer; text-decoration: underline;">Xóa nháp & Tạo mới</button>
     </div>
@@ -64,8 +74,26 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                                 <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Địa chỉ trên bản đồ *</label>
                                 <div class="form-input-with-icon" style="position: relative;">
                                     <span class="material-symbols-outlined" style="position: absolute; left: 10px; top: 10px; color: var(--text-muted); font-size: 18px;">search</span>
-                                    <input type="text" name="pickup_address" id="pickup_address" class="form-control" style="padding-left: 36px;" placeholder="Tìm kiếm địa chỉ..." value="<?= app_e($old['pickup_address'] ?? '') ?>" required oninvalid="this.setCustomValidity('Vui lòng chọn hoặc nhập địa chỉ lấy hàng.')" oninput="this.setCustomValidity('')">
+                                    <input type="text" name="pickup_address" id="pickup_address" class="form-control" style="padding-left: 36px;" placeholder="Tìm kiếm địa chỉ..." value="<?= app_e($old['pickup_address'] ?? '') ?>" required data-error="Vui lòng chọn hoặc nhập địa chỉ lấy hàng.">
                                 </div>
+                                
+                                <?php if (!empty($recentAddresses['pickups'])): ?>
+                                    <div style="margin-top: 10px;">
+                                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Địa chỉ lấy hàng gần đây:</p>
+                                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                            <?php foreach ($recentAddresses['pickups'] as $pickup): ?>
+                                                <div style="padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; border: 1px solid var(--border-color); background: #f8fafc; color: var(--text-main); max-width: 100%; display: flex; align-items: center; gap: 4px; transition: 0.2s;" 
+                                                     onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" 
+                                                     onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-main)';" 
+                                                     data-mode="sender" data-address="<?= app_e($pickup['address']) ?>" data-lat="<?= $pickup['lat'] ?>" data-lng="<?= $pickup['lng'] ?>"
+                                                     onclick="fillAddressFromData(this)">
+                                                    <span class="material-symbols-outlined" style="font-size: 14px; flex-shrink: 0;">history</span>
+                                                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;"><?= app_e($pickup['address']) ?></span>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                             <div>
                                 <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Địa chỉ chi tiết/bổ sung</label>
@@ -83,11 +111,11 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                             <div class="form-grid-2">
                                 <div>
                                     <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Tên người nhận *</label>
-                                    <input type="text" name="receiver_name" class="form-control" placeholder="Nhập tên" value="<?= app_e($old['receiver_name'] ?? '') ?>" required oninvalid="this.setCustomValidity('Vui lòng nhập tên người nhận.')" oninput="this.setCustomValidity('')">
+                                    <input type="text" name="receiver_name" class="form-control" placeholder="Nhập tên" value="<?= app_e($old['receiver_name'] ?? '') ?>" required data-error="Vui lòng nhập tên người nhận.">
                                 </div>
                                 <div>
                                     <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Số điện thoại *</label>
-                                    <input type="text" name="receiver_phone" class="form-control" placeholder="Nhập SĐT" value="<?= app_e($old['receiver_phone'] ?? '') ?>" required oninvalid="this.setCustomValidity('Vui lòng nhập số điện thoại người nhận.')" oninput="this.setCustomValidity('')">
+                                    <input type="text" name="receiver_phone" class="form-control" placeholder="Nhập SĐT" value="<?= app_e($old['receiver_phone'] ?? '') ?>" required data-error="Vui lòng nhập số điện thoại người nhận.">
                                 </div>
                             </div>
                             
@@ -95,8 +123,26 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                                 <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Địa chỉ trên bản đồ *</label>
                                 <div class="form-input-with-icon" style="position: relative;">
                                     <span class="material-symbols-outlined" style="position: absolute; left: 10px; top: 10px; color: var(--text-muted); font-size: 18px;">search</span>
-                                    <input type="text" name="delivery_address" id="delivery_address" class="form-control" style="padding-left: 36px;" placeholder="Tìm kiếm địa chỉ..." value="<?= app_e($old['delivery_address'] ?? '') ?>" required oninvalid="this.setCustomValidity('Vui lòng chọn hoặc nhập địa chỉ giao hàng.')" oninput="this.setCustomValidity('')">
+                                    <input type="text" name="delivery_address" id="delivery_address" class="form-control" style="padding-left: 36px;" placeholder="Tìm kiếm địa chỉ..." value="<?= app_e($old['delivery_address'] ?? '') ?>" required data-error="Vui lòng chọn hoặc nhập địa chỉ giao hàng.">
                                 </div>
+                                
+                                <?php if (!empty($recentAddresses['deliveries'])): ?>
+                                    <div style="margin-top: 10px;">
+                                        <p style="font-size: 12px; color: var(--text-muted); margin-bottom: 8px;">Địa chỉ giao hàng gần đây:</p>
+                                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                                            <?php foreach ($recentAddresses['deliveries'] as $delivery): ?>
+                                                <div style="padding: 6px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; border: 1px solid var(--border-color); background: #f8fafc; color: var(--text-main); max-width: 100%; display: flex; align-items: center; gap: 4px; transition: 0.2s;" 
+                                                     onmouseover="this.style.borderColor='var(--primary)'; this.style.color='var(--primary)';" 
+                                                     onmouseout="this.style.borderColor='var(--border-color)'; this.style.color='var(--text-main)';" 
+                                                     data-mode="receiver" data-address="<?= app_e($delivery['address']) ?>" data-lat="<?= $delivery['lat'] ?>" data-lng="<?= $delivery['lng'] ?>" data-name="<?= app_e($delivery['name']) ?>" data-phone="<?= app_e($delivery['phone']) ?>"
+                                                     onclick="fillAddressFromData(this)">
+                                                    <span class="material-symbols-outlined" style="font-size: 14px; flex-shrink: 0;">history</span>
+                                                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;"><?= app_e($delivery['address']) ?></span>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                             <div>
                                 <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Địa chỉ chi tiết/bổ sung</label>
@@ -113,7 +159,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     
                     <div>
                         <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Trọng lượng (kg) *</label>
-                        <input type="number" step="0.1" min="0.1" name="weight" class="form-control" placeholder="0.0" value="<?= app_e($old['weight'] ?? '') ?>" required oninvalid="this.setCustomValidity('Vui lòng nhập trọng lượng hợp lệ.')" oninput="this.setCustomValidity('')">
+                        <input type="number" step="0.1" min="0.1" name="weight" class="form-control" placeholder="0.0" value="<?= app_e($old['weight'] ?? '') ?>" required data-error="Vui lòng nhập trọng lượng hợp lệ.">
                         <div id="weightError" style="color: var(--danger); font-size: 12px; margin-top: 6px; display: none;"></div>
                     </div>
                 </div>
@@ -126,7 +172,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     <div class="form-grid-2">
                         <div>
                             <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Lịch hẹn lấy hàng *</label>
-                            <input type="datetime-local" name="scheduled_at" id="scheduled_at" class="form-control" value="<?= app_e($old['scheduled_at'] ?? date('Y-m-d\TH:i')) ?>" required oninvalid="this.setCustomValidity('Vui lòng chọn thời gian lấy hàng.')" oninput="this.setCustomValidity('')">
+                            <input type="datetime-local" name="scheduled_at" id="scheduled_at" class="form-control" value="<?= app_e($old['scheduled_at'] ?? date('Y-m-d\TH:i')) ?>" required data-error="Vui lòng chọn thời gian lấy hàng.">
                         </div>
                         <div>
                             <label class="form-label" style="font-size: 12px; margin-bottom: 6px;">Gói dịch vụ</label>
@@ -200,7 +246,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     </div>
 
                     <div style="margin-top: 16px; padding: 12px; background: #fffbeb; border: 1px solid #fde68a; border-radius: 4px; display: flex; align-items: flex-start; gap: 10px;">
-                        <input type="checkbox" id="legal_agree" name="legal_agree" required oninvalid="this.setCustomValidity('Vui lòng đánh dấu xác nhận cam kết pháp lý để tiếp tục tạo đơn.')" onchange="this.setCustomValidity('')" style="margin-top: 3px; cursor: pointer; transform: scale(1.2);">
+                        <input type="checkbox" id="legal_agree" name="legal_agree" required data-error="Vui lòng đánh dấu xác nhận cam kết pháp lý để tiếp tục tạo đơn." style="margin-top: 3px; cursor: pointer; transform: scale(1.2);">
                         <label for="legal_agree" style="font-size: 12px; color: #92400e; line-height: 1.5; cursor: pointer;">
                             <strong>Cam kết pháp lý:</strong> Tôi cam kết gói hàng không chứa các danh mục hàng cấm theo quy định của pháp luật. Tôi xin chịu hoàn toàn trách nhiệm trước pháp luật nếu vi phạm.
                         </label>
@@ -225,28 +271,6 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
 <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
 
 <script>
-    // ===== HÀM HIỂN THỊ THÔNG BÁO BONG BÓNG (TOAST) BẰNG JAVASCRIPT =====
-    function showJsToast(message, type = 'error') {
-        let container = document.querySelector('.toast-container-center');
-        if (!container) {
-            container = document.createElement('div');
-            container.className = 'toast-container-center';
-            document.body.appendChild(container);
-        }
-        
-        const toast = document.createElement('div');
-        toast.className = `toast-center toast-${type}`;
-        toast.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 8px;">
-                <span class="material-symbols-outlined" style="font-size: 20px;">${type === 'error' ? 'error' : 'check_circle'}</span>
-                <span>${message}</span>
-            </div>
-            <button onclick="this.parentElement.remove()" style="background: none; border: none; color: rgba(255,255,255,0.8); font-size: 20px; cursor: pointer; margin-left: 15px; line-height: 1;">&times;</button>
-        `;
-        container.appendChild(toast);
-        setTimeout(() => { if (toast.parentElement) toast.remove(); }, 5000);
-    }
-
     // ===== BẢN ĐỒ & GEOCODER (Giữ nguyên) =====
     let map = L.map('mapContainer').setView([16.4637, 107.5909], 13);
     L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -338,6 +362,25 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
         document.getElementById(mode + '_lat').value = lat.toFixed(6);
         document.getElementById(mode + '_lng').value = lng.toFixed(6);
         document.getElementById(mode === 'sender' ? 'pickup_address' : 'delivery_address').value = address;
+    }
+
+    // Hàm xử lý khi click vào Gợi ý địa chỉ gần đây
+    function fillAddressFromData(el) {
+        const mode = el.getAttribute('data-mode');
+        const address = el.getAttribute('data-address');
+        const lat = parseFloat(el.getAttribute('data-lat'));
+        const lng = parseFloat(el.getAttribute('data-lng'));
+        
+        setMapMode(mode);
+        updateMapLocation(lat, lng, address, mode);
+        
+        if (mode === 'receiver') {
+            if (el.getAttribute('data-name')) document.querySelector('input[name="receiver_name"]').value = el.getAttribute('data-name');
+            if (el.getAttribute('data-phone')) document.querySelector('input[name="receiver_phone"]').value = el.getAttribute('data-phone');
+        }
+        
+        saveDraft();
+        calculateFee();
     }
 
     async function geocodeAddress(address, mode) {
@@ -485,7 +528,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     } else if (data.message) {
                         document.getElementById('weightError').style.display = 'none';
                         document.querySelector('input[name="weight"]').style.borderColor = '';
-                        showJsToast(data.message, 'error');
+                        if (typeof showToast === 'function') showToast(data.message, 'error');
                     }
                 }
             } catch (e) { 
@@ -561,7 +604,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     
                     if (new Date(scheduledAtInput.value) > maxDate) {
                         scheduledAtInput.value = formatDateTime(currentNow);
-                        showJsToast("Đơn hàng Giao nhanh/Siêu tốc yêu cầu thời gian hẹn lấy hàng không được quá 10 phút kể từ hiện tại. Hệ thống đã đặt lại giờ cho bạn.", "error");
+                        if (typeof showToast === 'function') showToast("Đơn hàng Giao nhanh/Siêu tốc yêu cầu thời gian hẹn lấy hàng không được quá 10 phút kể từ hiện tại. Hệ thống đã đặt lại giờ cho bạn.", "error");
                     }
                 } else {
                     // Tiêu chuẩn tối đa 1 tuần

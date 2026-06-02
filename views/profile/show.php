@@ -31,16 +31,6 @@ $roleLabel = $targetUser['role'] === 'admin' ? 'Quản trị viên' : ($targetUs
 <div class="profile-container" style="max-width: 1000px; margin: 0 auto; padding: 20px;">
     <h2 style="margin-top: 0; margin-bottom: 20px; color: #0f172a;">Hồ sơ cá nhân</h2>
 
-    <?php if (isset($_SESSION['flash_success'])): ?>
-        <div style="background: #dcfce7; color: #166534; padding: 12px 20px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #bbf7d0;">
-            <?= $_SESSION['flash_success']; unset($_SESSION['flash_success']); ?>
-        </div>
-    <?php endif; ?>
-    <?php if (isset($_SESSION['flash_error'])): ?>
-        <div style="background: #fee2e2; color: #991b1b; padding: 12px 20px; border-radius: 6px; margin-bottom: 20px; border: 1px solid #fecaca;">
-            <?= $_SESSION['flash_error']; unset($_SESSION['flash_error']); ?>
-        </div>
-    <?php endif; ?>
 
     <div class="profile-layout">
         <!-- CỘT TRÁI: AVATAR & THÔNG TIN CƠ BẢN -->

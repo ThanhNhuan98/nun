@@ -425,7 +425,7 @@
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
 <script>
-    // Ham handleProofSync: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
+    // Xử lý đồng bộ ảnh minh chứng (Preview) lên giao diện trước khi upload
     function handleProofSync(input) {
         if (input.files && input.files[0]) {
             const form = input.closest('form');
@@ -445,7 +445,7 @@
             input.value = '';
         }
     }
-    // Ham clearProofPreview: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
+    // Xóa ảnh minh chứng đã chọn khỏi giao diện
     function clearProofPreview(btn) {
         const form = btn.closest('form');
         const realInput = form.querySelector('.real-proof-input');
@@ -484,7 +484,7 @@
         }).catch(() => {});
     }
 
-    // Ham recenterMap: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
+    // Đưa bản đồ về lại vị trí trung tâm dựa trên GPS của thiết bị
     function recenterMap() {
         if (navigator.geolocation) {
             const btn = document.getElementById('btn-recenter');
@@ -506,7 +506,7 @@
         }
     }
 
-    // Ham createCustomMarkerIcon: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
+    // Tạo Icon Marker tùy chỉnh cho bản đồ Leaflet
     function createCustomMarkerIcon(icon, color) {
         return L.divIcon({
             className: 'custom-div-icon',
@@ -515,7 +515,7 @@
         });
     }
 
-    // Ham buildGoogleMapsUrl: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
+    // Tạo đường dẫn URL để mở ứng dụng Google Maps
     function buildGoogleMapsUrl(points) {
         const validPoints = (points || []).filter(p => Number(p.lat) !== 0 && Number(p.lng) !== 0);
         if (validPoints.length === 0) return '#';
@@ -542,7 +542,7 @@
         return `https://www.google.com/maps/dir/?${params.toString()}`;
     }
 
-    // Ham updateGoogleNavLink: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
+    // Cập nhật Link mở Google Maps cho nút bấm trên giao diện
     function updateGoogleNavLink(elementId, points) {
         const link = document.getElementById(elementId);
         if (!link) return;
@@ -552,7 +552,7 @@
         link.classList.toggle('disabled', url === '#');
     }
 
-    // Ham updateDriverNavPanel: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
+    // Hiển thị thông tin điểm dừng tiếp theo trên thanh điều hướng
     function updateDriverNavPanel(routePoints, summary = null) {
         const panel = document.getElementById('driver-nav-panel');
         const nextStop = document.getElementById('driver-next-stop');
@@ -573,7 +573,7 @@
             : `${validStops.length} điểm dừng`;
     }
 
-    // Ham showBatchRouteMap: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
+    // Hiển thị bản đồ lộ trình đa điểm (dành cho chuyến ghép)
     function showBatchRouteMap(points) {
         document.getElementById('routeModal').style.display = 'flex';
 
@@ -611,7 +611,7 @@
         setTimeout(() => { multiMap.invalidateSize(); }, 300);
     }
 
-    // Ham closeRouteModal: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
+    // Đóng Modal bản đồ lộ trình
     function closeRouteModal() { document.getElementById('routeModal').style.display = 'none'; }
 
     // Khởi tạo bản đồ dẫn đường trực tiếp (Inline Map)
@@ -669,7 +669,7 @@
                     }
                 }
 
-                // Ham drawInlineRoute: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
+                // Vẽ tuyến đường chi tiết nối các điểm trên bản đồ
                 function drawInlineRoute(routePoints) {
                     const waypoints = routePoints.map(p => L.latLng(p.lat, p.lng));
                     updateGoogleNavLink('btn-google-batch-nav', routePoints);

@@ -2,14 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\Setting;
+
 class ShippingFeeService
 {
-    private const FALLBACK_FEE = 25000;
-    private const METHOD_FALLBACK_FEES = [
-        'standard' => 25000,
-        'fast' => 40000,
-        'express' => 55000,
-    ];
 
     // Báo giá cước phí vận chuyển tổng hợp (Kích hoạt AI nếu đủ tọa độ, ngược lại dùng phí dự phòng).
     public function quote(array $data): array
@@ -52,13 +48,6 @@ class ShippingFeeService
         ];
     }
 
-    // Lấy nhanh cước phí vận chuyển, trả về mức phí mặc định nếu có lỗi tính toán.
-    public function feeOrFallback(array $data): float
-    {
-        $quote = $this->quote($data);
-        return (float) ($quote['shipping_fee'] ?? self::FALLBACK_FEE);
-    }
-
     // Kiểm tra xem mảng dữ liệu có bị thiếu bất kỳ tọa độ Lấy/Giao hàng nào không.
     private function missingCoordinates(array $data): array
     {
@@ -69,27 +58,66 @@ class ShippingFeeService
         }));
     }
 
-    // Thực thi script Python AI bằng Command Line để tính khoảng cách và thời gian di chuyển.
+    // Gọi API FastAPI để tính khoảng cách và thời gian di chuyển.
     private function runOptimizer(array $data): array
     {
-        $scriptPath = dirname(__DIR__, 2) . DIRECTORY_SEPARATOR . 'ai' . DIRECTORY_SEPARATOR . 'route_optimizer.py';
-        $python = $_ENV['PYTHON_BIN'] ?? 'python';
         $serviceType = $this->resolveServiceType($data);
-
-        $args = [
-            $data['sender_lat'],
-            $data['sender_lng'],
-            $data['receiver_lat'],
-            $data['receiver_lng'],
-            $data['weight'] ?? 1.0,
-            $serviceType,
-            $data['scheduled_at'] ?? '',
+        $settingModel = new Setting();
+        
+        $pricingConfig = [
+            'standard' => [
+                'base' => (float) $settingModel->get('price_standard_base', 12000),
+                'weight' => (float) $settingModel->get('price_standard_weight', 5000),
+                'distance' => (float) $settingModel->get('price_standard_distance', 3000),
+            ],
+            'fast' => [
+                'base' => (float) $settingModel->get('price_fast_base', 18000),
+                'weight' => (float) $settingModel->get('price_fast_weight', 6200),
+                'distance' => (float) $settingModel->get('price_fast_distance', 3800),
+            ],
+            'express' => [
+                'base' => (float) $settingModel->get('price_express_base', 25000),
+                'weight' => (float) $settingModel->get('price_express_weight', 7500),
+                'distance' => (float) $settingModel->get('price_express_distance', 4800),
+            ],
         ];
 
-        $command = escapeshellcmd($python) . ' ' . escapeshellarg($scriptPath) . ' ' .
-            implode(' ', array_map('escapeshellarg', $args)) . ' 2>&1';
+        $payload = [
+            'sender_lat' => (float) $data['sender_lat'],
+            'sender_lng' => (float) $data['sender_lng'],
+            'receiver_lat' => (float) $data['receiver_lat'],
+            'receiver_lng' => (float) $data['receiver_lng'],
+            'weight' => (float) ($data['weight'] ?? 1.0),
+            'service_type' => $serviceType,
+            'scheduled_at' => $data['scheduled_at'] ?? '',
+            'pricing' => $pricingConfig,
+            'vehicle_speed' => (float) $settingModel->get('vehicle_speed_kmh', 28.0)
+        ];
 
-        $output = shell_exec($command);
+        $apiUrl = $_ENV['AI_FEE_SERVICE_URL'] ?? 'http://127.0.0.1:8000/api/v1/calculate-fee';
+        
+        $ch = curl_init($apiUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+        
+        $output = curl_exec($ch);
+        
+        if (curl_errno($ch)) {
+            $error = curl_error($ch);
+            curl_close($ch);
+            return [
+                'status' => 'error',
+                'message' => 'Lỗi kết nối FastAPI: ' . $error,
+            ];
+        }
+        curl_close($ch);
+
         $decoded = json_decode((string) $output, true);
 
         if (is_array($decoded)) {
@@ -99,7 +127,7 @@ class ShippingFeeService
 
         return [
             'status' => 'error',
-            'message' => trim((string) $output) ?: 'Không có phản hồi từ Python.',
+            'message' => 'Không có phản hồi hợp lệ từ Python API.',
             '_raw_output' => $output,
         ];
     }
@@ -140,6 +168,17 @@ class ShippingFeeService
     private function fallbackFee(array $data): float
     {
         $method = $this->resolveServiceType($data);
-        return (float) (self::METHOD_FALLBACK_FEES[$method] ?? self::FALLBACK_FEE);
+        $settingModel = new Setting();
+        
+        $fallback = 25000;
+        if ($method === 'standard') {
+            $fallback = (float) $settingModel->get('price_standard_base', 12000);
+        } elseif ($method === 'fast') {
+            $fallback = (float) $settingModel->get('price_fast_base', 18000);
+        } elseif ($method === 'express') {
+            $fallback = (float) $settingModel->get('price_express_base', 25000);
+        }
+
+        return $fallback;
     }
 }

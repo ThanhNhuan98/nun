@@ -16,12 +16,6 @@ require_once __DIR__ . '/../../layouts/user_header.php';
         </div>
     </div>
 
-    <?php if (isset($order['error'])): ?>
-        <div class="alert-banner" style="background: var(--danger-light); color: var(--danger); padding: 12px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #fecaca;">
-            <?= htmlspecialchars($order['error']) ?>
-        </div>
-    <?php endif; ?>
-
     <form action="/admin/orders/edit/<?= $order['id'] ?>" method="POST" class="info-card">
         <div class="form-group" style="margin-bottom: 15px;">
             <label style="font-weight: 600; margin-bottom: 5px; display: block;">Trạng thái đơn hàng</label>

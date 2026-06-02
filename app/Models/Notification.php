@@ -9,13 +9,12 @@ class Notification
 {
     private PDO $db;
 
-    // Khởi tạo model Notification và kết nối cơ sở dữ liệu.
     public function __construct()
     {
         $this->db = Database::getInstance();
     }
 
-    // Lấy danh sách các thông báo mới nhất của người dùng (có giới hạn số lượng).
+    // Lấy danh sách các thông báo .
     public function latestForUser(int $userId, int $limit = 5): array
     {
         $limit = max(1, min(50, $limit));
@@ -31,7 +30,7 @@ class Notification
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
-    // Đếm tổng số thông báo chưa đọc của một người dùng.
+    // Đếm tổng số thông báo chưa đọc.
     public function unreadCount(int $userId): int
     {
         $stmt = $this->db->prepare("SELECT COUNT(id) FROM notifications WHERE user_id = ? AND is_read = 0");
@@ -121,7 +120,22 @@ class Notification
             
             $sql = "INSERT INTO notifications (user_id, title, message, type, link, is_read, created_at) VALUES " . implode(', ', $values);
             $stmt = $this->db->prepare($sql);
-            $stmt->execute($params);
+            if ($stmt->execute($params) && class_exists('\App\Services\PusherService')) {
+                //  thông báo đẩy (Real-time) qua WebSockets cho tất cả Admin
+                try {
+                    $pusher = new \App\Services\PusherService();
+                    foreach ($adminIds as $adminId) {
+                        $pusher->trigger('notify-user-' . $adminId, 'new_notification', [
+                            'title' => $title,
+                            'message' => $message,
+                            'type' => $type,
+                            'link' => $link
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    // Bỏ qua nếu cấu hình Pusher có lỗi
+                }
+            }
         } catch (\Throwable $e) {
             error_log('Batch notification create failed: ' . $e->getMessage());
         }

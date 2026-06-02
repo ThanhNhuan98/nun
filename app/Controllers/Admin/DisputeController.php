@@ -61,8 +61,8 @@ class DisputeController extends BaseController
             $fault = $data['fault'] ?? 'none';
             $penaltyAmount = (int) ($data['penalty_amount'] ?? 0);
 
-            if ($fault === 'driver' && $penaltyAmount <= 0) {
-                $_SESSION['flash_error'] = 'Vui lòng nhập số tiền phạt lớn hơn 0.';
+            if ($fault === 'driver' && $penaltyAmount < 0) {
+                $_SESSION['flash_error'] = 'Số tiền phạt không được âm.';
                 return $response->redirect("/admin/disputes/view/{$id}");
             }
 
@@ -73,17 +73,17 @@ class DisputeController extends BaseController
             }
 
             $oldNote = $disputeData['resolution_note'] ?? $disputeData['admin_note'] ?? '';
-            $alreadyCustomerPenalized = strpos($oldNote, 'Đã phạt khách hàng') !== false;
-            $alreadyDriverPenalized = strpos($oldNote, 'Đã phạt tài xế') !== false;
+            $alreadyCustomerPenalized = str_contains($oldNote, 'Đã phạt khách hàng');
+            $alreadyDriverPenalized = str_contains($oldNote, 'Đã phạt tài xế');
 
             $shouldPenalizeCustomer = ($fault === 'customer' && !$alreadyCustomerPenalized);
-            $shouldPenalizeDriver = ($fault === 'driver' && $penaltyAmount > 0 && !$alreadyDriverPenalized);
+            $shouldPenalizeDriver = ($fault === 'driver' && !$alreadyDriverPenalized);
 
             $autoNote = "";
             if ($shouldPenalizeCustomer) {
                 $autoNote = "\n- Đã phạt khách hàng (Ghi nhận vi phạm giao nhận).";
             } elseif ($shouldPenalizeDriver) {
-                $autoNote = "\n- Đã phạt tài xế " . number_format($penaltyAmount, 0, ',', '.') . "đ.";
+                $autoNote = "\n- Đã ghi nhận vi phạm cho tài xế" . ($penaltyAmount > 0 ? " và phạt " . number_format($penaltyAmount, 0, ',', '.') . "đ." : " (Cảnh cáo 0đ).");
             }
 
             if ($autoNote !== '') {
@@ -106,10 +106,8 @@ class DisputeController extends BaseController
                                 $orderModel->updateStatus($currentOrder['id'], $newOrderStatus, $desc);
                                 
                                 if ($newOrderStatus === 'completed' && ($currentOrder['payment_method'] ?? 'cash') === 'transfer' && !empty($currentOrder['driver_id'])) {
+                                    $driverEarnings = app_calculate_driver_earnings((float)($currentOrder['shipping_fee'] ?? 0));
                                     $walletModel = new Wallet();
-                                    $settingModel = new Setting();
-                                    $feePerOrder = (int) ceil(($currentOrder['shipping_fee'] ?? 0) * (float) $settingModel->get('platform_fee_percent', 20) / 100);
-                                    $driverEarnings = (int) ($currentOrder['shipping_fee'] ?? 0) - $feePerOrder;
                                     
                                     if ($driverEarnings > 0) {
                                         $walletModel->add($currentOrder['driver_id'], $driverEarnings, 'adjustment', "Cộng tiền cước đơn #{$currentOrder['tracking_code']} (Admin xử lý khiếu nại)", $currentOrder['id']);
@@ -119,10 +117,8 @@ class DisputeController extends BaseController
                                 }
 
                                 if ($newOrderStatus === 'cancelled' && ($currentOrder['payment_method'] ?? 'cash') === 'cash' && !empty($currentOrder['driver_id'])) {
+                                    $feePerOrder = app_calculate_platform_fee((float)($currentOrder['shipping_fee'] ?? 0));
                                     $walletModel = new Wallet();
-                                    $settingModel = new Setting();
-                                    $feePerOrder = (int) ceil(($currentOrder['shipping_fee'] ?? 0) * (float) $settingModel->get('platform_fee_percent', 20) / 100);
-                                    
                                     $walletModel->add($currentOrder['driver_id'], $feePerOrder, 'refund', "Hoàn phí nền tảng đơn #{$currentOrder['tracking_code']} (Khách hủy)", $currentOrder['id']);
                                     $userModel = new User();
                                     $userModel->createNotification($currentOrder['driver_id'], 'Hoàn phí nền tảng', "Đơn #{$currentOrder['tracking_code']} đã được hủy. Hệ thống hoàn lại " . number_format($feePerOrder, 0, ',', '.') . "đ phí nền tảng vào ví của bạn.", 'wallet', "/driver/orders/view/{$currentOrder['id']}");
@@ -156,15 +152,19 @@ class DisputeController extends BaseController
                                 $userModel->createNotification($currentOrder['customer_id'], "Cảnh báo vi phạm", "Tài khoản của bạn đã bị ghi nhận vi phạm sau quá trình Quản trị viên xử lý khiếu nại đơn hàng #{$currentOrder['tracking_code']}.", 'system', "/user/orders/track/{$currentOrder['tracking_code']}");
                             } elseif ($shouldPenalizeDriver && !empty($currentOrder['driver_id'])) {
                                 $penaltyModel = new DriverPenalty();
-                                $reason = "Admin phạt lỗi khiếu nại đơn #{$currentOrder['tracking_code']}";
+                                $reason = "Admin " . ($penaltyAmount > 0 ? "phạt" : "cảnh cáo") . " lỗi khiếu nại đơn #{$currentOrder['tracking_code']}";
                                 
                                 if ($penaltyModel->applyPenalty($currentOrder['driver_id'], 'customer_complaint', $penaltyAmount, $reason, $resolvedBy)) {
-                                    $currentBalance = (new Wallet())->getBalance($currentOrder['driver_id']);
-                                    if ($currentBalance < 0) {
-                                        $userModel->updateBlockStatus($currentOrder['driver_id'], 1);
-                                        $db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())")->execute([$currentOrder['id'], $currentOrder['status'], "Tài khoản tài xế đã tự động bị khóa do số dư ví âm sau khi bị phạt."]);
+                                    if ($penaltyAmount > 0) {
+                                        $currentBalance = (new Wallet())->getBalance($currentOrder['driver_id']);
+                                        if ($currentBalance < 0) {
+                                            $userModel->updateBlockStatus($currentOrder['driver_id'], 1);
+                                            $db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())")->execute([$currentOrder['id'], $currentOrder['status'], "Tài khoản tài xế đã tự động bị khóa do số dư ví âm sau khi bị phạt."]);
+                                        }
+                                        $userModel->createNotification($currentOrder['driver_id'], 'Thông báo chế tài', "Hệ thống đã khấu trừ " . number_format($penaltyAmount, 0, ',', '.') . "đ do vi phạm quy định tại đơn #{$currentOrder['tracking_code']}.", 'wallet', "/driver/orders/view/{$currentOrder['id']}");
+                                    } else {
+                                        $userModel->createNotification($currentOrder['driver_id'], 'Cảnh cáo vi phạm', "Hệ thống đã ghi nhận 1 lần vi phạm (Cảnh cáo) tại đơn #{$currentOrder['tracking_code']} do có khiếu nại từ khách hàng.", 'system', "/driver/orders/view/{$currentOrder['id']}");
                                     }
-                                    $userModel->createNotification($currentOrder['driver_id'], 'Thông báo chế tài', "Hệ thống đã khấu trừ " . number_format($penaltyAmount, 0, ',', '.') . "đ do vi phạm quy định tại đơn #{$currentOrder['tracking_code']}.", 'wallet', "/driver/orders/view/{$currentOrder['id']}");
                                 }
                             }
                         }
@@ -178,7 +178,8 @@ class DisputeController extends BaseController
                 }
             } catch (\Exception $e) {
                 $db->rollBack();
-                $_SESSION['flash_error'] = 'Lỗi hệ thống: ' . $e->getMessage();
+                error_log('Dispute Handle Error: ' . $e->getMessage());
+                $_SESSION['flash_error'] = 'Có lỗi xảy ra khi xử lý khiếu nại. Vui lòng thử lại sau.';
             }
             return $response->redirect("/admin/disputes/view/{$id}");
         }

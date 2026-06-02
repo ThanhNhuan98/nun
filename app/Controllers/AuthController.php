@@ -171,7 +171,8 @@ class AuthController extends BaseController
             return $response->redirect('/login');
         } catch (\Exception $e) {
             $db->rollBack();
-            $_SESSION['flash_error'] = 'Đã xảy ra lỗi: ' . $e->getMessage();
+            error_log('Register Exception: ' . $e->getMessage());
+            $_SESSION['flash_error'] = 'Hệ thống đang bận, không thể đăng ký tài khoản lúc này. Vui lòng thử lại.';
             return $response->redirect('/register');
         }
     }

@@ -15,7 +15,6 @@ class MailService
         $mail = new PHPMailer(true);
 
         try {
-            // Cấu hình Server từ file .env
             $mail->isSMTP();
             $mail->Host       = $_ENV['MAIL_HOST'] ?? $_SERVER['MAIL_HOST'] ?? 'smtp.gmail.com';
             $mail->SMTPAuth   = true;
@@ -24,8 +23,9 @@ class MailService
             $mail->SMTPSecure = PHPMailer::ENCRYPTION_STARTTLS;
             $mail->Port       = $_ENV['MAIL_PORT'] ?? $_SERVER['MAIL_PORT'] ?? 587;
             $mail->CharSet    = 'UTF-8';
+            $mail->Timeout    = 5; // Giới hạn Timeout 5s để tránh treo Server nếu SMTP sập
 
-            // Tắt kiểm tra chứng chỉ SSL (Giúp sửa lỗi không gửi được mail trên XAMPP/Localhost)
+            // Tắt kiểm tra chứng chỉ SSL (Giúp sửa lỗi không gửi được mail )
             $mail->SMTPOptions = array(
                 'ssl' => array(
                     'verify_peer' => false,

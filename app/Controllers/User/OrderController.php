@@ -16,8 +16,6 @@ use App\Models\Wallet;
 use App\Core\Validator;
 use App\Exceptions\ValidationException;
 use App\Services\ShippingFeeService;
-use Cloudinary\Configuration\Configuration;
-use Cloudinary\Api\Upload\UploadApi;
 
 class OrderController extends BaseController
 {
@@ -112,11 +110,11 @@ class OrderController extends BaseController
             $formattedPickup = app_format_address($data['pickup_address'] ?? '');
             $formattedDelivery = app_format_address($data['delivery_address'] ?? '');
 
-            $data['pickup_address'] = $this->mergeDetailedAddress(
+            $data['pickup_address'] = app_merge_detailed_address(
                 $formattedPickup,
                 $data['pickup_address_detail'] ?? ''
             );
-            $data['delivery_address'] = $this->mergeDetailedAddress(
+            $data['delivery_address'] = app_merge_detailed_address(
                 $formattedDelivery,
                 $data['delivery_address_detail'] ?? ''
             );
@@ -151,8 +149,12 @@ class OrderController extends BaseController
     // Render giao diện form tạo đơn hàng kèm theo các dữ liệu lỗi hoặc nhập lại nếu có.
     private function renderCreateForm(Response $response, array $params = [])
     {
+        $orderModel = new Order();
+        $recentAddresses = $orderModel->getRecentAddresses($this->userId(), 3); // Đổi số 3 thành số lượng bạn muốn
+
         $defaults = [
             'pageTitle' => 'Tạo đơn hàng mới',
+            'recentAddresses' => $recentAddresses
         ];
 
         return $response->render('user/orders/create', array_merge($defaults, $params));
@@ -167,60 +169,6 @@ class OrderController extends BaseController
         }
 
         return (string) $this->currentUser($sessionKey, '');
-    }
-
-    // Gộp địa chỉ chi tiết (số nhà, hẻm) với địa chỉ trên bản đồ thành một chuỗi hoàn chỉnh.
-    private function mergeDetailedAddress(string $baseAddress, string $detailAddress): string
-    {
-        $baseAddress = trim(trim($baseAddress), ", ");
-        $detailAddress = trim(trim($detailAddress), ", ");
-
-        if ($detailAddress === '') {
-            return $baseAddress;
-        }
-
-        if ($baseAddress === '') {
-            return $detailAddress;
-        }
-
-        // Để tránh trùng lặp như "Số 1, Số 1 Hùng Vương...", kiểm tra nếu địa chỉ map đã bắt đầu bằng địa chỉ chi tiết (không phân biệt hoa thường).
-        if (stripos($baseAddress, $detailAddress) === 0) {
-            return $baseAddress;
-        }
-
-        return $detailAddress . ', ' . $baseAddress;
-    }
-
-    // Chuẩn hóa và sửa lỗi đảo ngược tọa độ Vĩ độ - Kinh độ (nếu có).
-    private function normalizeCoordinates($lat, $lng): ?array
-    {
-        if (!is_numeric($lat) || !is_numeric($lng)) {
-            return null;
-        }
-
-        $normalizedLat = (float) $lat;
-        $normalizedLng = (float) $lng;
-
-        if (!$this->isValidCoordinates($normalizedLat, $normalizedLng)
-            && $this->isValidCoordinates($normalizedLng, $normalizedLat)) {
-            [$normalizedLat, $normalizedLng] = [$normalizedLng, $normalizedLat];
-        }
-
-        if (!$this->isValidCoordinates($normalizedLat, $normalizedLng)) {
-            return null;
-        }
-
-        return ['lat' => $normalizedLat, 'lng' => $normalizedLng];
-    }
-
-    // Kiểm tra tính hợp lệ của tọa độ trên bản đồ thế giới.
-    private function isValidCoordinates(float $lat, float $lng): bool
-    {
-        return is_finite($lat)
-            && is_finite($lng)
-            && $lat >= -90 && $lat <= 90
-            && $lng >= -180 && $lng <= 180
-            && !($lat === 0.0 && $lng === 0.0);
     }
 
     // Hiển thị danh sách các đơn hàng của khách hàng (có hỗ trợ phân trang và lọc trạng thái).
@@ -289,7 +237,7 @@ class OrderController extends BaseController
         $location = $orderModel->getDriverLocationByTrackingCode($trackingCode);
         
         $coordinates = $location
-            ? $this->normalizeCoordinates($location['current_lat'] ?? null, $location['current_lng'] ?? null)
+            ? app_normalize_coordinates($location['current_lat'] ?? null, $location['current_lng'] ?? null)
             : null;
 
         if ($coordinates) {
@@ -490,10 +438,8 @@ class OrderController extends BaseController
 
             if (in_array($order['status'], ['accepted', 'picking_up']) && !empty($order['driver_id'])) {
                 if (($order['payment_method'] ?? 'cash') === 'cash') {
+                    $feePerOrder = app_calculate_platform_fee((float)($order['shipping_fee'] ?? 0));
                     $walletModel = new Wallet();
-                    $settingModel = new Setting();
-                    $platformFeePercent = (float) $settingModel->get('platform_fee_percent', 20);
-                    $feePerOrder = (int) ceil(($order['shipping_fee'] ?? 0) * $platformFeePercent / 100);
                     $walletModel->add($order['driver_id'], $feePerOrder, 'refund', "Hoàn phí nền tảng do khách tự hủy đơn #{$order['tracking_code']}", $order['id']);
 
                     $userModel = new User();
@@ -567,13 +513,7 @@ class OrderController extends BaseController
             if (isset($_FILES['proof_image']) && $_FILES['proof_image']['error'] === UPLOAD_ERR_OK) {
                 $validation = app_validate_uploaded_image($_FILES['proof_image']);
                 if ($validation['valid']) {
-                    Configuration::instance($_ENV['CLOUDINARY_URL']);
-                    $uploadApi = new UploadApi();
-                    $result = $uploadApi->upload($_FILES['proof_image']['tmp_name'], [
-                        'folder' => 'nun_express/proofs',
-                        'public_id' => 'dispute_' . $order['id'] . '_' . time()
-                    ]);
-                    $proofImagePath = $result['secure_url'];
+                    $proofImagePath = $this->uploadToCloudinary($_FILES['proof_image'], 'nun_express/proofs', 'dispute_' . $order['id'] . '_' . time());
                     $dbReason .= "||PROOF||" . $proofImagePath;
                 }
             }

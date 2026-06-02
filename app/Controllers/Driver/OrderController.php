@@ -11,8 +11,6 @@ use App\Models\Setting;
 use App\Services\OsrmService;
 use App\Models\User;
 use App\Models\Wallet;
-use Cloudinary\Configuration\Configuration;
-use Cloudinary\Api\Upload\UploadApi;
 
 class OrderController extends BaseController
 {
@@ -24,55 +22,15 @@ class OrderController extends BaseController
             if (!$validation['valid']) {
                 throw new \RuntimeException($validation['error'] ?? 'Ảnh minh chứng không hợp lệ.');
             }
-
-            try {
-                // Khởi tạo Cloudinary bằng biến môi trường tập trung hệ thống
-                Configuration::instance($_ENV['CLOUDINARY_URL']);
-                $uploadApi = new UploadApi();
-                
-                $result = $uploadApi->upload($_FILES['proof_image']['tmp_name'], [
-                    'folder' => 'nun_express/proofs',
-                    'public_id' => 'proof_' . $orderId . '_' . ($prefix ?: 'delivery') . '_' . time()
-                ]);
-                
-                return $result['secure_url']; // Trả về link HTTPS Cloudinary toàn cầu
-            } catch (\Exception $e) {
-                throw new \RuntimeException('Lỗi đồng bộ ảnh lên Cloudinary SDK: ' . $e->getMessage());
+            
+            // TỐI ƯU HÓA: Nén ảnh cục bộ bằng GD Library trước khi đẩy qua mạng tới Cloudinary
+            if (function_exists('app_compress_image_before_upload')) {
+                app_compress_image_before_upload($_FILES['proof_image']['tmp_name']);
             }
+
+            return $this->uploadToCloudinary($_FILES['proof_image'], 'nun_express/proofs', 'proof_' . $orderId . '_' . ($prefix ?: 'delivery') . '_' . time());
         }
         return '';
-    }
-
-    // Chuẩn hóa, làm sạch và sửa lỗi đảo ngược tọa độ (Vĩ độ, Kinh độ) nếu có.
-    private function normalizeCoordinates($lat, $lng): ?array
-    {
-        if (!is_numeric($lat) || !is_numeric($lng)) {
-            return null;
-        }
-
-        $normalizedLat = (float) $lat;
-        $normalizedLng = (float) $lng;
-
-        if (!$this->isValidCoordinates($normalizedLat, $normalizedLng)
-            && $this->isValidCoordinates($normalizedLng, $normalizedLat)) {
-            [$normalizedLat, $normalizedLng] = [$normalizedLng, $normalizedLat];
-        }
-
-        if (!$this->isValidCoordinates($normalizedLat, $normalizedLng)) {
-            return null;
-        }
-
-        return ['lat' => $normalizedLat, 'lng' => $normalizedLng];
-    }
-
-    // Kiểm tra tính hợp lệ của giới hạn Vĩ độ (-90 đến 90) và Kinh độ (-180 đến 180).
-    private function isValidCoordinates(float $lat, float $lng): bool
-    {
-        return is_finite($lat)
-            && is_finite($lng)
-            && $lat >= -90 && $lat <= 90
-            && $lng >= -180 && $lng <= 180
-            && !($lat === 0.0 && $lng === 0.0);
     }
 
     // Hiển thị màn hình Radar và phân bổ danh sách đơn hàng/chuyến ghép cho tài xế dựa trên AI.
@@ -167,6 +125,8 @@ class OrderController extends BaseController
         $currentWeight = $orderModel->getDriverCurrentWeight($driverId);
         $availableWeightCapacity = max(0, $driverMaxWeight - $currentWeight);
         
+        $vehicleSpeed = (float) $settingModel->get('vehicle_speed_kmh', 28.0);
+        
         $maxOrdersPerBatch = min($globalMaxOrdersPerBatch, $availableCapacity);
 
         if ($maxOrdersPerBatch <= 0) {
@@ -208,22 +168,34 @@ class OrderController extends BaseController
             'driver_location' => $driverLocation,
             'orders' => $orders,
             'max_orders_per_batch' => $maxOrdersPerBatch,
-            'max_weight_capacity' => $availableWeightCapacity
+            'max_weight_capacity' => $availableWeightCapacity,
+            'vehicle_speed' => $vehicleSpeed
         ];
 
-        $tempFile = tempnam(sys_get_temp_dir(), 'ai_batch_');
-        file_put_contents($tempFile, json_encode($aiData));
-
-        $scriptPath = dirname(__DIR__, 3) . DIRECTORY_SEPARATOR . 'ai' . DIRECTORY_SEPARATOR . 'route_optimizer.py';
-        $command = escapeshellcmd("python " . $scriptPath . " --batch-file") . " " . escapeshellarg($tempFile) . " 2>&1";
+        // TỐI ƯU HÓA: Thay thế shell_exec bằng Microservice API (FastAPI)
+        // Điều này ngăn chặn việc tràn bộ nhớ và nghẽn I/O ổ đĩa
+        $aiServiceUrl = $_ENV['AI_SERVICE_URL'] ?? 'http://127.0.0.1:8000/api/v1/optimize-routes';
         
-        try {
-            $output = shell_exec($command);
-        } finally {
-            @unlink($tempFile);
+        $ch = curl_init($aiServiceUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($aiData));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Accept: application/json'
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 15); // Tăng Timeout lên 15s để AI có đủ thời gian xử lý nhiều cụm đơn
+        
+        $output = curl_exec($ch);
+        if (curl_errno($ch)) {
+            error_log('Lỗi gọi AI Microservice: ' . curl_error($ch));
+        } else {
+            // Ghi log phản hồi từ Python để dễ dàng debug nếu Radar không ghép đơn
+            error_log('Phản hồi từ AI Microservice: ' . $output);
         }
-
-        $result = json_decode($output, true);
+        curl_close($ch);
+        
+        $result = $output ? json_decode($output, true) : null;
 
         if ($result && isset($result['status']) && $result['status'] === 'success') {
             $orderMap = [];
@@ -266,7 +238,7 @@ class OrderController extends BaseController
                             (float)$driverLocation['lat'], (float)$driverLocation['lng'],
                             (float)$firstPointLat, (float)$firstPointLng
                         );
-                        $access_duration_s = (int) (($distance_km / 28) * 3600);
+                        $access_duration_s = (int) (($distance_km / $vehicleSpeed) * 3600);
                     }
                 }
                 $batch['access_duration_s'] = $access_duration_s;
@@ -305,6 +277,16 @@ class OrderController extends BaseController
                 return ($b['efficiency_score'] ?? 0) <=> ($a['efficiency_score'] ?? 0);
             });
         } else {
+            // CẬP NHẬT: Trích xuất lỗi thực tế từ Python AI để hiển thị lên Radar
+            $aiErrorMsg = '';
+            if ($output === false) {
+                $aiErrorMsg = 'Không thể kết nối đến Máy chủ AI (FastAPI). Lỗi: ' . curl_error($ch) . '. Vui lòng kiểm tra xem cửa sổ Terminal chạy `python main.py` đã bật chưa.';
+            } elseif ($result && isset($result['detail'])) {
+                $aiErrorMsg = 'Lỗi dữ liệu đầu vào (FastAPI 422/500): ' . json_encode($result['detail']);
+            } elseif ($result && isset($result['message'])) {
+                $aiErrorMsg = 'Lỗi bên trong thuật toán Python: ' . $result['message'];
+            }
+
             // Fallback logic for single orders if AI fails
             $osrmService = new OsrmService();
             foreach ($orders as $o) {
@@ -318,7 +300,16 @@ class OrderController extends BaseController
                     (float)$driverLocation['lat'], (float)$driverLocation['lng'],
                     (float)$o['sender_lat'], (float)$o['sender_lng']
                 );
-                $access_duration_s = (int) (($distance_km / 28) * 3600);
+                $access_duration_s = (int) (($distance_km / $vehicleSpeed) * 3600);
+
+                // CẬP NHẬT: Tính thời gian giao hàng thực tế để không bị 0 phút / 0 điểm hiệu quả
+                $trip_dist_km = $osrmService->haversineDistance(
+                    (float)$o['sender_lat'], (float)$o['sender_lng'],
+                    (float)$o['receiver_lat'], (float)$o['receiver_lng']
+                );
+                $trip_duration_s = (int) (($trip_dist_km / $vehicleSpeed) * 3600);
+                $totalTripDurationMinutes = ($trip_duration_s + $access_duration_s) / 60;
+                $efficiencyScore = $totalTripDurationMinutes > 1 ? (float)($o['shipping_fee'] ?? 0) / $totalTripDurationMinutes : 0;
 
                 $batches[] = [
                     'batch_id' => 'ĐƠN LẺ',
@@ -328,9 +319,9 @@ class OrderController extends BaseController
                     'total_fee' => (float)($o['shipping_fee'] ?? 0),
                     'total_weight' => (float)($o['weight'] ?? 1.0),
                     'order_details' => [$o],
-                    'total_trip_duration_minutes' => 0,
+                    'total_trip_duration_minutes' => round($totalTripDurationMinutes),
                     'access_duration_minutes' => round($access_duration_s / 60),
-                    'efficiency_score' => 0,
+                    'efficiency_score' => round($efficiencyScore),
                     'most_urgent_time' => $o['scheduled_at'] ?? $o['created_at'] ?? '9999-12-31 23:59:59',
                     'formatted_urgent_time' => !empty($o['scheduled_at']) ? date('H:i d/m/Y', strtotime($o['scheduled_at'])) : 'Càng sớm càng tốt',
                     'priority' => ($o['shipping_method'] ?? 'standard') === 'express' ? 0 : (($o['shipping_method'] ?? 'standard') === 'fast' ? 1 : 2)
@@ -349,7 +340,7 @@ class OrderController extends BaseController
             });
         }
 
-        return ['batches' => $batches, 'message' => ''];
+        return ['batches' => $batches, 'message' => isset($aiErrorMsg) && $aiErrorMsg ? $aiErrorMsg : ''];
     }
 
     // Xử lý sự kiện tài xế bấm nhận một cụm đơn hàng (Batch) và thực hiện trừ phí nền tảng.
@@ -386,16 +377,13 @@ class OrderController extends BaseController
         }
 
         $walletModel = new Wallet();
-        $settingModel = new Setting();
-        $platformFeePercent = (float) $settingModel->get('platform_fee_percent', 20);
-
         $shippingFees = $orderModel->getShippingFees($validOrderIds);
 
         $totalDeduction = 0;
         foreach ($shippingFees as $row) {
             $fee = (int) $row['shipping_fee'];
             if (($row['payment_method'] ?? 'cash') === 'cash') {
-                $deduction = (int) ceil($fee * $platformFeePercent / 100);
+                $deduction = app_calculate_platform_fee($fee);
             } else {
                 $deduction = 0;
             }
@@ -563,7 +551,7 @@ class OrderController extends BaseController
         $currentStatus = $order['status'];
         
         // Kiểm tra xem có phải là sự cố nghiêm trọng (Hàng cấm) hay không
-        $isBannedGoods = strpos($cancelReason, 'Hàng cấm') !== false;
+        $isBannedGoods = str_contains($cancelReason, 'Hàng cấm');
         
         if (isset($allowedTransitions[$currentStatus]) && in_array($newStatus, $allowedTransitions[$currentStatus])) {
             
@@ -627,11 +615,8 @@ class OrderController extends BaseController
                     $successMessage = "Cập nhật trạng thái thành công!";
 
                     if ($newStatus === 'completed' && ($order['payment_method'] ?? 'cash') === 'transfer') {
+                        $driverEarnings = app_calculate_driver_earnings((float)($order['shipping_fee'] ?? 0));
                         $walletModel = new Wallet();
-                        $settingModel = new Setting();
-                        $platformFeePercent = (float) $settingModel->get('platform_fee_percent', 20);
-                        $feePerOrder = (int) ceil(($order['shipping_fee'] ?? 0) * $platformFeePercent / 100);
-                        $driverEarnings = (int) ($order['shipping_fee'] ?? 0) - $feePerOrder;
                         
                         if ($driverEarnings > 0) {
                             $walletModel->add(
@@ -657,10 +642,8 @@ class OrderController extends BaseController
                     if ($newStatus === 'cancelled') {
                         $successMessage = "Đã hủy đơn.";
                         if (($order['payment_method'] ?? 'cash') === 'cash') {
+                            $feePerOrder = app_calculate_platform_fee((float)($order['shipping_fee'] ?? 0));
                             $walletModel = new Wallet();
-                            $settingModel = new Setting();
-                            $platformFeePercent = (float) $settingModel->get('platform_fee_percent', 20);
-                            $feePerOrder = (int) ceil(($order['shipping_fee'] ?? 0) * $platformFeePercent / 100);
                             $walletModel->add($driverId, $feePerOrder);
                             $successMessage .= " Phí nhận đơn " . number_format($feePerOrder, 0, ',', '.') . "đ đã được hoàn lại vào ví của bạn.";
 
@@ -829,7 +812,7 @@ class OrderController extends BaseController
             // NGHIỆP VỤ 1: LẤY HÀNG THẤT BẠI (LỖI DO NGƯỜI GỬI TẠO APP)
             // =========================================================
             if (in_array($order['status'], ['accepted', 'picking_up'])) {
-                $isBannedGoods = strpos($reason, 'Hàng cấm') !== false;
+                $isBannedGoods = str_contains($reason, 'Hàng cấm');
 
                 if ($isBannedGoods) {
                     $description = "🚨 TÀI XẾ PHÁT HIỆN HÀNG CẤM. Hệ thống tự động hủy đơn và khóa tài khoản Khách hàng.";
@@ -859,11 +842,8 @@ class OrderController extends BaseController
                     }
                     
                     // Hoàn lại phí nền tảng cho tài xế
+                    $feePerOrder = app_calculate_platform_fee((float)($order['shipping_fee'] ?? 0));
                     $walletModel = new Wallet();
-                    $settingModel = new Setting();
-                    $platformFeePercent = (float) $settingModel->get('platform_fee_percent', 20);
-                    $feePerOrder = (int) ceil(($order['shipping_fee'] ?? 0) * $platformFeePercent / 100);
-                    
                     if (($order['payment_method'] ?? 'cash') === 'cash') {
                         $walletModel->add($driverId, $feePerOrder);
 
@@ -964,7 +944,7 @@ class OrderController extends BaseController
         $lat = $data['lat'] ?? null;
         $lng = $data['lng'] ?? null;
         $accuracy = isset($data['accuracy']) && is_numeric($data['accuracy']) ? (float) $data['accuracy'] : null;
-        $coordinates = $this->normalizeCoordinates($lat, $lng);
+        $coordinates = app_normalize_coordinates($lat, $lng);
 
         if ($coordinates !== null) {
             if ($accuracy !== null && $accuracy > 10000) {
@@ -991,12 +971,12 @@ class OrderController extends BaseController
                     
                     if (!empty($activeOrders)) {
                         $pusher = new \App\Services\PusherService();
-                        foreach ($activeOrders as $order) {
-                            $pusher->trigger('tracking-' . $order['tracking_code'], 'location_update', [
-                                'lat' => $lat,
-                                'lng' => $lng
-                            ]);
-                        }
+                        
+                        // TỐI ƯU HÓA: Áp dụng hàm map nội tại của PHP để duyệt dữ liệu nhanh hơn vòng lặp foreach
+                        $channels = array_map(fn($o) => 'tracking-' . $o['tracking_code'], $activeOrders);
+                        
+                        // TỐI ƯU HÓA: Truyền một MẢNG các kênh để gọi API 1 lần duy nhất (Batching I/O)
+                        $pusher->trigger($channels, 'location_update', ['lat' => $lat, 'lng' => $lng]);
                     }
                 } catch (\Throwable $e) {}
             }

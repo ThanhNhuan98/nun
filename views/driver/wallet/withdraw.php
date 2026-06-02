@@ -1,19 +1,6 @@
 <?php require_once __DIR__ . '/../../layouts/user_header.php'; ?>
 
 <div class="admin-container">
-    <div style="max-width: 460px; margin: 0 auto;">
-        <?php if (isset($_SESSION['flash_success'])): ?>
-            <div class="alert-banner" style="background: var(--success-light); color: var(--success); padding: 12px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #bbf7d0;">
-                <?= $_SESSION['flash_success']; unset($_SESSION['flash_success']); ?>
-            </div>
-        <?php endif; ?>
-        <?php if (isset($_SESSION['flash_error'])): ?>
-            <div class="alert-banner" style="background: var(--danger-light); color: var(--danger); padding: 12px; border-radius: 4px; margin-bottom: 20px; border: 1px solid #fecaca;">
-                <?= $_SESSION['flash_error']; unset($_SESSION['flash_error']); ?>
-            </div>
-        <?php endif; ?>
-    </div>
-
     <div class="topup-wrapper">
         <a href="/driver/receive-orders" class="topup-header-nav">
             <span class="material-symbols-outlined" style="font-size: 20px;">arrow_back</span>

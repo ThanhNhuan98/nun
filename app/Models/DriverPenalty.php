@@ -34,19 +34,13 @@ class DriverPenalty
             ");
             $stmt->execute([$driverId, $penaltyType, $amount, $reason, $createdBy]);
 
-            // Update user's total penalty amount
-            $stmt = $this->db->prepare("
-                UPDATE users 
-                SET penalty_amount = penalty_amount + ?
-                WHERE id = ?
-            ");
-            $stmt->execute([$amount, $driverId]);
-
             // Deduct penalty from driver wallet
-            $walletModel = new Wallet();
-            if (!$walletModel->forceDeduct($driverId, $amount, 'penalty', $reason)) {
-                if ($ownsTransaction) $this->db->rollBack();
-                return false;
+            if ($amount > 0) {
+                $walletModel = new Wallet();
+                if (!$walletModel->forceDeduct($driverId, $amount, 'penalty', $reason)) {
+                    if ($ownsTransaction) $this->db->rollBack();
+                    return false;
+                }
             }
 
             // Check if driver should be banned

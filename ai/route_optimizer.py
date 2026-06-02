@@ -4,6 +4,7 @@ import io
 import urllib.error
 import urllib.parse
 import urllib.request
+import concurrent.futures
 try:
     from ortools.constraint_solver import pywrapcp, routing_enums_pb2
     OR_TOOLS_AVAILABLE = True
@@ -12,45 +13,63 @@ except ImportError:
 from math import asin, cos, radians, sin, sqrt
 from datetime import datetime
 
+# Bán kính Trái Đất tính bằng km (Hằng số toàn cục)
+EARTH_RADIUS_KM = 6371.0
 
 def haversine_distance(lat1, lon1, lat2, lon2):
-    radius_km = 6371
+    """
+    Tính khoảng cách đường chim bay (Haversine) giữa 2 tọa độ GPS.
+    Dùng làm phương án dự phòng khi gọi API OSRM bị lỗi hoặc để tính khoảng cách lọc thô nhanh chóng.
+    """
+    
+    # Chuyển đổi toàn bộ tọa độ từ độ (degrees) sang radian để phục vụ tính toán lượng giác
     lat1, lon1, lat2, lon2 = map(radians, [float(lat1), float(lon1), float(lat2), float(lon2)])
 
+    # Tính độ chênh lệch giữa các kinh độ và vĩ độ
     dlat = lat2 - lat1
     dlon = lon2 - lon1
 
+    # Áp dụng công thức Haversine để tìm góc ở tâm
     a = sin(dlat / 2) ** 2 + cos(lat1) * cos(lat2) * sin(dlon / 2) ** 2
     c = 2 * asin(sqrt(a))
 
-    return radius_km * c
+    # Trả về khoảng cách thực tế (km)
+    return EARTH_RADIUS_KM * c
 
 def traffic_meta(scheduled_time_str=""):
-    # Mặc định lấy giờ hiện tại
+    """
+    Phân tích thời gian hẹn/thời gian hiện tại để đưa ra hệ số nhân giá (Surge Multiplier).
+    Cơ chế định giá động: Tăng giá vào giờ cao điểm, đêm muộn hoặc cuối tuần.
+    """
     target_time = datetime.now()
     
-    # Nếu có truyền thời gian hẹn từ PHP, đổi sang thời gian hẹn
     if scheduled_time_str:
         try:
             target_time = datetime.fromisoformat(scheduled_time_str)
         except ValueError:
-            pass # Nếu lỗi parse ngày tháng, fallback về giờ hiện tại
-            
+            pass # Giữ nguyên thời gian hiện tại nếu chuỗi không hợp lệ
+    
+    # Đổi thời gian thành số phút từ đầu ngày (0h00 -> 0 phút, 12h00 -> 720 phút)
     minutes = target_time.hour * 60 + target_time.minute
 
+    # Giờ cao điểm các ngày trong tuần: 7h00 - 9h00 (420-540p) và 16h30 - 19h00 (990-1140p)
     if target_time.isoweekday() <= 5 and ((420 <= minutes <= 540) or (990 <= minutes <= 1140)):
         return 1.20, "Giờ cao điểm"
+    # Đêm muộn: Từ 21h00 (1260p) đến 5h00 sáng hôm sau (300p)
     if minutes >= 1260 or minutes <= 300:
         return 1.10, "Đêm muộn"
+    # Cuối tuần: Thứ 7 (6) và Chủ Nhật (7)
     if target_time.isoweekday() >= 6:
         return 1.05, "Cuối tuần"
     return 1.00, "Bình thường"
 
 def osrm_table(locations):
     """
-    Lấy toàn bộ ma trận thời gian (duration) giữa nhiều điểm trong 1 lần gọi API
-    locations: danh sách các tuple (lat, lon)
+    Gọi API OSRM (Bản đồ) để lấy toàn bộ ma trận thời gian (Duration Matrix) giữa nhiều điểm trong 1 lần gọi.
+    Dữ liệu này là đầu vào bắt buộc để thuật toán Google OR-Tools tính toán đường đi.
+    Tham số `locations`: danh sách các tuple (lat, lon)
     """
+    # OSRM yêu cầu định dạng "kinh_độ,vĩ_độ;kinh_độ,vĩ_độ..."
     coords = ";".join([f"{lon},{lat}" for lat, lon in locations])
     url = f"https://router.project-osrm.org/table/v1/driving/{coords}?annotations=duration"
 
@@ -58,12 +77,17 @@ def osrm_table(locations):
         with urllib.request.urlopen(url, timeout=10) as response:
             payload = json.loads(response.read().decode("utf-8"))
             if payload.get("code") == "Ok":
-                return payload.get("durations")
+                return payload.get("durations") # Trả về mảng 2 chiều chứa thời gian (giây)
     except Exception:
-        pass
+        pass # Lỗi mạng hoặc API quá tải
+    # Trả về None để hệ thống tự động fallback sang tính toán bằng Haversine
     return None
 
-def osrm_route(lat1, lon1, lat2, lon2):
+def osrm_route(lat1, lon1, lat2, lon2, vehicle_speed=28.0):
+    """
+    Gọi API OSRM để tìm lộ trình lái xe thực tế nối 2 điểm.
+    Được gọi khi Khách hàng tạo đơn để tính chính xác quãng đường (distance_km) và thời gian (duration_s).
+    """
     query = urllib.parse.quote(f"{lon1},{lat1};{lon2},{lat2}", safe=";,")
     url = f"https://router.project-osrm.org/route/v1/driving/{query}?overview=false"
 
@@ -73,9 +97,10 @@ def osrm_route(lat1, lon1, lat2, lon2):
     except (urllib.error.URLError, TimeoutError, ValueError):
         payload = None
 
+    # Nếu gọi API lỗi hoặc OSRM không tìm được đường, dùng phương án dự phòng (Haversine)
     if not payload or not payload.get("routes"):
         distance_km = haversine_distance(lat1, lon1, lat2, lon2)
-        duration_s = (distance_km / 28) * 3600 if distance_km > 0 else 0
+        duration_s = (distance_km / vehicle_speed) * 3600 if distance_km > 0 else 0
         return {
             "distance_km": distance_km,
             "duration_s": duration_s,
@@ -83,6 +108,7 @@ def osrm_route(lat1, lon1, lat2, lon2):
             "is_fallback": True,
         }
 
+    # Thành công: Bóc tách khoảng cách và thời gian từ Response của OSRM
     route = payload["routes"][0]
     return {
         "distance_km": float(route.get("distance", 0)) / 1000,
@@ -91,16 +117,19 @@ def osrm_route(lat1, lon1, lat2, lon2):
         "is_fallback": False,
     }
 
-def calculate_fee_breakdown(distance_km, weight, service_type="standard", surge_multiplier=1.0):
-    services = {
-        "standard": {"base": 12000, "weight": 5000, "distance": 3000},
-        "fast": {"base": 18000, "weight": 6200, "distance": 3800},
-        "express": {"base": 25000, "weight": 7500, "distance": 4800},
-    }
-    config = services.get(service_type, services["standard"])
+def calculate_fee_breakdown(distance_km, weight, pricing, service_type="standard", surge_multiplier=1.0):
+    """
+    Tính toán cước phí chi tiết bao gồm phí cơ bản (phụ thuộc vào khoảng cách, khối lượng, loại dịch vụ) 
+    và phụ phí kẹt xe/giờ cao điểm (surge_fee).
+    Biến `pricing` được truyền động từ Database PHP sang.
+    """
+    config = pricing.get(service_type, pricing.get("standard", {"base": 12000, "weight": 5000, "distance": 3000}))
+    # Tính phí cơ sở trước khi nhân phụ phí
     base_fee = config["base"] + (weight * config["weight"]) + (distance_km * config["distance"])
+    # Nhân hệ số giờ cao điểm và làm tròn
     total_fee = int(round(base_fee * surge_multiplier))
     rounded_base_fee = int(round(base_fee))
+    # Tính phần phụ phí chênh lệch
     surge_fee = max(0, total_fee - rounded_base_fee)
     return {
         "base_fee": rounded_base_fee,
@@ -109,28 +138,47 @@ def calculate_fee_breakdown(distance_km, weight, service_type="standard", surge_
     }
 
 
-# ==========================================
-# [NÂNG CẤP] AI LOGIC: GIẢI QUYẾT BÀI TOÁN LẤY & GIAO HÀNG (PDP) BẰNG GOOGLE OR-TOOLS
-# ==========================================
-def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity):
+
+def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity, vehicle_speed=28.0):
     """
-    Giải quyết bài toán Vehicle Routing Problem with Pickups and Deliveries (VRPPD).
-    Cho phép giao/nhận xen kẽ để tối ưu lộ trình.
+    Giải bài toán Tối ưu Lộ trình Nhận-Giao (VRPPD) bằng thư viện Google OR-Tools.
+    Tìm đường đi ngắn nhất qua nhiều điểm, cho phép giao/nhận xen kẽ mà KHÔNG VƯỢT QUÁ tải trọng của xe.
     """
     if not batch_orders_data:
         return {'route_details': [], 'total_duration_s': 0}
 
+    num_orders = len(batch_orders_data)
+
+    # TỐI ƯU HÓA 1: Tắt sớm (Early Exit)
+    # Nếu cụm chỉ có 1 đơn hàng (1 điểm lấy, 1 điểm giao), không cần nạp vào OR-Tools
+    if num_orders == 1:
+        order = batch_orders_data[0]
+        route_details = []
+        # Đã xóa node driver ở đây vì PHP tự động render "Vị trí của bạn" trên Radar
+        route_details.append({'type': 'pickup', 'order_id': order['id'], 'address': order.get('pickup_address', '')})
+        route_details.append({'type': 'delivery', 'order_id': order['id'], 'address': order.get('delivery_address', '')})
+        
+        # SỬA LỖI ĐIỂM 0: Tính toán thời gian thực tế thay vì trả về 0
+        dist = haversine_distance(order['sender_lat'], order['sender_lng'], order['receiver_lat'], order['receiver_lng'])
+        duration_s = int((dist / vehicle_speed) * 3600)
+
+        return {'route_details': route_details, 'total_duration_s': duration_s}
+
+    # Khởi tạo các mảng dữ liệu cung cấp cho OR-Tools
     locations = []
-    demands = [0]
+    demands = [0] # Nhu cầu tải trọng của xe hiện tại (khởi điểm là 0)
     
     if driver_location:
+        # Điểm bắt đầu là vị trí tài xế
         locations.append((driver_location['lat'], driver_location['lng']))
         node_map = [{'type': 'driver', 'order_id': None, 'address': 'Vị trí của bạn'}]
     else:
+        # Nếu không có vị trí tài xế, mượn vị trí lấy hàng của đơn đầu tiên làm xuất phát
         first_order = batch_orders_data[0]
         locations.append((first_order['sender_lat'], first_order['sender_lng']))
         node_map = [{'type': 'driver', 'order_id': None, 'address': 'Vị trí bắt đầu'}]
         
+    # Nếu server chưa cài thư viện ortools, ghép nối thủ công theo thứ tự: Lấy -> Giao liên tục
     if not OR_TOOLS_AVAILABLE:
         route_details = []
         for order in batch_orders_data:
@@ -138,12 +186,13 @@ def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity)
             route_details.append({'type': 'delivery', 'order_id': order['id'], 'address': order.get('delivery_address', '')})
         return {'route_details': route_details, 'total_duration_s': 0}
 
+    # BƯỚC 1: Xây dựng các điểm LẤY HÀNG (pickup). Trọng lượng là SỐ DƯƠNG (chất thêm hàng lên xe)
     for order in batch_orders_data:
         locations.append((order['sender_lat'], order['sender_lng']))
         demands.append(float(order.get('weight', 0) or 0))
         node_map.append({'type': 'pickup', 'order_id': order['id'], 'address': order.get('pickup_address', '')})
 
-    num_orders = len(batch_orders_data)
+    # BƯỚC 2: Xây dựng các điểm GIAO HÀNG (delivery). Trọng lượng là SỐ ÂM (dỡ hàng khỏi xe)
     for i, order in enumerate(batch_orders_data):
         locations.append((order['receiver_lat'], order['receiver_lng']))
         demands.append(-float(order.get('weight', 0) or 0))
@@ -151,50 +200,67 @@ def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity)
 
     num_locations = len(locations)
 
+    # Lấy ma trận thời gian đi lại giữa tất cả các điểm
     duration_matrix = osrm_table(locations)
-    dist_matrix = {}
+    
+    # TỐI ƯU HÓA: Sử dụng mảng 2 chiều (List of Lists) thay vì Dictionary of Dictionaries 
+    # Tăng tốc độ truy xuất O(1) trên RAM cho hàm callback của C++ OR-Tools
+    dist_matrix = [[0] * num_locations for _ in range(num_locations)]
+    
     for from_node in range(num_locations):
-        dist_matrix[from_node] = {}
         for to_node in range(num_locations):
-            if from_node == to_node:
+            # Tối ưu: Đánh chặn ngoại lệ trùng tọa độ (Lấy của A trùng Giao của B) -> Gắn cost = 0 ngay lập tức
+            if from_node == to_node or locations[from_node] == locations[to_node]:
                 dist_matrix[from_node][to_node] = 0
             else:
+                # Ưu tiên dùng API OSRM
                 if duration_matrix and duration_matrix[from_node][to_node] is not None:
                     dist_matrix[from_node][to_node] = int(duration_matrix[from_node][to_node])
                 else:
+                    # Dự phòng (Fallback): Tính thời gian ước tính với vận tốc ~28km/h theo đường chim bay
                     dist = haversine_distance(locations[from_node][0], locations[from_node][1], locations[to_node][0], locations[to_node][1])
-                    dist_matrix[from_node][to_node] = int((dist / 28) * 3600)
+                    dist_matrix[from_node][to_node] = int((dist / vehicle_speed) * 3600)
 
     try:
+        # Khởi tạo thuật toán VRP (Vehicle Routing Problem) với 1 xe máy
         manager = pywrapcp.RoutingIndexManager(num_locations, 1, 0)
         routing = pywrapcp.RoutingModel(manager)
 
+        # Hàm callback trả về thời gian đi từ điểm A sang điểm B
         def time_callback(from_index, to_index):
             from_node = manager.IndexToNode(from_index)
             to_node = manager.IndexToNode(to_index)
+            
+            # TỐI ƯU HÓA OPEN-ROUTE: Tài xế giao xong đơn cuối cùng KHÔNG CẦN quay về điểm xuất phát.
+            # Ép chi phí (thời gian) từ điểm bất kỳ về Depot (Node 0) bằng 0.
+            if to_node == 0:
+                return 0
             return dist_matrix[from_node][to_node]
 
         transit_callback_index = routing.RegisterTransitCallback(time_callback)
         routing.SetArcCostEvaluatorOfAllVehicles(transit_callback_index)
 
+        # Thêm chiều THỜI GIAN (Time Dimension) để kiểm soát tổng giờ chạy xe
         routing.AddDimension(
             transit_callback_index,
             0,
-            86400,
-            True,
-            'Time'
+            86400, # Giới hạn tối đa 24h (86400s)
+            True,  # Buộc thời gian khởi điểm bằng 0
+            'Time' 
         )
         time_dimension = routing.GetDimensionOrDie('Time')
 
-        # Xử lý bắt buộc của OR-Tools: Sức chứa phải là số nguyên (Gam thay vì Kg)
+        # Quy đổi trọng lượng (kg) thành số nguyên gram để thuật toán tính toán chính xác
         int_demands = [int(d * 1000) for d in demands]
         int_capacity = int(max_weight_capacity * 1000)
 
+        # Hàm callback theo dõi tải trọng hiện tại trên xe
         def demand_callback(from_index):
             from_node = manager.IndexToNode(from_index)
             return int_demands[from_node]
 
         demand_callback_index = routing.RegisterUnaryTransitCallback(demand_callback)
+        # Thêm chiều SỨC CHỨA (Capacity Dimension) ngăn xe chở quá tải
         routing.AddDimensionWithVehicleCapacity(
             demand_callback_index,
             0,
@@ -203,21 +269,36 @@ def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity)
             'Capacity'
         )
 
+        # ĐỊNH NGHĨA RÀNG BUỘC (CONSTRAINTS) CHO TỪNG ĐƠN HÀNG
         for i in range(num_orders):
             pickup_index = manager.NodeToIndex(i + 1)
             delivery_index = manager.NodeToIndex(i + 1 + num_orders)
             routing.AddPickupAndDelivery(pickup_index, delivery_index)
+            # Ràng buộc 1: Điểm Lấy hàng và Giao hàng phải được thực hiện bởi CÙNG MỘT XE (ở đây chỉ có 1 xe)
             routing.solver().Add(routing.VehicleVar(pickup_index) == routing.VehicleVar(delivery_index))
+            # Ràng buộc 2: Thời điểm Lấy hàng BẮT BUỘC PHẢI DIỄN RA TRƯỚC thời điểm Giao hàng
             routing.solver().Add(time_dimension.CumulVar(pickup_index) <= time_dimension.CumulVar(delivery_index))
 
+        # Cấu hình chiến lược tìm kiếm
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
+        # First solution: Tìm phương án đầu tiên dựa trên Cung đường rẻ nhất (ngắn nhất)
         search_parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+        # Cải thiện phương án bằng thuật toán Metaheuristic có định hướng (Thoát khỏi tối ưu cục bộ)
         search_parameters.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
-        search_parameters.time_limit.seconds = 2
+        
+        # TỐI ƯU HÓA 2: Giới hạn thời gian động (Dynamic Time Limit)
+        if num_orders <= 3:
+            # Các cụm nhỏ giải chỉ mất vài mili-giây, ta ngắt sớm sau 0.5s (500 triệu nanos)
+            search_parameters.time_limit.seconds = 0
+            search_parameters.time_limit.nanos = 500000000 
+        else:
+            search_parameters.time_limit.seconds = 1 
 
+        # Bắt đầu giải bài toán
         solution = routing.SolveWithParameters(search_parameters)
 
         if solution:
+            # Bóc tách kết quả đường đi từ solution
             route_details = []
             total_duration_s = solution.ObjectiveValue()
             index = routing.Start(0)
@@ -233,25 +314,28 @@ def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity)
     except Exception:
         pass
 
+    # Lỗi giải thuật: Phục hồi về lộ trình tuyến tính thông thường
     route_details = []
+    fallback_duration = 0
     for order in batch_orders_data:
         route_details.append({'type': 'pickup', 'order_id': order['id'], 'address': order.get('pickup_address', '')})
         route_details.append({'type': 'delivery', 'order_id': order['id'], 'address': order.get('delivery_address', '')})
-    return {'route_details': route_details, 'total_duration_s': 0}
+        dist = haversine_distance(order['sender_lat'], order['sender_lng'], order['receiver_lat'], order['receiver_lng'])
+        fallback_duration += int((dist / vehicle_speed) * 3600)
+    return {'route_details': route_details, 'total_duration_s': fallback_duration}
 
-# AI LOGIC: THUẬT TOÁN GHÉP CHUYẾN
-def batch_orders(orders_json):
-    MAX_PICKUP_DISTANCE_KM = 3.0  
+def optimize_batches(driver_location, orders, max_orders_per_batch, max_weight_capacity, vehicle_speed=28.0):
+    """
+    Thuật toán Gom cụm (Clustering).
+    Nhận danh sách toàn bộ đơn hàng đang chờ, nhóm các đơn hàng nằm gần nhau (< 3km) vào cùng một chuyến đi.
+    Xử lý loại trừ (Mutual Exclusion) để đảm bảo đơn Siêu tốc không bị ghép chung với đơn khác.
+    """
+    MAX_PICKUP_DISTANCE_KM = 3.0  # Các đơn hàng phải lấy cách nhau tối đa 3km để được ghép chung
 
     try:
-        # [MỚI] Phân tích cấu trúc dữ liệu mới
-        payload = json.loads(orders_json)
-        driver_location = payload.get('driver_location')
-        orders = payload.get('orders', [])
-        MAX_ORDERS_PER_BATCH = payload.get('max_orders_per_batch', 5)
-        max_weight_capacity = float(payload.get('max_weight_capacity', 0) or 0)
+        max_weight_capacity = float(max_weight_capacity or 0)
 
-        # Sắp xếp đơn hàng ưu tiên theo thời gian hẹn lấy hàng sát nhất
+        # Định nghĩa Key ưu tiên phân bổ: Mức độ ưu tiên dịch vụ (0 là Siêu tốc) -> Thời gian hẹn
         def get_urgency_key(order):
             time_str = order.get('scheduled_at')
             if not time_str:
@@ -264,89 +348,113 @@ def batch_orders(orders_json):
         def get_raw_time(order):
             return order.get('scheduled_at') or order.get('created_at') or "9999-12-31 23:59:59"
 
+        # Sắp xếp toàn bộ mảng đơn hàng từ ưu tiên cao nhất/sắp trễ giờ nhất lên đầu
         orders.sort(key=get_urgency_key)
 
         unassigned_orders = orders.copy()
-        batches = []
+        clustered_batches = []
 
+        # BƯỚC 1: Tách rời logic Gom cụm (Clustering) ra khỏi Tối ưu lộ trình (Routing)
+        # Gom các đơn hàng thỏa mãn điều kiện không gian và tải trọng thành các list riêng biệt
         while unassigned_orders:
             if not unassigned_orders:
                 break
 
+            # Lấy đơn hàng đầu tiên (khẩn cấp nhất) làm Hạt giống (Seed) để xây dựng chuyến ghép
             seed_order_data = unassigned_orders.pop(0)
             current_batch_data = [seed_order_data]
             current_batch_weight = float(seed_order_data.get('weight', 0) or 0)
             
-            # Tọa độ trung tâm của cụm (ban đầu là tọa độ của đơn hạt giống)
             center_lat = float(seed_order_data['sender_lat'])
             center_lng = float(seed_order_data['sender_lng'])
 
             orders_to_remove = []
             
-            # MUTUAL EXCLUSION: Nếu đơn hạt giống là Siêu tốc, không cho phép ghép thêm bất kỳ đơn nào khác
             is_seed_express = seed_order_data.get('shipping_method') == 'express'
 
+            # Chống ghép chuyến: Nếu Hạt giống là đơn Siêu tốc (Express), Bỏ qua bước gom cụm
             if not is_seed_express:
-                # Tìm các đơn hàng khác ở gần đơn hạt giống
                 for order in unassigned_orders:
-                    if len(current_batch_data) >= MAX_ORDERS_PER_BATCH:
-                        break # Đã đầy xe
+                    if len(current_batch_data) >= max_orders_per_batch:
+                        break 
                         
-                    # Không cho phép đơn tiêu chuẩn/fast lôi kéo một đơn Siêu tốc vào cụm của mình
+                    # Không được phép bốc đơn Siêu Tốc vào chuyến ghép này
                     if order.get('shipping_method') == 'express':
                         continue
 
                     o_lat = float(order['sender_lat'])
                     o_lng = float(order['sender_lng'])
                     
-                    # Tính khoảng cách từ điểm lấy hàng này đến trung tâm cụm
+                    # Tính khoảng cách từ điểm lấy Hạt giống đến điểm lấy của đơn hiện hành
                     dist = haversine_distance(center_lat, center_lng, o_lat, o_lng)
 
                     candidate_weight = float(order.get('weight', 0) or 0)
+                    # Kiểm tra xem nếu bốc thêm đơn này xe có quá tải không
                     exceeds_weight = (
                         max_weight_capacity > 0
                         and (current_batch_weight + candidate_weight) > max_weight_capacity
                     )
 
+                    # Đủ điều kiện: Ghép vào chung 1 xe
                     if dist <= MAX_PICKUP_DISTANCE_KM and not exceeds_weight:
                         current_batch_data.append(order)
                         current_batch_weight += candidate_weight
                         orders_to_remove.append(order)
 
-            # Xóa các đơn đã được ghép khỏi danh sách chờ
+            # Xóa các đơn đã được ghép khỏi hàng chờ phân bổ
             for o in orders_to_remove:
                 unassigned_orders.remove(o)
 
-            # [NÂNG CẤP] Gọi PDP solver để tìm lộ trình lấy/giao xen kẽ tối ưu
-            pdp_solution = solve_pdp_for_batch(current_batch_data, driver_location, max_weight_capacity)
+            clustered_batches.append({
+                "data": current_batch_data,
+                "weight": current_batch_weight
+            })
+
+        # BƯỚC 2: Xử lý song song các Batch bằng ThreadPoolExecutor
+        # Tránh nút thắt cổ chai khi có quá nhiều cụm đơn cần gọi API OSRM và OR-Tools
+        batches = []
+
+        def process_single_batch(batch_info, index):
+            batch_data = batch_info["data"]
+            batch_weight = batch_info["weight"]
+            
+            pdp_solution = solve_pdp_for_batch(batch_data, driver_location, max_weight_capacity, vehicle_speed)
             total_duration_s = pdp_solution['total_duration_s']
             
-            # Tối ưu hóa: Tính thời gian tiếp cận ngay tại Python bằng công thức Haversine 
-            # để PHP không cần gọi API OSRM nhiều lần gây giật lag
             access_duration_s = 0
+            # Tính toán khoảng thời gian cần thiết để tài xế chạy đến điểm bắt đầu đầu tiên của chuyến
             if pdp_solution.get('route_details') and driver_location:
                 first_step = pdp_solution['route_details'][0]
                 f_oid = first_step['order_id']
-                f_order = next((o for o in current_batch_data if o['id'] == f_oid), None)
+                f_order = next((o for o in batch_data if o['id'] == f_oid), None)
                 if f_order:
                     f_lat = float(f_order['sender_lat'] if first_step['type'] == 'pickup' else f_order['receiver_lat'])
                     f_lng = float(f_order['sender_lng'] if first_step['type'] == 'pickup' else f_order['receiver_lng'])
                     d_lat = float(driver_location['lat'])
                     d_lng = float(driver_location['lng'])
                     dist = haversine_distance(d_lat, d_lng, f_lat, f_lng)
-                    access_duration_s = int((dist / 28) * 3600)
+                    access_duration_s = int((dist / vehicle_speed) * 3600)
 
-            batches.append({
-                "batch_id": f"BATCH_{len(batches) + 1}",
-                "order_ids": [o['id'] for o in current_batch_data],
+            return {
+                "batch_id": f"BATCH_{index + 1}",
+                "order_ids": [o['id'] for o in batch_data],
                 "route_details": pdp_solution['route_details'],
-                "total_orders": len(current_batch_data),
-                "total_weight": current_batch_weight,
+                "total_orders": len(batch_data),
+                "total_weight": batch_weight,
                 "total_duration_s": total_duration_s,
                 "access_duration_s": access_duration_s,
-                "most_urgent_time": min([get_raw_time(o) for o in current_batch_data]),
-                "priority": min([get_urgency_key(o)[0] for o in current_batch_data])
-            })
+                "most_urgent_time": min([get_raw_time(o) for o in batch_data]),
+                "priority": min([get_urgency_key(o)[0] for o in batch_data])
+            }
+
+        # Khởi tạo Pool chạy song song tối đa 10 tiến trình (threads)
+        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
+            futures = [executor.submit(process_single_batch, b, i) for i, b in enumerate(clustered_batches)]
+            for future in concurrent.futures.as_completed(futures):
+                batches.append(future.result())
+                
+        # Sắp xếp lại theo thứ tự BATCH_1, BATCH_2 cho chuẩn xác
+        batches.sort(key=lambda x: int(x["batch_id"].split("_")[1]))
 
         return {
             "status": "success",
@@ -362,26 +470,42 @@ def batch_orders(orders_json):
 
 
 if __name__ == "__main__":
-    # Ép Python xuất dữ liệu ra Standard Output (CMD) dưới dạng UTF-8 để không lỗi tiếng Việt trên Windows
+    # Ép chuẩn định dạng UTF-8 để khắc phục lỗi mất dấu Tiếng Việt khi PHP đọc kết quả qua Command Line
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
 
     try:
+        # Chế độ chạy 1: Xử lý Gom cụm chuyến đi (Clustering AI) truyền qua arguments
         if len(sys.argv) > 1 and sys.argv[1] == "--batch":
             json_data = sys.argv[2]
-            result = batch_orders(json_data)
+            payload = json.loads(json_data)
+            result = optimize_batches(
+                payload.get('driver_location'),
+                payload.get('orders', []),
+                payload.get('max_orders_per_batch', 5),
+                payload.get('max_weight_capacity', 0),
+                payload.get('vehicle_speed', 28.0)
+            )
             print(json.dumps(result, ensure_ascii=False))
             sys.exit(0)
 
-        # [MỚI] Bổ sung nhánh đọc từ file
+        # Chế độ chạy 2: Xử lý Gom cụm (Clustering AI) truyền qua file nháp (Tối ưu để không đứt chuỗi shell do data lớn)
         if len(sys.argv) > 1 and sys.argv[1] == "--batch-file":
             file_path = sys.argv[2]
             with open(file_path, 'r', encoding='utf-8') as f:
                 json_data = f.read()
-            result = batch_orders(json_data)
+            payload = json.loads(json_data)
+            result = optimize_batches(
+                payload.get('driver_location'),
+                payload.get('orders', []),
+                payload.get('max_orders_per_batch', 5),
+                payload.get('max_weight_capacity', 0),
+                payload.get('vehicle_speed', 28.0)
+            )
             print(json.dumps(result, ensure_ascii=False))
             sys.exit(0)
 
 
+        # Chế độ chạy 3: Tính cước vận chuyển và quãng đường (Đơn lẻ, truyền theo danh sách tham số)
         sender_lat = float(sys.argv[1])
         sender_lng = float(sys.argv[2])
         receiver_lat = float(sys.argv[3])
@@ -389,10 +513,23 @@ if __name__ == "__main__":
         weight = float(sys.argv[5])
         service_type = sys.argv[6] if len(sys.argv) > 6 else "standard"
         scheduled_at = sys.argv[7] if len(sys.argv) > 7 else ""
+        
+        # Đọc cấu hình JSON nếu có truyền thêm tham số thứ 8
+        pricing = {
+            "standard": {"base": 12000, "weight": 5000, "distance": 3000},
+            "fast": {"base": 18000, "weight": 6200, "distance": 3800},
+            "express": {"base": 25000, "weight": 7500, "distance": 4800},
+        }
+        vehicle_speed = 28.0
+        
+        if len(sys.argv) > 8:
+            config_payload = json.loads(sys.argv[8])
+            pricing = config_payload.get('pricing', pricing)
+            vehicle_speed = config_payload.get('vehicle_speed', 28.0)
 
-        route = osrm_route(sender_lat, sender_lng, receiver_lat, receiver_lng)
+        route = osrm_route(sender_lat, sender_lng, receiver_lat, receiver_lng, vehicle_speed)
         surge_multiplier, surge_label = traffic_meta(scheduled_at)
-        fee = calculate_fee_breakdown(route["distance_km"], weight, service_type, surge_multiplier)
+        fee = calculate_fee_breakdown(route["distance_km"], weight, pricing, service_type, surge_multiplier)
 
         result = {
             "status": "success",

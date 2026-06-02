@@ -10,7 +10,7 @@ use App\Models\User;
 
 class CronController extends BaseController
 {
-    // Chạy nghiệp vụ chống ôm đơn
+    // Chạy nghiệp vụ chống ôm đơn hàng
     public function autoReassign(Request $request, Response $response)
     {
         $secretKey = 'NUN_CRON_SECRET_2024';
