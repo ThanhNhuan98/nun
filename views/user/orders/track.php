@@ -201,11 +201,16 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     </div>
                 </div>
             </div>
+            <div class="t-card" style="padding: 0; overflow: hidden; height: 350px; position: relative; border-color: #bfdbfe; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.08);">
+                
+                <div style="position: absolute; top: 12px; left: 12px; z-index: 1000; background: rgba(255,255,255,0.95); backdrop-filter: blur(4px); padding: 8px 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); display: flex; align-items: center; gap: 10px; border: 1px solid var(--border-color);">
+                    <span class="material-symbols-outlined" style="font-size: 20px; color: var(--primary);">radar</span>
+                    <span style="font-size: 13px; font-weight: 800; color: var(--text-main);">Định vị GPS</span>
+                    <span class="live-indicator">Live</span>
+                </div>
 
-            <div class="t-card" style="padding: 0; overflow: hidden; height: 350px; position: relative;">
-                <div id="route-map" style="width: 100%; height: 100%; z-index: 1;"></div>
+                <div id="route-map" style="width: 100%; height: 100%; z-index: 1; background: #f8fafc;"></div>
             </div>
-
             <div class="t-card">
                 <div class="t-card-title">LỊCH SỬ TIẾN TRÌNH</div>
                 

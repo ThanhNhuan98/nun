@@ -133,16 +133,20 @@
                     </div>
                 </div>
             </div>
-            
             <?php if (!empty($order['sender_lat']) && !empty($order['receiver_lat'])): ?>
-            <div class="tracking-card" style="padding: 20px; margin-top: 20px;">
-                <h3 style="margin-top: 0; color: #1e293b; border-bottom: 1px solid #f1f5f9; padding-bottom: 10px; display: flex; align-items: center; gap: 5px;">
-                    <span class="material-symbols-outlined">map</span> Bản đồ trực tiếp
-                </h3>
-                <div id="route-map" style="height: 400px; width: 100%; border-radius: 8px; z-index: 1;"></div>
+            <div class="tracking-card" style="padding: 24px; margin-top: 24px; border: 1px solid #bfdbfe; box-shadow: 0 8px 20px rgba(37, 99, 235, 0.08);">
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #f1f5f9; padding-bottom: 16px; margin-bottom: 16px;">
+                    <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 8px; font-size: 18px;">
+                        <span class="material-symbols-outlined" style="color: var(--primary); font-size: 24px;">explore</span> 
+                        Lộ trình di chuyển
+                    </h3>
+                    <span class="live-indicator">Live Tracking</span>
+                </div>
+
+                <div id="route-map" style="height: 400px; width: 100%; border-radius: 8px; z-index: 1; background: #f8fafc; border: 1px solid var(--border-color);"></div>
             </div>
             <?php endif; ?>
-
             <div class="tracking-card" style="margin-top: 20px;">
                 <h4 class="tracking-history-title">Lịch sử hành trình</h4>
                 <div>

@@ -10,20 +10,21 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
 <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
 
 <style>
-    /* Tối ưu hóa khoảng cách Header trên thiết bị di động */
+    /* Tối ưu hóa khoảng cách Header và chống tràn viền trên thiết bị di động */
     @media (max-width: 768px) {
-        .create-page-header { margin-bottom: 12px !important; }
-        .create-page-header h2 { font-size: 20px !important; margin-bottom: 4px !important; }
-        .create-page-header p { display: none; } /* Ẩn bớt dòng mô tả phụ để tiết kiệm không gian */
-        .order-create-layout { margin-top: 0 !important; }
+        .user-page-header { margin-bottom: 12px !important; padding-bottom: 12px !important; }
+        .user-page-title { font-size: 20px !important; margin-bottom: 4px !important; }
+        .user-page-subtitle { display: block !important; font-size: 13px !important; } /* Khôi phục hiển thị mô tả phụ */
     }
 </style>
 
 <div class="admin-container">
     
-    <div class="create-page-header" style="margin-bottom: 24px;">
-        <h2 style="font-size: 24px; font-weight: 700; color: var(--text-main); margin: 0 0 8px 0;"><?= app_e($pageTitle ?? 'Tạo Đơn Hàng Mới') ?></h2>
-        <p style="color: var(--text-muted); font-size: 14px; margin: 0;">Điền thông tin chi tiết về địa điểm và gói hàng để tạo đơn.</p>
+    <div class="user-page-header" style="margin-bottom: 24px; border: none; padding: 0;">
+        <div>
+            <h2 class="user-page-title" style="margin: 0;"><?= app_e($pageTitle ?? 'Tạo Đơn Hàng Mới') ?></h2>
+            <p class="user-page-subtitle" style="margin: 0;">Điền thông tin chi tiết về địa điểm và gói hàng để tạo đơn.</p>
+        </div>
     </div>
 
     <?php if (!empty($errors)): ?>
@@ -88,7 +89,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                                                      data-mode="sender" data-address="<?= app_e($pickup['address']) ?>" data-lat="<?= $pickup['lat'] ?>" data-lng="<?= $pickup['lng'] ?>"
                                                      onclick="fillAddressFromData(this)">
                                                     <span class="material-symbols-outlined" style="font-size: 14px; flex-shrink: 0;">history</span>
-                                                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;"><?= app_e($pickup['address']) ?></span>
+                                            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;"><?= app_e($pickup['address']) ?></span>
                                                 </div>
                                             <?php endforeach; ?>
                                         </div>
@@ -137,7 +138,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                                                      data-mode="receiver" data-address="<?= app_e($delivery['address']) ?>" data-lat="<?= $delivery['lat'] ?>" data-lng="<?= $delivery['lng'] ?>" data-name="<?= app_e($delivery['name']) ?>" data-phone="<?= app_e($delivery['phone']) ?>"
                                                      onclick="fillAddressFromData(this)">
                                                     <span class="material-symbols-outlined" style="font-size: 14px; flex-shrink: 0;">history</span>
-                                                    <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1;"><?= app_e($delivery['address']) ?></span>
+                                            <span style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; min-width: 0;"><?= app_e($delivery['address']) ?></span>
                                                 </div>
                                             <?php endforeach; ?>
                                         </div>

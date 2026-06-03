@@ -251,28 +251,27 @@
 
         </div>
 
-        <div class="driver-map-container">
-            <div id="route-info" class="driver-route-info" style="display: none;">
-                <div class="driver-route-info-main">
+        <div class="driver-map-container" style="position: relative;">
+            <div style="position: absolute; top: 12px; left: 12px; z-index: 1000; background: rgba(255,255,255,0.95); backdrop-filter: blur(4px); padding: 8px 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); display: flex; align-items: center; gap: 10px; border: 1px solid var(--border-color);">
+                <span class="material-symbols-outlined" style="font-size: 20px; color: var(--primary);">satellite_alt</span>
+                <span style="font-size: 13px; font-weight: 800; color: var(--text-main);">Trạm phát GPS</span>
+                <span class="live-indicator">Live</span>
+            </div>
+            <div id="route-map"></div>
+            <div class="driver-nav-panel" id="nav-summary-box" style="display: none; bottom: 12px; top: auto;">
+                <div class="driver-nav-panel-main">
                     <div>
-                        <div class="driver-nav-label">Đang điều hướng đến</div>
-                        <div id="route-next-stop" class="driver-next-stop">Điểm dừng tiếp theo</div>
-                        <div class="driver-route-meta">
-                            <span class="material-symbols-outlined" style="font-size: 16px; vertical-align: bottom; color: var(--primary);">route</span>
-                            <strong id="route-distance" style="color: var(--primary);">0</strong> km &bull;
-                            <strong id="route-time" style="color: var(--primary);">0</strong> phút
-                        </div>
+                        <div class="driver-nav-label">Ước tính (OSRM)</div>
+                        <div class="driver-next-stop" id="nav-summary">Đang tính toán...</div>
                     </div>
-                    <a id="btn-ggmap-nav" class="driver-nav-open" href="#" target="_blank" rel="noopener">
-                        <span class="material-symbols-outlined" style="font-size: 16px;">near_me</span> Google Maps
+                </div>
+                <div class="driver-nav-actions">
+                    <a href="#" id="btn-open-google-maps" target="_blank" class="driver-nav-open disabled">
+                        <span class="material-symbols-outlined" style="font-size: 16px;">navigation</span>
+                        Chỉ đường
                     </a>
                 </div>
             </div>
-            <!-- Nút Định vị lại -->
-            <button onclick="recenterMapDetail()" id="btn-recenter-detail" style="position: absolute; bottom: 30px; right: 10px; z-index: 1000; background: #fff; border: 2px solid rgba(0,0,0,0.2); border-radius: 4px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); box-shadow: 0 1px 5px rgba(0,0,0,0.65);" title="Định vị lại">
-                <span class="material-symbols-outlined" style="font-size: 20px;">my_location</span>
-            </button>
-            <div id="route-map"></div>
         </div>
 
     </div>
