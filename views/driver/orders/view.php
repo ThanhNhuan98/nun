@@ -6,309 +6,277 @@
 ?>
 
 <?php require_once __DIR__ . '/../../layouts/user_header.php'; ?>
+<!-- Gắn link CSS driver-order-theme.css vào đây -->
 
-<div class="admin-container">
+<div class="driver-container">
+    
+    <!-- Header Điều Hướng -->
+    <a href="/driver/receive-orders" style="display: inline-flex; align-items: center; gap: 8px; color: var(--text-main); font-weight: 700; font-size: 16px; text-decoration: none; margin-bottom: 24px;">
+        <span class="material-symbols-outlined">arrow_back</span> NUN EXPRESS
+    </a>
 
-    <div class="driver-detail-layout">
-
-        <div class="driver-info-col">
-
-            <div class="detail-card-v2">
-                <div class="tracking-label">Mã Vận Đơn</div>
-                <div class="tracking-header">
-                    <div class="tracking-code-large">#<?= app_e($order['tracking_code']) ?></div>
-                    <span class="badge-status status-warning"><?= app_e(app_status_label($order['status'])) ?></span>
+    <!-- GRID CHÍNH -->
+    <div class="driver-grid">
+        
+        <!-- ==================== CỘT TRÁI ==================== -->
+        <div class="left-col">
+            
+            <!-- Khối Header Mã Đơn -->
+            <div class="d-header-box">
+                <div class="d-header-title">Đơn Hàng #<?= app_e($order['tracking_code']) ?></div>
+                <div class="d-header-time">Cập nhật lúc: <?= date('H:i - d/m', strtotime($order['updated_at'] ?? $order['created_at'] ?? 'now')) ?></div>
+                <div class="d-status-badge">
+                    <?= app_e(app_status_label($order['status'])) ?>
                 </div>
             </div>
 
-            <div class="detail-card-v2">
-                <div class="timeline-v2">
-
-                    <div class="timeline-node-v2">
-                        <div class="node-icon-v2 pickup">
-                            <span class="material-symbols-outlined">storefront</span>
-                        </div>
-                        <div class="node-title-v2">ĐIỂM LẤY HÀNG</div>
-                        <div class="node-desc-v2">
-                            <strong><?= app_e($order['sender_name']) ?></strong><br>
-                                    <?= app_e($order['sender_address']) ?>
-                        </div>
-                        <a href="tel:<?= app_e($order['sender_phone']) ?>" class="node-phone-v2">
-                            <span class="material-symbols-outlined" style="font-size: 16px;">call</span> <?= app_e($order['sender_phone']) ?>
-                        </a>
-                    </div>
-
-                    <div class="timeline-node-v2">
-                        <div class="node-icon-v2 dropoff"></div>
-                        <div class="node-title-v2">ĐIỂM GIAO HÀNG</div>
-                        <div class="node-desc-v2">
-                            <strong><?= app_e($order['receiver_name']) ?></strong><br>
-                                    <?= app_e($order['receiver_address']) ?>
-                        </div>
-                        <a href="tel:<?= app_e($order['receiver_phone']) ?>" class="node-phone-v2">
-                            <span class="material-symbols-outlined" style="font-size: 16px;">call</span> <?= app_e($order['receiver_phone']) ?>
-                        </a>
-                        <?php if (($order['customer_no_show_count'] ?? 0) > 0): ?>
-                            <div style="margin-top: 8px; color: var(--danger); font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; background: var(--danger-light); padding: 4px 8px; border-radius: 4px; border: 1px solid #fca5a5;">
-                                <span class="material-symbols-outlined" style="font-size: 14px;">warning</span>
-                                Khách Vi phạm giao nhận : <?= htmlspecialchars($order['customer_no_show_count']) ?> lần
-                            </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
+            <!-- Khối Bản Đồ -->
+            <div class="d-map-wrapper">
+                <div id="route-map"></div>
             </div>
 
-            <div class="detail-card-v2">
-                <div class="trip-info-header">Thông tin chuyến đi</div>
-                <div class="trip-fee-row" style="margin-bottom: 8px;">
-                    <span>Dịch vụ:</span>
-                    <strong style="color: <?= \App\Models\Order::getShippingMethodColor($order['shipping_method'] ?? 'standard') ?>;">
-                        <?= \App\Models\Order::getShippingMethodLabel($order['shipping_method'] ?? 'standard') ?>
-                    </strong>
-                </div>
-                <div class="trip-fee-row" style="margin-bottom: 8px;">
-                    <span>Ngày hẹn lấy:</span>
-                    <strong><?= !empty($order['scheduled_at']) ? date('H:i d/m/Y', strtotime($order['scheduled_at'])) : 'Càng sớm càng tốt' ?></strong>
-                </div>
-                <div class="trip-fee-row">
-                    <span>Phí vận chuyển:</span>
-                    <strong><?= app_money($order['shipping_fee'] ?? 0, ' đ') ?></strong>
-                </div>
-
-                <?php if (!empty($order['note'])): ?>
-                    <div class="trip-note-box">
-                        <strong style="display: block; font-size: 12px; margin-bottom: 4px;">Ghi chú từ khách hàng:</strong>
-                        "<?= app_e($order['note']) ?>"
-                    </div>
-                <?php endif; ?>
-            </div>
-
-            <div style="margin-top: 24px;">
-
-                <?php if ($order['status'] === 'accepted'): ?>
-                    <form method="POST" action="/driver/orders/update-status/<?= $order['id'] ?>" style="margin:0;">
-                        <input type="hidden" name="status" value="picking_up">
-                        <button type="submit" class="btn-driver-action orange">
-                            Đã Đến Điểm Lấy Hàng
-                        </button>
-                    </form>
-
-                <?php elseif ($order['status'] === 'picking_up'): ?>
-                    <form method="POST" action="/driver/orders/update-status/<?= $order['id'] ?>" style="margin:0;">
-                        <input type="hidden" name="status" value="in_transit">
-                        <button type="submit" class="btn-driver-action blue">
-                            Bắt Đầu Giao Hàng
-                        </button>
-                    </form>
-
-                <?php elseif ($order['status'] === 'in_transit' || $order['status'] === 'shipping'): ?>
-                    <form method="POST" action="/driver/orders/update-status/<?= $order['id'] ?>" enctype="multipart/form-data">
-                        <input type="hidden" name="status" value="completed">
+            <!-- Khối Timeline Điểm Lấy / Giao -->
+            <div class="d-card">
+                <div class="d-card-body">
+                    <div class="d-timeline">
                         
-                        <div style="background: #fdfde6; padding: 12px; border-radius: 4px; border: 1px solid #fef08a; margin-bottom: 12px;">
-                            <label style="font-size: 12px; font-weight: 700; color: #854d0e; display: block; margin-bottom: 8px;">
-                                <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">dialpad</span> 
-                                Mã PIN nhận hàng (Hỏi Người nhận):
-                            </label>
-                            <input type="text" name="delivery_pin" placeholder="Nhập 4 số mã PIN" pattern="\d{4}" maxlength="4" class="minimal-input" style="border-color: #fde047; font-size: 18px; letter-spacing: 4px; text-align: center; font-weight: bold; color: var(--primary); margin-bottom: 0;" required>
-                        </div>
-
-                        <div style="background: #f8fafc; padding: 12px; border-radius: 4px; border: 1px solid var(--border-color); margin-bottom: 12px;">
-                            <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 8px;">Ảnh minh chứng giao hàng (Bắt buộc):</label>
-                            <div class="proof-action-btns" style="display: flex; gap: 8px; margin-bottom: 12px;">
-                                <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; background:#fff; color:#3b82f6; padding:12px; border-radius:4px; border:1px dashed #3b82f6; cursor:pointer; font-size:13px; font-weight:600; transition:0.2s;">
-                                    <span class="material-symbols-outlined" style="font-size:18px;">photo_camera</span> Chụp ảnh
-                                    <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleProofSync(this)">
-                                </label>
-                                <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; background:#fff; color:#10b981; padding:12px; border-radius:4px; border:1px dashed #10b981; cursor:pointer; font-size:13px; font-weight:600; transition:0.2s;">
-                                    <span class="material-symbols-outlined" style="font-size:18px;">image</span> Chọn từ máy
-                                    <input type="file" accept="image/*" style="display:none;" onchange="handleProofSync(this)">
-                                </label>
+                        <!-- Node Lấy Hàng -->
+                        <div class="d-tl-node">
+                            <div class="d-tl-icon pickup"><span class="material-symbols-outlined" style="font-size: 16px;">storefront</span></div>
+                            <div class="d-tl-header">
+                                <span class="d-tl-label">Điểm Lấy Hàng</span>
+                                <span class="d-tl-badge">Đã lấy</span>
                             </div>
-                            <input type="file" name="proof_image" class="real-proof-input" accept="image/*" required style="opacity: 0; position: absolute; z-index: -1; width: 1px; height: 1px;">
-                            <div class="active-image-preview" style="display: none; position: relative; text-align: center; margin-bottom: 12px;">
-                                <img src="" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                                <button type="button" onclick="clearProofPreview(this)" style="position: absolute; top: -10px; right: -10px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;"><span class="material-symbols-outlined" style="font-size: 16px;">close</span></button>
+                            <div class="d-tl-title"><?= app_e($order['sender_name']) ?></div>
+                            <div class="d-tl-address"><?= app_e($order['sender_address']) ?></div>
+                            <div class="d-tl-contact">
+                                <div class="d-tl-contact-info">
+                                    <span class="material-symbols-outlined" style="color: var(--text-muted);">person</span>
+                                    <?= app_e($order['sender_phone']) ?>
+                                </div>
+                                <a href="tel:<?= app_e($order['sender_phone']) ?>" class="d-btn-phone">
+                                    <span class="material-symbols-outlined" style="font-size: 16px;">call</span>
+                                </a>
                             </div>
                         </div>
-                        <button type="submit" class="btn-driver-action green">
-                            Xác Nhận Đã Giao Xong
-                        </button>
-                    </form>
-                <?php elseif ($order['status'] === 'returning'): ?>
-                    <form method="POST" action="/driver/orders/update-status/<?= $order['id'] ?>" enctype="multipart/form-data">
-                        <input type="hidden" name="status" value="returned">
-                        <div style="background: #f8fafc; padding: 12px; border-radius: 4px; border: 1px solid var(--border-color); margin-bottom: 12px;">
-                            <label style="font-size: 12px; font-weight: 700; display: block; margin-bottom: 8px;">Ảnh minh chứng hoàn hàng (Bắt buộc):</label>
-                            <div class="proof-action-btns" style="display: flex; gap: 8px; margin-bottom: 12px;">
-                                <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; background:#fff; color:#ea580c; padding:12px; border-radius:4px; border:1px dashed #ea580c; cursor:pointer; font-size:13px; font-weight:600; transition:0.2s;">
-                                    <span class="material-symbols-outlined" style="font-size:18px;">photo_camera</span> Chụp ảnh
-                                    <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleProofSync(this)">
-                                </label>
-                                <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; background:#fff; color:#10b981; padding:12px; border-radius:4px; border:1px dashed #10b981; cursor:pointer; font-size:13px; font-weight:600; transition:0.2s;">
-                                    <span class="material-symbols-outlined" style="font-size:18px;">image</span> Chọn từ máy
-                                    <input type="file" accept="image/*" style="display:none;" onchange="handleProofSync(this)">
-                                </label>
+
+                        <!-- Node Giao Hàng -->
+                        <div class="d-tl-node">
+                            <div class="d-tl-icon dropoff"><span class="material-symbols-outlined" style="font-size: 16px;">location_on</span></div>
+                            <div class="d-tl-header">
+                                <span class="d-tl-label">Điểm Giao Hàng</span>
+                                <span class="d-tl-badge active">Sắp đến</span>
                             </div>
-                            <input type="file" name="proof_image" class="real-proof-input" accept="image/*" required style="opacity: 0; position: absolute; z-index: -1; width: 1px; height: 1px;">
-                            <div class="active-image-preview" style="display: none; position: relative; text-align: center; margin-bottom: 12px;">
-                                <img src="" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: 4px; border: 1px solid #cbd5e1;">
-                                <button type="button" onclick="clearProofPreview(this)" style="position: absolute; top: -10px; right: -10px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;"><span class="material-symbols-outlined" style="font-size: 16px;">close</span></button>
+                            <div class="d-tl-title"><?= app_e($order['receiver_name']) ?></div>
+                            <div class="d-tl-address"><?= app_e($order['receiver_address']) ?></div>
+                            <div class="d-tl-contact">
+                                <div class="d-tl-contact-info">
+                                    <span class="material-symbols-outlined" style="color: var(--text-muted);">person</span>
+                                    <?= app_e($order['receiver_phone']) ?>
+                                </div>
+                                <a href="tel:<?= app_e($order['receiver_phone']) ?>" class="d-btn-phone">
+                                    <span class="material-symbols-outlined" style="font-size: 16px;">call</span>
+                                </a>
                             </div>
+                            
+                            <?php if (($order['customer_no_show_count'] ?? 0) > 0): ?>
+                                <div style="margin-top: 12px; color: var(--status-red); font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; background: #fee2e2; padding: 6px 10px; border-radius: 4px;">
+                                    <span class="material-symbols-outlined" style="font-size: 16px;">warning</span>
+                                    Khách Vi phạm giao nhận: <?= htmlspecialchars($order['customer_no_show_count']) ?> lần
+                                </div>
+                            <?php endif; ?>
                         </div>
-                        <button type="submit" class="btn-driver-action orange">
-                            Xác Nhận Đã Hoàn Hàng
-                        </button>
-                    </form>
 
-                    <form method="POST" action="/driver/orders/update-status/<?= $order['id'] ?>" enctype="multipart/form-data" style="margin-top: 15px;">
-                        <input type="hidden" name="status" value="disputed">
-
-                        <button type="button" class="btn-driver-action danger-outline" onclick="document.getElementById('dispute-return-box').style.display='block'; this.style.display='none';">
-                            <span class="material-symbols-outlined" style="font-size: 18px;">warning</span> Khách Từ Chối Nhận / Sự Cố
-                        </button>
-
-                        <div id="dispute-return-box" style="display: none; background: #fef2f2; padding: 16px; border: 1px solid #fecaca; border-radius: 4px;">
-                            <label style="font-size: 12px; font-weight: 700; color: var(--danger); display: block; margin-bottom: 8px;">Nhập lý do sự cố:</label>
-                            <input type="text" name="cancel_reason" placeholder="VD: Khách không nghe máy, từ chối nhận..." class="minimal-input" style="border-color: #fca5a5;" required>
-
-                            <label style="font-size: 12px; font-weight: 700; color: var(--danger); display: block; margin-bottom: 8px;">Ảnh minh chứng (Bắt buộc):</label>
-                            <div class="proof-action-btns" style="display: flex; gap: 8px; margin-bottom: 16px;">
-                                <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; background:#fff; color:var(--danger); padding:12px; border-radius:4px; border:1px dashed #fca5a5; cursor:pointer; font-size:13px; font-weight:600; transition:0.2s;">
-                                    <span class="material-symbols-outlined" style="font-size:18px;">photo_camera</span> Chụp ảnh
-                                    <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleProofSync(this)">
-                                </label>
-                                <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; background:#fff; color:#10b981; padding:12px; border-radius:4px; border:1px dashed #10b981; cursor:pointer; font-size:13px; font-weight:600; transition:0.2s;">
-                                    <span class="material-symbols-outlined" style="font-size:18px;">image</span> Thư viện
-                                    <input type="file" accept="image/*" style="display:none;" onchange="handleProofSync(this)">
-                                </label>
-                            </div>
-                            <input type="file" name="proof_image" class="real-proof-input" accept="image/*" required style="opacity: 0; position: absolute; z-index: -1; width: 1px; height: 1px;">
-                            <div class="active-image-preview" style="display: none; margin-bottom: 16px; position: relative; text-align: center;">
-                                <img src="" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: 4px; border: 1px solid #fca5a5;">
-                                <button type="button" onclick="clearProofPreview(this)" style="position: absolute; top: -10px; right: -10px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;"><span class="material-symbols-outlined" style="font-size: 16px;">close</span></button>
-                            </div>
-
-                            <button type="submit" class="btn-driver-action" style="background: var(--danger); color: white; margin: 0;">
-                                Báo Cáo Tranh Chấp
-                            </button>
-                        </div>
-                    </form>
-                <?php endif; ?>
-
-                <?php if (in_array($order['status'], ['accepted', 'picking_up', 'in_transit', 'shipping'])): ?>
-                    <!-- Form báo cáo Sự cố Lấy/Giao hàng chuyên biệt -->
-                    <?php
-                        $isPickingUp = in_array($order['status'], ['accepted', 'picking_up']);
-                        $btnLabel = $isPickingUp ? 'Báo Cáo Lấy Thất Bại ' : 'Báo Cáo Giao Thất Bại ';
-                        $submitLabel = $isPickingUp ? 'Xác Nhận Hủy Đơn' : 'Xác Nhận Chuyển Hoàn';
-                    ?>
-                    <form method="POST" action="/driver/orders/report-noshow/<?= $order['id'] ?>" enctype="multipart/form-data" style="margin-top: 15px;">
-                        <button type="button" class="btn-driver-action" style="background: #be123c; color: white; border: none;" onclick="document.getElementById('noshow-form-box').style.display='block'; this.style.display='none';">
-                            <span class="material-symbols-outlined" style="font-size: 18px;">person_off</span> <?= $btnLabel ?>
-                        </button>
-
-                        <div id="noshow-form-box" style="display: none; background: #fff1f2; padding: 16px; border: 1px solid #fda4af; border-radius: 4px;">
-                            <label style="font-size: 12px; font-weight: 700; color: #be123c; display: block; margin-bottom: 8px;">Lý do sự cố (Bắt buộc):</label>
-                            <select name="reason" class="minimal-input" style="border-color: #fda4af; margin-bottom: 12px;" required oninvalid="this.setCustomValidity('Vui lòng chọn lý do sự cố.')" onchange="this.setCustomValidity('')">
-                                <option value="">-- Chọn lý do --</option>
-                                <?php if ($isPickingUp): ?>
-                                    <option value="Người gửi không nghe máy / Không liên lạc được">Người gửi không nghe máy / Không liên lạc được</option>
-                                    <option value="Hàng hóa quá khổ / Sai mô tả">Hàng hóa quá khổ / Sai mô tả</option>
-                                    <option value="Phát hiện Hàng cấm / Vi phạm pháp luật">🚨 Phát hiện Hàng cấm / Vi phạm pháp luật</option>
-                                <?php else: ?>
-                                    <option value="Người nhận không nghe máy / Không liên lạc được">Người nhận không nghe máy / Không liên lạc được</option>
-                                    <option value="Người nhận từ chối nhận hàng">Người nhận từ chối nhận hàng</option>
-                                    <option value="Sai địa chỉ giao / Không tìm thấy địa chỉ">Sai địa chỉ giao / Không tìm thấy địa chỉ</option>
-                                <?php endif; ?>
-                                <option value="Lý do khác">Lý do khác</option>
-                            </select>
-
-                            <label style="font-size: 12px; font-weight: 700; color: #be123c; display: block; margin-bottom: 8px;">Ảnh chụp cửa nhà / lịch sử cuộc gọi (Bắt buộc):</label>
-                            <div class="proof-action-btns" style="display: flex; gap: 8px; margin-bottom: 16px;">
-                                <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; background:#fff; color:#be123c; padding:12px; border-radius:4px; border:1px dashed #fda4af; cursor:pointer; font-size:13px; font-weight:600; transition:0.2s;">
-                                    <span class="material-symbols-outlined" style="font-size:18px;">photo_camera</span> Chụp ảnh
-                                    <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleProofSync(this)">
-                                </label>
-                                <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:6px; background:#fff; color:#10b981; padding:12px; border-radius:4px; border:1px dashed #10b981; cursor:pointer; font-size:13px; font-weight:600; transition:0.2s;">
-                                    <span class="material-symbols-outlined" style="font-size:18px;">image</span> Thư viện
-                                    <input type="file" accept="image/*" style="display:none;" onchange="handleProofSync(this)">
-                                </label>
-                            </div>
-                            <input type="file" name="proof_image" class="real-proof-input" accept="image/*" required style="opacity: 0; position: absolute; z-index: -1; width: 1px; height: 1px;">
-                            <div class="active-image-preview" style="display: none; margin-bottom: 16px; position: relative; text-align: center;">
-                                <img src="" alt="Preview" style="max-width: 100%; max-height: 200px; border-radius: 4px; border: 1px solid #fda4af;">
-                                <button type="button" onclick="clearProofPreview(this)" style="position: absolute; top: -10px; right: -10px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 24px; height: 24px; display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0;"><span class="material-symbols-outlined" style="font-size: 16px;">close</span></button>
-                            </div>
-
-                            <button type="submit" class="btn-driver-action" style="background: #be123c; color: white; margin: 0;">
-                                <?= $submitLabel ?>
-                            </button>
-                        </div>
-                    </form>
-                <?php endif; ?>
+                    </div>
+                </div>
             </div>
 
         </div>
 
-        <div class="driver-map-container" style="position: relative;">
-            <div style="position: absolute; top: 12px; left: 12px; z-index: 1000; background: rgba(255,255,255,0.95); backdrop-filter: blur(4px); padding: 8px 12px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.12); display: flex; align-items: center; gap: 10px; border: 1px solid var(--border-color);">
-                <span class="material-symbols-outlined" style="font-size: 20px; color: var(--primary);">satellite_alt</span>
-                <span style="font-size: 13px; font-weight: 800; color: var(--text-main);">Trạm phát GPS</span>
-                <span class="live-indicator">Live</span>
-            </div>
-            <div id="route-map"></div>
-            <div class="driver-nav-panel" id="nav-summary-box" style="display: none; bottom: 12px; top: auto;">
-                <div class="driver-nav-panel-main">
-                    <div>
-                        <div class="driver-nav-label">Ước tính (OSRM)</div>
-                        <div class="driver-next-stop" id="nav-summary">Đang tính toán...</div>
+        <!-- ==================== CỘT PHẢI ==================== -->
+        <div class="right-col">
+            
+            <!-- Khối Thông Tin Chuyến Đi -->
+            <div class="d-card">
+                <div class="d-card-body">
+                    <h2 class="d-card-title">Thông tin chuyến đi</h2>
+                    <div class="d-info-grid">
+                        <div class="d-info-item">
+                            <div class="label">Dịch Vụ</div>
+                            <div class="value" style="color: <?= \App\Models\Order::getShippingMethodColor($order['shipping_method'] ?? 'standard') ?>;">
+                                <?= \App\Models\Order::getShippingMethodLabel($order['shipping_method'] ?? 'standard') ?>
+                            </div>
+                        </div>
+                        <div class="d-info-item">
+                            <div class="label">Dự Kiến Giao</div>
+                            <div class="value"><?= !empty($order['scheduled_at']) ? date('H:i - d/m', strtotime($order['scheduled_at'])) : 'Hôm nay' ?></div>
+                        </div>
+                        <div class="d-info-item">
+                            <div class="label">Khối Lượng</div>
+                            <div class="value"><?= app_e($order['weight'] ?? '0') ?> kg</div>
+                        </div>
+                        <div class="d-info-item">
+                            <div class="label">Phí Thu Hộ (COD/Cước)</div>
+                            <div class="value highlight"><?= app_money($order['shipping_fee'] ?? 0, ' đ') ?></div>
+                        </div>
                     </div>
-                </div>
-                <div class="driver-nav-actions">
-                    <a href="#" id="btn-open-google-maps" target="_blank" class="driver-nav-open disabled">
-                        <span class="material-symbols-outlined" style="font-size: 16px;">navigation</span>
-                        Chỉ đường
-                    </a>
+                    <?php if (!empty($order['note'])): ?>
+                        <div style="margin-top: 20px; padding-top: 16px; border-top: 1px dashed var(--border-color); font-size: 13px;">
+                            <strong style="color: var(--text-muted); display: block; margin-bottom: 4px;">Ghi chú từ khách hàng:</strong>
+                            "<?= app_e($order['note']) ?>"
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
+
+            <!-- Khối Hành Động -->
+            <div class="d-card">
+                <div class="d-card-body d-action-box">
+                    <h2 class="d-card-title" style="text-align: left;">Hành động</h2>
+
+                    <?php if ($order['status'] === 'accepted'): ?>
+                        <form method="POST" action="/driver/orders/update-status/<?= $order['id'] ?>" style="margin:0;">
+                            <input type="hidden" name="status" value="picking_up">
+                            <button type="submit" class="d-btn-submit">Đã Đến Điểm Lấy Hàng</button>
+                        </form>
+
+                    <?php elseif ($order['status'] === 'picking_up'): ?>
+                        <form method="POST" action="/driver/orders/update-status/<?= $order['id'] ?>" style="margin:0;">
+                            <input type="hidden" name="status" value="in_transit">
+                            <button type="submit" class="d-btn-submit">Bắt Đầu Giao Hàng</button>
+                        </form>
+
+                    <?php elseif ($order['status'] === 'in_transit' || $order['status'] === 'shipping'): ?>
+                        <!-- Form Giao Hàng Thành Công -->
+                        <form method="POST" action="/driver/orders/update-status/<?= $order['id'] ?>" enctype="multipart/form-data">
+                            <input type="hidden" name="status" value="completed">
+                            
+                            <!-- Box Upload Ảnh (Styling giống mockup) -->
+                            <div class="d-upload-area" id="proof-container">
+                                <label class="d-upload-label">
+                                    <span class="material-symbols-outlined" style="font-size: 32px; color: var(--text-muted);">photo_camera</span>
+                                    Chụp ảnh xác nhận giao hàng
+                                    <input type="file" name="proof_image" class="real-proof-input" accept="image/*" capture="environment" required style="display: none;" onchange="handleProofSync(this)">
+                                </label>
+                            </div>
+                            <!-- Preview Ảnh -->
+                            <div class="active-image-preview" style="display: none; position: relative; margin-bottom: 20px;">
+                                <img src="" alt="Preview" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <button type="button" onclick="clearProofPreview(this)" style="position: absolute; top: -10px; right: -10px; background: var(--status-red); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer;">
+                                    <span class="material-symbols-outlined" style="font-size: 16px; margin-top: 2px;">close</span>
+                                </button>
+                            </div>
+
+                            <div style="text-align: left; margin-bottom: 8px; font-size: 12px; font-weight: 600; color: var(--text-main);">Mã PIN xác nhận (Tùy chọn)</div>
+                            <input type="text" name="delivery_pin" placeholder="Nhập mã PIN của người nhận" pattern="\d{4}" maxlength="4" class="d-pin-input">
+
+                            <button type="submit" class="d-btn-submit">
+                                Xác Nhận Đã Giao Xong <span class="material-symbols-outlined" style="font-size: 20px;">check_circle</span>
+                            </button>
+                        </form>
+
+                    <?php elseif ($order['status'] === 'returning'): ?>
+                        <!-- Form Hoàn Hàng -->
+                        <form method="POST" action="/driver/orders/update-status/<?= $order['id'] ?>" enctype="multipart/form-data">
+                            <input type="hidden" name="status" value="returned">
+                            
+                            <div class="d-upload-area" id="proof-container">
+                                <label class="d-upload-label">
+                                    <span class="material-symbols-outlined" style="font-size: 32px; color: var(--text-muted);">photo_camera</span>
+                                    Chụp ảnh xác nhận hoàn hàng
+                                    <input type="file" name="proof_image" class="real-proof-input" accept="image/*" capture="environment" required style="display: none;" onchange="handleProofSync(this)">
+                                </label>
+                            </div>
+                            <div class="active-image-preview" style="display: none; position: relative; margin-bottom: 20px;">
+                                <img src="" alt="Preview" style="max-width: 100%; border-radius: 8px; border: 1px solid var(--border-color);">
+                                <button type="button" onclick="clearProofPreview(this)" style="position: absolute; top: -10px; right: -10px; background: var(--status-red); color: white; border: none; border-radius: 50%; width: 28px; height: 28px; cursor: pointer;"><span class="material-symbols-outlined" style="font-size: 16px; margin-top: 2px;">close</span></button>
+                            </div>
+
+                            <button type="submit" class="d-btn-submit">Xác Nhận Đã Hoàn Hàng</button>
+                        </form>
+
+                        <button type="button" class="d-btn-outline" style="color: var(--status-red); border-color: var(--status-red);" onclick="document.getElementById('dispute-return-box').style.display='block'; this.style.display='none';">
+                            Khách Từ Chối Nhận / Sự Cố
+                        </button>
+
+                        <form method="POST" action="/driver/orders/update-status/<?= $order['id'] ?>" enctype="multipart/form-data" id="dispute-return-box" style="display: none; background: #fef2f2; padding: 16px; border: 1px solid #fecaca; border-radius: 8px; margin-top: 16px; text-align: left;">
+                            <input type="hidden" name="status" value="disputed">
+                            <label style="font-size: 12px; font-weight: 700; color: var(--status-red); display: block; margin-bottom: 8px;">Nhập lý do sự cố:</label>
+                            <input type="text" name="cancel_reason" placeholder="VD: Khách không nghe máy..." class="d-pin-input" style="border-color: #fca5a5;" required data-error="Vui lòng nhập lý do sự cố.">
+                            
+                            <label style="font-size: 12px; font-weight: 700; color: var(--status-red); display: block; margin-bottom: 8px;">Ảnh minh chứng (Bắt buộc):</label>
+                            <input type="file" name="proof_image" accept="image/*" required style="width: 100%; margin-bottom: 16px; font-size: 14px;" data-error="Vui lòng chọn ảnh minh chứng.">
+                            
+                            <button type="submit" class="d-btn-submit danger">Báo Cáo Tranh Chấp</button>
+                        </form>
+                    <?php endif; ?>
+
+                    <!-- Report Lấy/Giao Thất Bại (Chung cho các trạng thái Đang đi) -->
+                    <?php if (in_array($order['status'], ['accepted', 'picking_up', 'in_transit', 'shipping'])): ?>
+                        <?php
+                            $isPickingUp = in_array($order['status'], ['accepted', 'picking_up']);
+                            $btnLabel = $isPickingUp ? 'Báo Cáo Lấy Thất Bại' : 'Báo Cáo Giao Thất Bại';
+                            $submitLabel = $isPickingUp ? 'Xác Nhận Hủy Đơn' : 'Xác Nhận Chuyển Hoàn';
+                        ?>
+                        <button type="button" class="d-btn-outline" style="color: var(--text-muted);" onclick="document.getElementById('noshow-form-box').style.display='block'; this.style.display='none';">
+                            <?= $btnLabel ?>
+                        </button>
+
+                        <form method="POST" action="/driver/orders/report-noshow/<?= $order['id'] ?>" enctype="multipart/form-data" id="noshow-form-box" style="display: none; background: #fff1f2; padding: 16px; border: 1px solid #fda4af; border-radius: 8px; margin-top: 16px; text-align: left;">
+                            <label style="font-size: 12px; font-weight: 700; color: #be123c; display: block; margin-bottom: 8px;">Lý do sự cố (Bắt buộc):</label>
+                            <select name="reason" class="d-pin-input" style="border-color: #fda4af; margin-bottom: 12px;" required data-error="Vui lòng chọn lý do sự cố.">
+                                <option value="">-- Chọn lý do --</option>
+                                <?php if ($isPickingUp): ?>
+                                    <option value="Người gửi không nghe máy">Người gửi không nghe máy / Không liên lạc được</option>
+                                    <option value="Hàng hóa quá khổ / Sai mô tả">Hàng hóa quá khổ / Sai mô tả</option>
+                                    <option value="Phát hiện Hàng cấm">🚨 Phát hiện Hàng cấm / Vi phạm pháp luật</option>
+                                <?php else: ?>
+                                    <option value="Người nhận không nghe máy">Người nhận không nghe máy / Không liên lạc được</option>
+                                    <option value="Người nhận từ chối nhận hàng">Người nhận từ chối nhận hàng</option>
+                                    <option value="Sai địa chỉ giao">Sai địa chỉ giao / Không tìm thấy địa chỉ</option>
+                                <?php endif; ?>
+                                <option value="Lý do khác">Lý do khác</option>
+                            </select>
+
+                            <label style="font-size: 12px; font-weight: 700; color: #be123c; display: block; margin-bottom: 8px;">Ảnh chụp minh chứng (Bắt buộc):</label>
+                            <input type="file" name="proof_image" accept="image/*" required style="width: 100%; margin-bottom: 16px; font-size: 14px;" data-error="Vui lòng chọn ảnh minh chứng.">
+
+                            <button type="submit" class="d-btn-submit danger"><?= $submitLabel ?></button>
+                        </form>
+                    <?php endif; ?>
+
+                </div>
+            </div>
+
         </div>
 
     </div>
 </div>
 
+<!-- ==================== SCRIPT GIỮ NGUYÊN ==================== -->
 <script>
-    // Hiển thị ảnh xem trước (Preview) ngay sau khi tài xế chọn ảnh
     function handleProofSync(input) {
         if (input.files && input.files[0]) {
             const form = input.closest('form');
-            const realInput = form.querySelector('.real-proof-input');
             const previewContainer = form.querySelector('.active-image-preview');
             const img = previewContainer.querySelector('img');
-            const actionBtns = form.querySelector('.proof-action-btns');
-
-            const dataTransfer = new DataTransfer();
-            dataTransfer.items.add(input.files[0]);
-            realInput.files = dataTransfer.files;
+            const uploadArea = form.querySelector('.d-upload-area');
 
             img.src = URL.createObjectURL(input.files[0]);
             previewContainer.style.display = 'block';
-            actionBtns.style.display = 'none';
-
-            input.value = '';
+            if(uploadArea) uploadArea.style.display = 'none';
         }
     }
 
-    // Hủy bỏ ảnh minh chứng đã chọn
     function clearProofPreview(btn) {
         const form = btn.closest('form');
         const realInput = form.querySelector('.real-proof-input');
         const previewContainer = form.querySelector('.active-image-preview');
-        const actionBtns = form.querySelector('.proof-action-btns');
+        const uploadArea = form.querySelector('.d-upload-area');
 
-        realInput.value = '';
-        previewContainer.style.display = 'none';
-        actionBtns.style.display = 'flex';
+        if(realInput) realInput.value = '';
+        if(previewContainer) previewContainer.style.display = 'none';
+        if(uploadArea) uploadArea.style.display = 'block';
     }
 </script>
 
@@ -319,7 +287,6 @@
     'receiverRole' => 'Khách Hàng'
 ]) ?>
 <script>
-    // Lắng nghe Pusher để tự động load tin nhắn
     document.addEventListener('DOMContentLoaded', () => {
         if (typeof pusher !== 'undefined' && typeof currentUserId !== 'undefined') {
             const channel = pusher.channel('notify-user-' + currentUserId) || pusher.subscribe('notify-user-' + currentUserId);
@@ -331,7 +298,7 @@
                     } else {
                         const title = document.getElementById('chat-header-title');
                         if (title) {
-                            title.style.color = '#fde047'; // Đổi tiêu đề sang màu vàng
+                            title.style.color = '#fde047'; 
                             title.innerText = 'Chat (Có tin nhắn mới!)';
                         }
                     }
@@ -359,6 +326,21 @@
         const senderName = <?= json_encode($order['sender_name'] ?? 'Người gửi', JSON_UNESCAPED_UNICODE) ?>;
         const receiverName = <?= json_encode($order['receiver_name'] ?? 'Khách hàng', JSON_UNESCAPED_UNICODE) ?>;
 
+        let previousDriverLat = driverLat;
+        let previousDriverLng = driverLng;
+        let driverHeadingAngle = 0;
+        
+        function calculateBearing(lat1, lng1, lat2, lng2) {
+            const toRad = Math.PI / 180;
+            const toDeg = 180 / Math.PI;
+            const dLng = (lng2 - lng1) * toRad;
+            const y = Math.sin(dLng) * Math.cos(lat2 * toRad);
+            const x = Math.cos(lat1 * toRad) * Math.sin(lat2 * toRad) -
+                      Math.sin(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.cos(dLng);
+            const brng = Math.atan2(y, x) * toDeg;
+            return (brng + 360) % 360;
+        }
+
         if (senderLat !== 0 && senderLng !== 0 && receiverLat !== 0 && receiverLng !== 0) {
             const map = L.map('route-map').setView([senderLat, senderLng], 14);
             L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -369,8 +351,8 @@
 
             let routingControl = null;
             let currentHasLoc = false;
+            let driverMarker = null;
 
-            // Xác định điểm đến tiếp theo dựa trên trạng thái (Lấy hay Giao hàng)
             function resolveDestinationInfo() {
                 if (orderStatus === 'accepted' || orderStatus === 'picking_up') {
                     return { lat: senderLat, lng: senderLng, label: `Điểm lấy hàng: ${senderName}` };
@@ -381,24 +363,6 @@
                 return { lat: receiverLat, lng: receiverLng, label: `Điểm giao hàng: ${receiverName}` };
             }
 
-            // Cập nhật thông tin lộ trình và URL mở Google Maps
-            function updateRouteNavigationInfo(currentDriverLat, currentDriverLng) {
-                const destination = resolveDestinationInfo();
-                const params = new URLSearchParams({
-                    api: '1',
-                    destination: `${destination.lat},${destination.lng}`,
-                    travelmode: 'driving'
-                });
-
-                if (currentDriverLat !== 0 && currentDriverLng !== 0) {
-                    params.set('origin', `${currentDriverLat},${currentDriverLng}`);
-                }
-
-                document.getElementById('btn-ggmap-nav').href = `https://www.google.com/maps/dir/?${params.toString()}`;
-                document.getElementById('route-next-stop').textContent = destination.label;
-            }
-
-            // Vẽ đường dẫn lộ trình lên bản đồ Leaflet
             function drawRoute(currentDriverLat, currentDriverLng) {
                 const waypoints = [];
                 currentHasLoc = (currentDriverLat !== 0 && currentDriverLng !== 0);
@@ -432,19 +396,15 @@
                     waypoints.push(L.latLng(receiverLat, receiverLng));
                 }
 
-                updateRouteNavigationInfo(currentDriverLat, currentDriverLng);
-
-                const createCustomMarkerIcon = (icon, color) => L.divIcon({
+                const createCustomMarkerIcon = (icon, color, angle = 0) => L.divIcon({
                     className: 'custom-div-icon',
-                    html: `<div style="background-color:${color};width:36px;height:36px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;position:relative;"><span class="material-symbols-outlined" style="color:#fff;font-size:20px;">${icon}</span><div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);border-width:8px 6px 0;border-style:solid;border-color:#fff transparent transparent transparent;"></div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);border-width:6px 4px 0;border-style:solid;border-color:${color} transparent transparent transparent;"></div></div>`,
+                    html: `<div style="background-color:${color};width:36px;height:36px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;position:relative;"><span class="material-symbols-outlined marker-rotate-icon" style="color:#fff;font-size:20px;transition: transform 0.4s ease; transform: rotate(${angle}deg);">${icon}</span><div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);border-width:8px 6px 0;border-style:solid;border-color:#fff transparent transparent transparent;"></div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);border-width:6px 4px 0;border-style:solid;border-color:${color} transparent transparent transparent;"></div></div>`,
                     iconSize: [36, 44], iconAnchor: [18, 44], popupAnchor: [0, -44]
                 });
-                const driverIcon = createCustomMarkerIcon('two_wheeler', '#2563eb');
-                const senderIcon = createCustomMarkerIcon('storefront', '#f59e0b');
-                const receiverIcon = createCustomMarkerIcon('location_on', '#10b981');
 
                 if (routingControl) {
-                    routingControl.setWaypoints(waypoints);
+                    // TỐI ƯU HÓA: Không gọi setWaypoints để tránh re-render OSRM Router liên tục mỗi giây khi GPS cập nhật.
+                    // Vị trí Marker tài xế sẽ được tự động dịch chuyển qua setLatLng ở hàm watchPosition phía dưới.
                     return;
                 }
 
@@ -453,12 +413,16 @@
                     router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1', language: 'vi' }),
                     routeWhileDragging: false,
                     addWaypoints: false,
-                    fitSelectedRoutes: true,
+                    fitSelectedRoutes: false,
                     show: false,
                     lineOptions: {
                         styles: [{color: '#2563eb', opacity: 0.8, weight: 6}]
                     },
                     createMarker: function(i, wp, nWps) {
+                        const driverIcon = createCustomMarkerIcon('two_wheeler', '#2563eb', driverHeadingAngle);
+                        const senderIcon = createCustomMarkerIcon('storefront', '#f59e0b');
+                        const receiverIcon = createCustomMarkerIcon('location_on', '#10b981');
+
                         let iconToUse;
                         if (orderStatus === 'accepted' || orderStatus === 'picking_up') {
                             if (currentHasLoc) { iconToUse = (i === 0) ? driverIcon : senderIcon; }
@@ -473,41 +437,32 @@
                             iconToUse = (i === 0) ? senderIcon : receiverIcon;
                         }
 
-                        // Tự động xây dựng URL chuyển hướng Google Maps thông minh
-                        let destLat, destLng;
-                        if (orderStatus === 'accepted' || orderStatus === 'picking_up') { destLat = senderLat; destLng = senderLng; }
-                        else if (orderStatus === 'in_transit' || orderStatus === 'shipping') { destLat = receiverLat; destLng = receiverLng; }
-                        else if (orderStatus === 'returning') { destLat = senderLat; destLng = senderLng; }
-                        else { destLat = receiverLat; destLng = receiverLng; }
-
-                        let originParam = currentHasLoc ? `${currentDriverLat},${currentDriverLng}` : '';
-                        let ggMapUrl = `https://www.google.com/maps/dir/?api=1&destination=${destLat},${destLng}&travelmode=driving`;
-                        if (originParam) ggMapUrl += `&origin=${originParam}`;
-                        document.getElementById('btn-ggmap-nav').href = ggMapUrl;
-
                         let title = '';
                         if (iconToUse === driverIcon) title = 'Vị trí của bạn';
-                        if (iconToUse === senderIcon) title = orderStatus === 'returning' ? 'Điểm hoàn hàng (Người gửi)' : 'Điểm lấy hàng';
+                        if (iconToUse === senderIcon) title = orderStatus === 'returning' ? 'Điểm hoàn hàng' : 'Điểm lấy hàng';
                         if (iconToUse === receiverIcon) title = 'Điểm giao hàng';
 
-                        return L.marker(wp.latLng, {icon: iconToUse}).bindPopup(`<b>${title}</b>`);
+                        const marker = L.marker(wp.latLng, {icon: iconToUse}).bindPopup(`<b>${title}</b>`);
+                        
+                        if (iconToUse === driverIcon) driverMarker = marker;
+                        return marker;
                     }
                 }).addTo(map);
 
                 routingControl.on('routesfound', function(e) {
-                    const summary = e.routes[0].summary;
-                    document.getElementById('route-distance').textContent = (summary.totalDistance / 1000).toFixed(1);
-                    document.getElementById('route-time').textContent = Math.round(summary.totalTime / 60);
-                    document.getElementById('route-info').style.display = 'block';
+                    if (!map._hasFittedRoute) {
+                        const bounds = L.latLngBounds(e.routes[0].coordinates);
+                        map.fitBounds(bounds, { padding: [40, 40] });
+                        map._hasFittedRoute = true;
+                    }
                 });
             }
 
             drawRoute(driverLat, driverLng);
 
-            let lastPushTime = 0; // Lưu vết thời gian
+            let lastPushTime = 0;
             const pushLocationToServer = (lat, lng, accuracy = null) => {
                 const now = Date.now();
-                // Tối ưu: Nếu chưa qua 10 giây kể từ lần gửi cuối, không gửi lên Server
                 if (now - lastPushTime < 10000) return;
                 lastPushTime = now;
 
@@ -518,37 +473,47 @@
                 }).catch(() => {});
             };
 
-            window.recenterMapDetail = function() {
-                if (navigator.geolocation) {
-                    const btn = document.getElementById('btn-recenter-detail');
-                    if(btn) btn.innerHTML = '<span class="material-symbols-outlined icon-spin" style="font-size: 20px;">sync</span>';
-
-                    navigator.geolocation.getCurrentPosition(function(position) {
-                        const currentLat = position.coords.latitude;
-                        const currentLng = position.coords.longitude;
-                        map.setView([currentLat, currentLng], 17);
-                        drawRoute(currentLat, currentLng);
-                        if (['accepted', 'picking_up', 'in_transit', 'shipping', 'returning'].includes(orderStatus)) {
-                            pushLocationToServer(currentLat, currentLng, position.coords.accuracy);
-                        }
-                        if(btn) btn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 20px;">my_location</span>';
-                    }, function(err) {
-                        if(btn) btn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 20px;">my_location</span>';
-                        alert("Không thể lấy vị trí. Vui lòng kiểm tra quyền truy cập vị trí.");
-                    }, { enableHighAccuracy: true });
-                }
-            };
-
             if (navigator.geolocation && ['accepted', 'picking_up', 'in_transit', 'shipping', 'returning'].includes(orderStatus)) {
-
                 navigator.geolocation.getCurrentPosition(function(position) {
-                    drawRoute(position.coords.latitude, position.coords.longitude);
-                    pushLocationToServer(position.coords.latitude, position.coords.longitude, position.coords.accuracy);
+                    const newLat = position.coords.latitude;
+                    const newLng = position.coords.longitude;
+                    if (previousDriverLat !== newLat || previousDriverLng !== newLng) {
+                        driverHeadingAngle = calculateBearing(previousDriverLat, previousDriverLng, newLat, newLng);
+                        previousDriverLat = newLat;
+                        previousDriverLng = newLng;
+                        
+                        if (driverMarker) {
+                            driverMarker.setLatLng([newLat, newLng]);
+                            if (driverMarker._icon) {
+                                const iconSpan = driverMarker._icon.querySelector('.marker-rotate-icon');
+                                if (iconSpan) iconSpan.style.transform = `rotate(${driverHeadingAngle}deg)`;
+                            }
+                        } else {
+                            drawRoute(newLat, newLng);
+                        }
+                    }
+                    pushLocationToServer(newLat, newLng, position.coords.accuracy);
                 }, null, { enableHighAccuracy: true });
 
                 navigator.geolocation.watchPosition(function(position) {
-                    drawRoute(position.coords.latitude, position.coords.longitude);
-                    pushLocationToServer(position.coords.latitude, position.coords.longitude, position.coords.accuracy);
+                    const newLat = position.coords.latitude;
+                    const newLng = position.coords.longitude;
+                    if (previousDriverLat !== newLat || previousDriverLng !== newLng) {
+                        driverHeadingAngle = calculateBearing(previousDriverLat, previousDriverLng, newLat, newLng);
+                        previousDriverLat = newLat;
+                        previousDriverLng = newLng;
+                        
+                        if (driverMarker) {
+                            driverMarker.setLatLng([newLat, newLng]);
+                            if (driverMarker._icon) {
+                                const iconSpan = driverMarker._icon.querySelector('.marker-rotate-icon');
+                                if (iconSpan) iconSpan.style.transform = `rotate(${driverHeadingAngle}deg)`;
+                            }
+                        } else {
+                            drawRoute(newLat, newLng);
+                        }
+                    }
+                    pushLocationToServer(newLat, newLng, position.coords.accuracy);
                 }, null, { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 });
             }
         } else {

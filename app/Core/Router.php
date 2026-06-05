@@ -31,14 +31,26 @@ class Router
     public function get($path, $callback, array $middlewares = [])
     {
         $middlewares = array_merge($this->middlewareGroups, $middlewares);
-        $this->routes['get'][$path] = ['callback' => $callback, 'middlewares' => $middlewares];
+        // TỐI ƯU HÓA: Biên dịch sẵn Regex pattern cho các route động ngay lúc đăng ký
+        $pattern = null;
+        if (strpos($path, '{') !== false) {
+            $pattern = preg_replace('/\/\{([a-zA-Z0-9_]+)\}/', '/(?P<$1>[a-zA-Z0-9_-]+)', $path);
+            $pattern = '#^' . $pattern . '$#';
+        }
+        $this->routes['get'][$path] = ['callback' => $callback, 'middlewares' => $middlewares, 'pattern' => $pattern];
     }
 
     // Đăng ký một route mới xử lý yêu cầu POST.
     public function post($path, $callback, array $middlewares = [])
     {
         $middlewares = array_merge($this->middlewareGroups, $middlewares);
-        $this->routes['post'][$path] = ['callback' => $callback, 'middlewares' => $middlewares];
+        // TỐI ƯU HÓA: Biên dịch sẵn Regex pattern 
+        $pattern = null;
+        if (strpos($path, '{') !== false) {
+            $pattern = preg_replace('/\/\{([a-zA-Z0-9_]+)\}/', '/(?P<$1>[a-zA-Z0-9_-]+)', $path);
+            $pattern = '#^' . $pattern . '$#';
+        }
+        $this->routes['post'][$path] = ['callback' => $callback, 'middlewares' => $middlewares, 'pattern' => $pattern];
     }
 
     // Phân tích URL hiện tại và gọi Controller/Middleware tương ứng để xử lý và trả về phản hồi.
@@ -51,15 +63,12 @@ class Router
         // Nếu không khớp trực tiếp, kiểm tra các route động
         if ($routeInfo === false) {
             foreach ($this->routes[$method] ?? [] as $route => $info) {
-                // TỐI ƯU: Bỏ qua các route tĩnh (không có tham số {}) vì đã kiểm tra không khớp ở trên
-                if (strpos($route, '{') === false) {
+                // TỐI ƯU HÓA SÂU: Đã có pattern Regex biên dịch sẵn, không cần gọi preg_replace cực kỳ tốn chi phí ở đây nữa
+                if ($info['pattern'] === null) {
                     continue;
                 }
 
-                $routeRegex = preg_replace('/\/\{([a-zA-Z0-9_]+)\}/', '/(?P<$1>[a-zA-Z0-9_-]+)', $route);
-                $routeRegex = '#^' . $routeRegex . '$#';
-
-                if (preg_match($routeRegex, $path, $matches)) {
+                if (preg_match($info['pattern'], $path, $matches)) {
                     $params = [];
                     foreach ($matches as $key => $value) {
                         if (is_string($key)) {

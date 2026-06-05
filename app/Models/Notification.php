@@ -115,7 +115,12 @@ class Notification
             $params = [];
             foreach ($adminIds as $adminId) {
                 $values[] = "(?, ?, ?, ?, ?, 0, NOW())";
-                array_push($params, $adminId, $title, $message, $type, $link);
+                // Tối ưu hóa: Dùng toán tử append [] thay cho array_push trong vòng lặp để giảm overhead
+                $params[] = $adminId;
+                $params[] = $title;
+                $params[] = $message;
+                $params[] = $type;
+                $params[] = $link;
             }
             
             $sql = "INSERT INTO notifications (user_id, title, message, type, link, is_read, created_at) VALUES " . implode(', ', $values);
@@ -124,14 +129,14 @@ class Notification
                 //  thông báo đẩy (Real-time) qua WebSockets cho tất cả Admin
                 try {
                     $pusher = new \App\Services\PusherService();
-                    foreach ($adminIds as $adminId) {
-                        $pusher->trigger('notify-user-' . $adminId, 'new_notification', [
-                            'title' => $title,
-                            'message' => $message,
-                            'type' => $type,
-                            'link' => $link
-                        ]);
-                    }
+                    // TỐI ƯU HÓA: Gộp mạng (Network Batching) thay vì gọi API Pusher riêng lẻ N lần trong vòng lặp
+                    $channels = array_map(fn($id) => 'notify-user-' . $id, $adminIds);
+                    $pusher->trigger($channels, 'new_notification', [
+                        'title' => $title,
+                        'message' => $message,
+                        'type' => $type,
+                        'link' => $link
+                    ]);
                 } catch (\Throwable $e) {
                     // Bỏ qua nếu cấu hình Pusher có lỗi
                 }

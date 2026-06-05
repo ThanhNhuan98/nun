@@ -66,19 +66,13 @@
 
     <script>
         document.addEventListener("DOMContentLoaded", function() {
-            const toggleButtons = document.querySelectorAll('.toggle-password');
-            const passwordFields = document.querySelectorAll('.password-field');
-            
-            toggleButtons.forEach(button => {
-                button.addEventListener('click', function() {
-                    if (passwordFields.length > 0) {
-                        const isPassword = passwordFields[0].type === 'password';
-                        const newType = isPassword ? 'text' : 'password';
-                        const newIcon = isPassword ? 'visibility' : 'visibility_off';
-                        
-                        passwordFields.forEach(field => field.type = newType);
-                        toggleButtons.forEach(btn => btn.textContent = newIcon);
-                    }
+            document.querySelectorAll('.toggle-password').forEach(toggle => {
+                toggle.addEventListener('click', function (e) {
+                    const wrapper = e.target.closest('.input-wrapper');
+                    const passwordInput = wrapper.querySelector('.password-field');
+                    const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password';
+                    passwordInput.setAttribute('type', type);
+                    e.target.textContent = type === 'password' ? 'visibility_off' : 'visibility';
                 });
             });
         });

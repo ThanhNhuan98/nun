@@ -1,9 +1,7 @@
 import json
 import sys
 import io
-import urllib.error
-import urllib.parse
-import urllib.request
+import httpx # Tối ưu: Dùng httpx để hỗ trợ gọi API bất đồng bộ (async)
 import concurrent.futures
 try:
     from ortools.constraint_solver import pywrapcp, routing_enums_pb2
@@ -12,6 +10,7 @@ except ImportError:
     OR_TOOLS_AVAILABLE = False
 from math import asin, cos, radians, sin, sqrt
 from datetime import datetime
+import asyncio
 
 # Bán kính Trái Đất tính bằng km (Hằng số toàn cục)
 EARTH_RADIUS_KM = 6371.0
@@ -63,7 +62,7 @@ def traffic_meta(scheduled_time_str=""):
         return 1.05, "Cuối tuần"
     return 1.00, "Bình thường"
 
-def osrm_table(locations):
+async def osrm_table_async(locations, client: httpx.AsyncClient):
     """
     Gọi API OSRM (Bản đồ) để lấy toàn bộ ma trận thời gian (Duration Matrix) giữa nhiều điểm trong 1 lần gọi.
     Dữ liệu này là đầu vào bắt buộc để thuật toán Google OR-Tools tính toán đường đi.
@@ -71,30 +70,33 @@ def osrm_table(locations):
     """
     # OSRM yêu cầu định dạng "kinh_độ,vĩ_độ;kinh_độ,vĩ_độ..."
     coords = ";".join([f"{lon},{lat}" for lat, lon in locations])
-    url = f"https://router.project-osrm.org/table/v1/driving/{coords}?annotations=duration"
+    # Sử dụng máy chủ OSRM public, hoặc đổi thành URL local của bạn (VD: http://localhost:5000)
+    url = f"http://router.project-osrm.org/table/v1/driving/{coords}?annotations=duration"
 
     try:
-        with urllib.request.urlopen(url, timeout=10) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-            if payload.get("code") == "Ok":
-                return payload.get("durations") # Trả về mảng 2 chiều chứa thời gian (giây)
+        # Tối ưu: Dùng httpx.AsyncClient để gọi API không block luồng chính
+        response = await client.get(url, timeout=10.0)
+        response.raise_for_status() # Ném lỗi nếu HTTP status là 4xx hoặc 5xx
+        payload = response.json()
+        if payload.get("code") == "Ok":
+            return payload.get("durations")
     except Exception:
         pass # Lỗi mạng hoặc API quá tải
     # Trả về None để hệ thống tự động fallback sang tính toán bằng Haversine
     return None
 
-def osrm_route(lat1, lon1, lat2, lon2, vehicle_speed=28.0):
+async def osrm_route_async(lat1, lon1, lat2, lon2, client: httpx.AsyncClient, vehicle_speed=28.0):
     """
     Gọi API OSRM để tìm lộ trình lái xe thực tế nối 2 điểm.
     Được gọi khi Khách hàng tạo đơn để tính chính xác quãng đường (distance_km) và thời gian (duration_s).
     """
-    query = urllib.parse.quote(f"{lon1},{lat1};{lon2},{lat2}", safe=";,")
-    url = f"https://router.project-osrm.org/route/v1/driving/{query}?overview=false"
+    url = f"http://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false"
 
     try:
-        with urllib.request.urlopen(url, timeout=10) as response:
-            payload = json.loads(response.read().decode("utf-8"))
-    except (urllib.error.URLError, TimeoutError, ValueError):
+        response = await client.get(url, timeout=10.0)
+        response.raise_for_status()
+        payload = response.json()
+    except (httpx.RequestError, httpx.HTTPStatusError, json.JSONDecodeError):
         payload = None
 
     # Nếu gọi API lỗi hoặc OSRM không tìm được đường, dùng phương án dự phòng (Haversine)
@@ -139,7 +141,7 @@ def calculate_fee_breakdown(distance_km, weight, pricing, service_type="standard
 
 
 
-def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity, vehicle_speed=28.0):
+def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity, vehicle_speed=28.0, osrm_matrix=None):
     """
     Giải bài toán Tối ưu Lộ trình Nhận-Giao (VRPPD) bằng thư viện Google OR-Tools.
     Tìm đường đi ngắn nhất qua nhiều điểm, cho phép giao/nhận xen kẽ mà KHÔNG VƯỢT QUÁ tải trọng của xe.
@@ -182,7 +184,7 @@ def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity,
     if not OR_TOOLS_AVAILABLE:
         route_details = []
         for order in batch_orders_data:
-            route_details.append({'type': 'pickup', 'order_id': order['id'], 'address': order.get('pickup_address', '')})
+            route_details.append({'type': 'pickup', 'order_id': order['id'], 'address': "⚠️ [CHƯA CÀI OR-TOOLS] " + order.get('pickup_address', '')})
             route_details.append({'type': 'delivery', 'order_id': order['id'], 'address': order.get('delivery_address', '')})
         return {'route_details': route_details, 'total_duration_s': 0}
 
@@ -200,8 +202,8 @@ def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity,
 
     num_locations = len(locations)
 
-    # Lấy ma trận thời gian đi lại giữa tất cả các điểm
-    duration_matrix = osrm_table(locations)
+    # Tối ưu: Nhận ma trận thời gian đã được tính toán sẵn từ bên ngoài
+    duration_matrix = osrm_matrix
     
     # TỐI ƯU HÓA: Sử dụng mảng 2 chiều (List of Lists) thay vì Dictionary of Dictionaries 
     # Tăng tốc độ truy xuất O(1) trên RAM cho hàm callback của C++ OR-Tools
@@ -253,6 +255,11 @@ def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity,
         # Quy đổi trọng lượng (kg) thành số nguyên gram để thuật toán tính toán chính xác
         int_demands = [int(d * 1000) for d in demands]
         int_capacity = int(max_weight_capacity * 1000)
+        
+        # SỬA LỖI: Đảm bảo sức chứa xe tối thiểu bằng tổng lượng hàng Lấy để tránh bị Vô nghiệm (Infeasible)
+        max_batch_demand = sum([d for d in int_demands if d > 0])
+        if int_capacity < max_batch_demand:
+            int_capacity = max_batch_demand
 
         # Hàm callback theo dõi tải trọng hiện tại trên xe
         def demand_callback(from_index):
@@ -281,18 +288,18 @@ def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity,
 
         # Cấu hình chiến lược tìm kiếm
         search_parameters = pywrapcp.DefaultRoutingSearchParameters()
-        # First solution: Tìm phương án đầu tiên dựa trên Cung đường rẻ nhất (ngắn nhất)
-        search_parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PATH_CHEAPEST_ARC
+        # QUAN TRỌNG: Phải dùng PARALLEL_CHEAPEST_INSERTION để AI có thể đan xen Lấy/Giao
+        search_parameters.first_solution_strategy = routing_enums_pb2.FirstSolutionStrategy.PARALLEL_CHEAPEST_INSERTION
         # Cải thiện phương án bằng thuật toán Metaheuristic có định hướng (Thoát khỏi tối ưu cục bộ)
         search_parameters.local_search_metaheuristic = routing_enums_pb2.LocalSearchMetaheuristic.GUIDED_LOCAL_SEARCH
         
         # TỐI ƯU HÓA 2: Giới hạn thời gian động (Dynamic Time Limit)
         if num_orders <= 3:
-            # Các cụm nhỏ giải chỉ mất vài mili-giây, ta ngắt sớm sau 0.5s (500 triệu nanos)
             search_parameters.time_limit.seconds = 0
             search_parameters.time_limit.nanos = 500000000 
         else:
-            search_parameters.time_limit.seconds = 1 
+            # Tăng thời gian giải thuật lên 2 giây cho cụm 4-5 đơn để AI kịp tìm tuyến đường lồng ghép tối ưu nhất
+            search_parameters.time_limit.seconds = 2 
 
         # Bắt đầu giải bài toán
         solution = routing.SolveWithParameters(search_parameters)
@@ -300,31 +307,43 @@ def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity,
         if solution:
             # Bóc tách kết quả đường đi từ solution
             route_details = []
-            total_duration_s = solution.ObjectiveValue()
+            total_duration_s = 0
+            
+            # Kiểm tra xem AI có bị ép phải bỏ qua điểm nào không
+            for i in range(1, num_locations):
+                if solution.Value(routing.NextVar(manager.NodeToIndex(i))) == manager.NodeToIndex(i):
+                    raise Exception("AI bị giới hạn, không thể ghép toàn bộ các đơn.")
+                    
             index = routing.Start(0)
             while not routing.IsEnd(index):
                 node_index = manager.IndexToNode(index)
                 if node_index != 0:
                     route_details.append(node_map[node_index])
+                previous_index = index
                 index = solution.Value(routing.NextVar(index))
+                total_duration_s += routing.GetArcCostForVehicle(previous_index, index, 0)
+                
             return {
                 'route_details': route_details,
                 'total_duration_s': total_duration_s
             }
-    except Exception:
-        pass
+        else:
+            raise Exception("Thuật toán bế tắc (Infeasible).")
+    except Exception as e:
+        error_msg = str(e)
 
     # Lỗi giải thuật: Phục hồi về lộ trình tuyến tính thông thường
     route_details = []
     fallback_duration = 0
     for order in batch_orders_data:
-        route_details.append({'type': 'pickup', 'order_id': order['id'], 'address': order.get('pickup_address', '')})
+        # In thẳng lỗi ra màn hình để báo hiệu AI đang gặp sự cố và chạy Fallback
+        route_details.append({'type': 'pickup', 'order_id': order['id'], 'address': f"⚠️ [AI LỖI: {error_msg}] " + order.get('pickup_address', '')})
         route_details.append({'type': 'delivery', 'order_id': order['id'], 'address': order.get('delivery_address', '')})
         dist = haversine_distance(order['sender_lat'], order['sender_lng'], order['receiver_lat'], order['receiver_lng'])
         fallback_duration += int((dist / vehicle_speed) * 3600)
     return {'route_details': route_details, 'total_duration_s': fallback_duration}
 
-def optimize_batches(driver_location, orders, max_orders_per_batch, max_weight_capacity, vehicle_speed=28.0):
+async def optimize_batches_async(driver_location, orders, max_orders_per_batch, max_weight_capacity, vehicle_speed=28.0):
     """
     Thuật toán Gom cụm (Clustering).
     Nhận danh sách toàn bộ đơn hàng đang chờ, nhóm các đơn hàng nằm gần nhau (< 3km) vào cùng một chuyến đi.
@@ -401,9 +420,10 @@ def optimize_batches(driver_location, orders, max_orders_per_batch, max_weight_c
                         current_batch_weight += candidate_weight
                         orders_to_remove.append(order)
 
-            # Xóa các đơn đã được ghép khỏi hàng chờ phân bổ
-            for o in orders_to_remove:
-                unassigned_orders.remove(o)
+            # Xóa các đơn đã được ghép khỏi hàng chờ phân bổ (Tối ưu hóa: Dùng Set để lọc O(N) thay vì O(N^2) của remove trong vòng lặp)
+            if orders_to_remove:
+                removed_ids = {o['id'] for o in orders_to_remove}
+                unassigned_orders = [o for o in unassigned_orders if o['id'] not in removed_ids]
 
             clustered_batches.append({
                 "data": current_batch_data,
@@ -414,11 +434,25 @@ def optimize_batches(driver_location, orders, max_orders_per_batch, max_weight_c
         # Tránh nút thắt cổ chai khi có quá nhiều cụm đơn cần gọi API OSRM và OR-Tools
         batches = []
 
-        def process_single_batch(batch_info, index):
+        # Tối ưu: Dùng context manager của httpx để quản lý kết nối hiệu quả
+        async def process_single_batch(batch_info, index, client: httpx.AsyncClient):
             batch_data = batch_info["data"]
             batch_weight = batch_info["weight"]
             
-            pdp_solution = solve_pdp_for_batch(batch_data, driver_location, max_weight_capacity, vehicle_speed)
+            # Tối ưu: Lấy ma trận OSRM một lần duy nhất cho mỗi batch
+            all_locations = [ (driver_location['lat'], driver_location['lng']) ] if driver_location else []
+            for o in batch_data:
+                all_locations.extend([(o['sender_lat'], o['sender_lng']), (o['receiver_lat'], o['receiver_lng'])])
+            osrm_matrix = await osrm_table_async(all_locations, client) if all_locations else None
+
+            # Tối ưu hóa sâu: Đưa tác vụ CPU-bound (thuật toán OR-Tools) vào ThreadPoolExecutor
+            # Điều này giúp Event Loop của FastAPI không bị đóng băng khi tính toán ma trận, duy trì khả năng nhận hàng ngàn Request cùng lúc.
+            loop = asyncio.get_running_loop()
+            pdp_solution = await loop.run_in_executor(
+                None, 
+                solve_pdp_for_batch, 
+                batch_data, driver_location, max_weight_capacity, vehicle_speed, osrm_matrix
+            )
             total_duration_s = pdp_solution['total_duration_s']
             
             access_duration_s = 0
@@ -447,11 +481,14 @@ def optimize_batches(driver_location, orders, max_orders_per_batch, max_weight_c
                 "priority": min([get_urgency_key(o)[0] for o in batch_data])
             }
 
-        # Khởi tạo Pool chạy song song tối đa 10 tiến trình (threads)
-        with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
-            futures = [executor.submit(process_single_batch, b, i) for i, b in enumerate(clustered_batches)]
-            for future in concurrent.futures.as_completed(futures):
-                batches.append(future.result())
+        # Tối ưu: Sử dụng asyncio.gather để chạy các tác vụ bất đồng bộ song song
+        async def run_all_batches():
+            async with httpx.AsyncClient() as client:
+                tasks = [process_single_batch(b, i, client) for i, b in enumerate(clustered_batches)]
+                return await asyncio.gather(*tasks)
+
+        # Chờ tất cả các cụm (batches) được xử lý hoàn tất
+        batches = await run_all_batches()
                 
         # Sắp xếp lại theo thứ tự BATCH_1, BATCH_2 cho chuẩn xác
         batches.sort(key=lambda x: int(x["batch_id"].split("_")[1]))
@@ -478,13 +515,13 @@ if __name__ == "__main__":
         if len(sys.argv) > 1 and sys.argv[1] == "--batch":
             json_data = sys.argv[2]
             payload = json.loads(json_data)
-            result = optimize_batches(
+            result = asyncio.run(optimize_batches_async(
                 payload.get('driver_location'),
                 payload.get('orders', []),
                 payload.get('max_orders_per_batch', 5),
                 payload.get('max_weight_capacity', 0),
                 payload.get('vehicle_speed', 28.0)
-            )
+            ))
             print(json.dumps(result, ensure_ascii=False))
             sys.exit(0)
 
@@ -494,13 +531,13 @@ if __name__ == "__main__":
             with open(file_path, 'r', encoding='utf-8') as f:
                 json_data = f.read()
             payload = json.loads(json_data)
-            result = optimize_batches(
+            result = asyncio.run(optimize_batches_async(
                 payload.get('driver_location'),
                 payload.get('orders', []),
                 payload.get('max_orders_per_batch', 5),
                 payload.get('max_weight_capacity', 0),
                 payload.get('vehicle_speed', 28.0)
-            )
+            ))
             print(json.dumps(result, ensure_ascii=False))
             sys.exit(0)
 
@@ -527,7 +564,10 @@ if __name__ == "__main__":
             pricing = config_payload.get('pricing', pricing)
             vehicle_speed = config_payload.get('vehicle_speed', 28.0)
 
-        route = osrm_route(sender_lat, sender_lng, receiver_lat, receiver_lng, vehicle_speed)
+        async def main_route():
+            async with httpx.AsyncClient() as client:
+                return await osrm_route_async(sender_lat, sender_lng, receiver_lat, receiver_lng, client, vehicle_speed)
+        route = asyncio.run(main_route())
         surge_multiplier, surge_label = traffic_meta(scheduled_at)
         fee = calculate_fee_breakdown(route["distance_km"], weight, pricing, service_type, surge_multiplier)
 

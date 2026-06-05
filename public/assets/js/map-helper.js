@@ -39,6 +39,17 @@ class MapHelper {
             : null;
     }
 
+    calculateBearing(lat1, lng1, lat2, lng2) {
+        const toRad = Math.PI / 180;
+        const toDeg = 180 / Math.PI;
+        const dLng = (lng2 - lng1) * toRad;
+        const y = Math.sin(dLng) * Math.cos(lat2 * toRad);
+        const x = Math.cos(lat1 * toRad) * Math.sin(lat2 * toRad) -
+                  Math.sin(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.cos(dLng);
+        const brng = Math.atan2(y, x) * toDeg;
+        return (brng + 360) % 360;
+    }
+
     /**
      * Thêm một điểm đánh dấu (Marker) lên bản đồ
      */
@@ -163,7 +174,7 @@ class MapHelper {
 
         const createCustomMarkerIcon = (icon, color) => L.divIcon({
             className: 'custom-div-icon',
-            html: `<div style="background-color:${color};width:36px;height:36px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;position:relative;"><span class="material-symbols-outlined" style="color:#fff;font-size:20px;">${icon}</span><div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);border-width:8px 6px 0;border-style:solid;border-color:#fff transparent transparent transparent;"></div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);border-width:6px 4px 0;border-style:solid;border-color:${color} transparent transparent transparent;"></div></div>`,
+            html: `<div style="background-color:${color};width:36px;height:36px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;position:relative;"><span class="material-symbols-outlined marker-rotate-icon" style="color:#fff;font-size:20px;transition: transform 0.4s ease;">${icon}</span><div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);border-width:8px 6px 0;border-style:solid;border-color:#fff transparent transparent transparent;"></div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);border-width:6px 4px 0;border-style:solid;border-color:${color} transparent transparent transparent;"></div></div>`,
             iconSize: [36, 44], iconAnchor: [18, 44], popupAnchor: [0, -44]
         });
 
@@ -240,6 +251,15 @@ class MapHelper {
             const nextDriver = this.normalizeLatLng(lat, lng);
             
             if (nextDriver) {
+                // Cập nhật hướng xoay của xe máy
+                if (dLat !== 0 && dLng !== 0 && (dLat !== nextDriver.lat || dLng !== nextDriver.lng)) {
+                    const angle = this.calculateBearing(dLat, dLng, nextDriver.lat, nextDriver.lng);
+                    if (driverMarker && driverMarker._icon) {
+                        const iconSpan = driverMarker._icon.querySelector('.marker-rotate-icon');
+                        if (iconSpan) iconSpan.style.transform = `rotate(${angle}deg)`;
+                    }
+                }
+                
                 dLat = nextDriver.lat;
                 dLng = nextDriver.lng;
                 if (typeof onDriverLocationUpdate === 'function') {

@@ -14,13 +14,25 @@ class UserController extends BaseController
     // Xử lý upload ảnh giấy tờ xe lên Cloudinary và trả về đường dẫn URL.
     private function uploadVehicleImage(): string
     {
-        if (!isset($_FILES['vehicle_registration']) || $_FILES['vehicle_registration']['error'] !== UPLOAD_ERR_OK) {
+        if (!isset($_FILES['vehicle_registration'])) {
+            return '';
+        }
+        
+        $errCode = $_FILES['vehicle_registration']['error'];
+        if ($errCode !== UPLOAD_ERR_OK) {
+            if ($errCode === UPLOAD_ERR_INI_SIZE || $errCode === UPLOAD_ERR_FORM_SIZE) {
+                throw new \RuntimeException('Kích thước ảnh giấy tờ xe quá lớn. Vui lòng chọn ảnh dung lượng nhỏ hơn.');
+            }
             return '';
         }
 
         $validation = app_validate_uploaded_image($_FILES['vehicle_registration']);
         if (!$validation['valid']) {
             throw new \RuntimeException($validation['error'] ?? 'Ảnh giấy đăng ký xe không hợp lệ.');
+        }
+        
+        if (function_exists('app_compress_image_before_upload')) {
+            app_compress_image_before_upload($_FILES['vehicle_registration']['tmp_name']);
         }
 
         return $this->uploadToCloudinary($_FILES['vehicle_registration'], 'nun_express/vehicles', 'reg_' . time() . '_' . uniqid());

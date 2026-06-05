@@ -81,7 +81,7 @@ $globalSearchQuery = $_GET['search'] ?? $_GET['code'] ?? '';
                     <span class="material-symbols-outlined">menu</span>
                 </button>
 
-                <div class="header-search">
+                <div class="header-search" style="transform: translateY(-2px);">
                     <span class="material-symbols-outlined search-icon">search</span>
                     <input type="text" id="global-header-search" value="<?= app_e($globalSearchQuery) ?>" placeholder="Tìm kiếm mã vận đơn, đơn hàng...">
                 </div>
@@ -98,7 +98,7 @@ $globalSearchQuery = $_GET['search'] ?? $_GET['code'] ?? '';
                         </span>
                     </span>
                     
-                    <div id="notification-dropdown-menu" class="notification-dropdown-menu" style="display: none;">
+                    <div id="notification-dropdown-menu" class="notification-dropdown-menu">
                         <div class="notification-header">
                             <strong>Thông báo</strong>
                             <?php if ($unreadCount > 0): ?>
@@ -139,7 +139,7 @@ $globalSearchQuery = $_GET['search'] ?? $_GET['code'] ?? '';
                 <div class="dropdown-wrapper" id="nav-dropdown-container">
                     <img src="<?= app_e($displayAvatar) ?>" alt="Nav Avatar" onclick="toggleNavDropdown()" class="nav-avatar-img" title="Tài khoản">
                     
-                    <div id="nav-dropdown-menu" class="nav-dropdown-menu" style="display: none;">
+                    <div id="nav-dropdown-menu" class="nav-dropdown-menu">
                         <div class="nav-dropdown-header">
                             <strong><?= app_e($userName) ?></strong>
                             <span><?= $role === 'driver' ? 'Tài xế' : ($role === 'admin' ? 'Quản trị viên' : 'Khách hàng') ?></span>
@@ -173,16 +173,16 @@ $globalSearchQuery = $_GET['search'] ?? $_GET['code'] ?? '';
             function toggleNotificationDropdown() {
                 const notifMenu = document.getElementById('notification-dropdown-menu');
                 const avatarMenu = document.getElementById('nav-dropdown-menu');
-                if (avatarMenu) avatarMenu.style.display = 'none'; // Đóng menu Avatar nếu đang mở
-                notifMenu.style.display = (notifMenu.style.display === 'none' || notifMenu.style.display === '') ? 'block' : 'none';
+                if (avatarMenu) avatarMenu.classList.remove('show');
+                notifMenu.classList.toggle('show');
             }
 
             // Ham toggleNavDropdown: xu ly nghiep vu hoac tien ich tuong ung trong he thong.
             function toggleNavDropdown() {
                 const menu = document.getElementById('nav-dropdown-menu');
                 const notifMenu = document.getElementById('notification-dropdown-menu');
-                if (notifMenu) notifMenu.style.display = 'none'; // Đóng menu Thông báo nếu đang mở
-                menu.style.display = (menu.style.display === 'none' || menu.style.display === '') ? 'block' : 'none';
+                if (notifMenu) notifMenu.classList.remove('show');
+                menu.classList.toggle('show');
             }
 
             // Tự động đóng menu khi nhấp chuột ra ngoài vùng dropdown
@@ -190,13 +190,13 @@ $globalSearchQuery = $_GET['search'] ?? $_GET['code'] ?? '';
                 const avatarContainer = document.getElementById('nav-dropdown-container');
                 const avatarMenu = document.getElementById('nav-dropdown-menu');
                 if (avatarContainer && !avatarContainer.contains(event.target) && avatarMenu) {
-                    avatarMenu.style.display = 'none';
+                    avatarMenu.classList.remove('show');
                 }
 
                 const notifContainer = document.getElementById('notification-dropdown-container');
                 const notifMenu = document.getElementById('notification-dropdown-menu');
                 if (notifContainer && !notifContainer.contains(event.target) && notifMenu) {
-                    notifMenu.style.display = 'none';
+                    notifMenu.classList.remove('show');
                 }
 
                 // Đóng Sidebar trên điện thoại khi click ra ngoài

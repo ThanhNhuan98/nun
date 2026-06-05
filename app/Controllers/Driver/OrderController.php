@@ -113,16 +113,17 @@ class OrderController extends BaseController
         $defaultMaxWeight = (float) $settingModel->get('default_max_total_weight', 100);
         $driverMaxWeight = $dp ? (float)$dp['max_total_weight'] : $defaultMaxWeight;
         
-        $activeCount = $orderModel->getDriverActiveOrderCount($driverId);
-        $hasExpress = $orderModel->hasDriverActiveExpressOrder($driverId);
+        // TỐI ƯU HÓA: Thay thế 3 truy vấn SQL rời rạc bằng 1 truy vấn tổng hợp duy nhất để giảm tải kết nối DB
+        $activeStats = $orderModel->getDriverActiveStats($driverId);
+        $activeCount = (int) $activeStats['active_count'];
+        $hasExpress = (bool) $activeStats['has_express'];
+        $currentWeight = (float) $activeStats['current_weight'];
         
         if ($hasExpress) {
             return ['batches' => [], 'message' => 'Bạn đang thực hiện đơn Siêu tốc (độc quyền). Radar tự động ẩn các đơn khác để đảm bảo chất lượng dịch vụ.'];
         }
         
         $availableCapacity = max(0, $driverMaxOrders - $activeCount);
-        
-        $currentWeight = $orderModel->getDriverCurrentWeight($driverId);
         $availableWeightCapacity = max(0, $driverMaxWeight - $currentWeight);
         
         $vehicleSpeed = (float) $settingModel->get('vehicle_speed_kmh', 28.0);
@@ -184,6 +185,7 @@ class OrderController extends BaseController
             'Content-Type: application/json',
             'Accept: application/json'
         ]);
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2); // Tối ưu: Nếu server Python sập, báo lỗi ngay lập tức sau 2s thay vì chờ đợi
         curl_setopt($ch, CURLOPT_TIMEOUT, 15); // Tăng Timeout lên 15s để AI có đủ thời gian xử lý nhiều cụm đơn
         
         $output = curl_exec($ch);
@@ -427,7 +429,7 @@ class OrderController extends BaseController
     {
         $query = $request->getBody();
         $page = max(1, (int)($query['page'] ?? 1));
-        $perPage = 10;
+        $perPage = 9;
         $offset = ($page - 1) * $perPage;
         $startDate = trim($query['start_date'] ?? '');
         $endDate = trim($query['end_date'] ?? '');
@@ -479,15 +481,17 @@ class OrderController extends BaseController
         // Sắp xếp các đơn hàng bên trong mỗi chuyến ghép theo lộ trình AI
         foreach ($groupedByBatch as &$batch) {
             if (!empty($batch['route_details'])) {
+                // TỐI ƯU HÓA: Dùng hàm tính toán các điểm còn lại để lấy thứ tự hành động tiếp theo
+                $pointsData = app_build_driver_route_points($batch['orders'], $batch['route_details']);
                 $sequenceMap = [];
-                foreach ($batch['route_details'] as $index => $step) {
-                    if (!isset($sequenceMap[$step['order_id']])) {
-                        $sequenceMap[$step['order_id']] = $index;
+                foreach ($pointsData as $index => $step) {
+                    if (!isset($sequenceMap[$step['tracking_code']])) {
+                        $sequenceMap[$step['tracking_code']] = $index;
                     }
                 }
                 usort($batch['orders'], function($a, $b) use ($sequenceMap) {
-                    $seqA = $sequenceMap[$a['id']] ?? 999;
-                    $seqB = $sequenceMap[$b['id']] ?? 999;
+                    $seqA = $sequenceMap[$a['tracking_code']] ?? 999;
+                    $seqB = $sequenceMap[$b['tracking_code']] ?? 999;
                     return $seqA <=> $seqB;
                 });
             }
@@ -514,9 +518,25 @@ class OrderController extends BaseController
             return $response->redirect('/driver/history');
         }
 
+        $history = $orderModel->getOrderHistory($orderId);
+        
+        $ratingInfo = ['avg' => '0.0', 'total' => '0'];
+        try {
+            $stmt = \App\Core\Database::getInstance()->prepare("SELECT AVG(rating) as avg, COUNT(id) as total FROM driver_reviews WHERE driver_id = ?");
+            $stmt->execute([$driverId]);
+            if ($row = $stmt->fetch(\PDO::FETCH_ASSOC)) {
+                if ($row['total'] > 0) {
+                    $ratingInfo['avg'] = number_format((float)$row['avg'], 1);
+                    $ratingInfo['total'] = $row['total'];
+                }
+            }
+        } catch (\Throwable $e) {}
+
         return $response->render('driver/orders/view', [
             'pageTitle' => 'Chi tiết chuyến đi #' . $order['tracking_code'],
-            'order' => $order
+            'order' => $order,
+            'history' => $history,
+            'ratingInfo' => $ratingInfo
         ]);
     }
 
@@ -557,7 +577,7 @@ class OrderController extends BaseController
             
             try {
                 $proofImagePath = $this->uploadProofImage($orderId);
-            } catch (\RuntimeException $e) {
+            } catch (\Throwable $e) {
                 $_SESSION['flash_error'] = $e->getMessage();
                 return $response->redirect("/driver/orders/view/$orderId");
             }
@@ -758,10 +778,11 @@ class OrderController extends BaseController
                     $db->rollBack();
                     $_SESSION['flash_error'] = "Cập nhật trạng thái thất bại. Hệ thống đang bận, vui lòng thử lại.";
                 }
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 if ($db->inTransaction()) {
                     $db->rollBack();
                 }
+                error_log("Update Status Error: " . $e->getMessage());
                 $_SESSION['flash_error'] = "Có lỗi xảy ra, không thể cập nhật trạng thái.";
             }
         } else {
@@ -789,7 +810,7 @@ class OrderController extends BaseController
 
         try {
             $proofImagePath = $this->uploadProofImage($orderId, 'noshow');
-        } catch (\RuntimeException $e) {
+        } catch (\Throwable $e) {
             $_SESSION['flash_error'] = $e->getMessage();
             return $response->redirect("/driver/orders/view/$orderId");
         }
@@ -885,6 +906,10 @@ class OrderController extends BaseController
                             "/user/orders/track/{$order['tracking_code']}"
                         );
                     }
+                } else {
+                    $db->rollBack();
+                    $_SESSION['flash_error'] = "Có lỗi xảy ra, không thể cập nhật trạng thái đơn hàng.";
+                    return $response->redirect("/driver/orders/view/$orderId");
                 }
             }
             // =========================================================
@@ -917,6 +942,10 @@ class OrderController extends BaseController
                     }
 
                     $_SESSION['flash_success'] = "Đã báo cáo Giao hàng thất bại. Vui lòng mang hàng hoàn trả về cho Người gửi.";
+                } else {
+                    $db->rollBack();
+                    $_SESSION['flash_error'] = "Có lỗi xảy ra, không thể cập nhật trạng thái đơn hàng.";
+                    return $response->redirect("/driver/orders/view/$orderId");
                 }
             } else {
                 $_SESSION['flash_error'] = "Trạng thái đơn hàng không hợp lệ để báo cáo sự cố.";
@@ -927,7 +956,7 @@ class OrderController extends BaseController
             if ($db->inTransaction()) {
                 $db->commit();
             }
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             if ($db->inTransaction()) {
                 $db->rollBack();
             }
@@ -967,13 +996,13 @@ class OrderController extends BaseController
             if ($success && class_exists('\App\Services\PusherService')) {
                 try {
                     $orderModel = new Order();
-                    $activeOrders = $orderModel->getActiveOrdersForDriver($driverId);
+                    $activeTrackingCodes = $orderModel->getActiveTrackingCodesForDriver($driverId);
                     
-                    if (!empty($activeOrders)) {
+                    if (!empty($activeTrackingCodes)) {
                         $pusher = new \App\Services\PusherService();
                         
                         // TỐI ƯU HÓA: Áp dụng hàm map nội tại của PHP để duyệt dữ liệu nhanh hơn vòng lặp foreach
-                        $channels = array_map(fn($o) => 'tracking-' . $o['tracking_code'], $activeOrders);
+                        $channels = array_map(fn($code) => 'tracking-' . $code, $activeTrackingCodes);
                         
                         // TỐI ƯU HÓA: Truyền một MẢNG các kênh để gọi API 1 lần duy nhất (Batching I/O)
                         $pusher->trigger($channels, 'location_update', ['lat' => $lat, 'lng' => $lng]);

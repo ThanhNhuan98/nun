@@ -56,6 +56,17 @@ class ProfileController extends BaseController
     {
         if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
             try {
+                // KIỂM TRA TÍNH HỢP LỆ (Tránh user upload file mã độc đổi đuôi .jpg)
+                $validation = app_validate_uploaded_image($_FILES['avatar']);
+                if (!$validation['valid']) {
+                    throw new \Exception($validation['error'] ?? 'Ảnh không hợp lệ.');
+                }
+
+                // TỐI ƯU HÓA: Nén ảnh cục bộ trước khi đẩy lên đường truyền mạng tới Cloudinary
+                if (function_exists('app_compress_image_before_upload')) {
+                    app_compress_image_before_upload($_FILES['avatar']['tmp_name'], 800, 85);
+                }
+
                 $avatarUrl = $this->uploadToCloudinary($_FILES['avatar'], 'nun_express/avatars', null, [
                     'transformation' => ['width' => 400, 'height' => 400, 'crop' => 'fill']
                 ]);
@@ -140,7 +151,7 @@ class ProfileController extends BaseController
 
         $rules = [
             'name' => 'required|max:100',
-            'phone' => 'required|phone|unique:users,phone,id'
+            'phone' => ($phone !== $currentUser['phone']) ? 'required|phone|unique:users,phone' : 'required|phone'
         ];
         
         if ($currentUser['role'] === 'driver') {
@@ -250,14 +261,26 @@ class ProfileController extends BaseController
 
     private function uploadVehicleImage(): string
     {
-        if (isset($_FILES['vehicle_registration']) && $_FILES['vehicle_registration']['error'] === UPLOAD_ERR_OK) {
-            $validation = app_validate_uploaded_image($_FILES['vehicle_registration']);
-            if (!$validation['valid']) {
-                throw new \RuntimeException($validation['error'] ?? 'Ảnh hồ sơ không hợp lệ.');
-            }
+        if (isset($_FILES['vehicle_registration'])) {
+            $errCode = $_FILES['vehicle_registration']['error'];
             
-            return $this->uploadToCloudinary($_FILES['vehicle_registration'], 'nun_express/vehicles');
+            if ($errCode === UPLOAD_ERR_OK) {
+                $validation = app_validate_uploaded_image($_FILES['vehicle_registration']);
+                if (!$validation['valid']) {
+                    throw new \RuntimeException($validation['error'] ?? 'Ảnh hồ sơ không hợp lệ.');
+                }
+                
+                // Tự động nén ảnh để upload nhẹ và nhanh hơn
+                if (function_exists('app_compress_image_before_upload')) {
+                    app_compress_image_before_upload($_FILES['vehicle_registration']['tmp_name']);
+                }
+
+                return $this->uploadToCloudinary($_FILES['vehicle_registration'], 'nun_express/vehicles', 'reg_' . time() . '_' . uniqid());
+            } elseif ($errCode === UPLOAD_ERR_INI_SIZE || $errCode === UPLOAD_ERR_FORM_SIZE) {
+                throw new \RuntimeException('Kích thước ảnh quá lớn (vượt giới hạn máy chủ). Vui lòng chọn ảnh có dung lượng nhỏ hơn.');
+            }
         }
-        throw new \RuntimeException('Vui lòng tải lên ảnh Hồ sơ tổng hợp (CCCD, Bằng lái, Cà vẹt).');
+        
+        throw new \RuntimeException('Vui lòng tải lên ảnh Hồ sơ tổng hợp hợp lệ (CCCD, Bằng lái, Cà vẹt).');
     }
 }

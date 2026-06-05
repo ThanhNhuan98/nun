@@ -98,7 +98,10 @@ class Order
         $paymentMethod = $data['payment_method'] ?? 'cash';
         $initialStatus = $paymentMethod === 'transfer' ? 'awaiting_payment' : 'searching_driver';
         
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) {
+            $this->db->beginTransaction();
+        }
         try {
             // 1. Lưu bảng orders
             $scheduledAt = !empty($data['scheduled_at']) ? date('Y-m-d H:i:s', strtotime($data['scheduled_at'])) : null;
@@ -141,7 +144,9 @@ class Order
             $desc = $paymentMethod === 'transfer' ? 'Đơn hàng đang chờ thanh toán online.' : 'Đơn hàng vừa được tạo và đang tìm tài xế.';
             $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, ?, ?, NOW())")->execute([$orderId, $initialStatus, $desc]);
 
-            $this->db->commit();
+            if ($ownsTransaction) {
+                $this->db->commit();
+            }
 
             // Tích hợp Pusher: Báo cho toàn bộ Radar của các tài xế biết có đơn mới
             if ($initialStatus === 'searching_driver' && class_exists('\App\Services\PusherService')) {
@@ -158,7 +163,9 @@ class Order
 
             return $trackingCode;
         } catch (\Throwable $e) {
-            $this->db->rollBack();
+            if ($ownsTransaction) {
+                $this->db->rollBack();
+            }
             return false;
         }
     }
@@ -297,6 +304,24 @@ class Order
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
+    /**
+     * TỐI ƯU HÓA: Chỉ lấy mảng mã vận đơn đang hoạt động (Phục vụ WebSockets Location Update nhanh hơn)
+     */
+    public function getActiveTrackingCodesForDriver(int $driverId): array
+    {
+        $sql = "
+            SELECT o.tracking_code 
+            FROM orders o
+            JOIN order_deliveries od ON o.id = od.order_id
+            WHERE od.driver_id = ? 
+              AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning')
+              AND o.is_archived = 0
+        ";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$driverId]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    }
+
     // Đếm tổng số chuyến đi trong lịch sử của tài xế
     public function countDriverHistory(int $driverId, string $startDate = '', string $endDate = ''): int
     {
@@ -326,11 +351,13 @@ class Order
         $sql = "
             SELECT 
                 o.*, 
+                del.driver_id,
                 fin.shipping_fee, fin.payment_method, fin.payment_status, fin.paid_at, fin.refunded_at,
                 oa.sender_name, oa.sender_phone, oa.sender_address, oa.sender_lat, oa.sender_lng,
                 oa.receiver_name, oa.receiver_phone, oa.receiver_address, oa.receiver_lat, oa.receiver_lng,
                 dp.current_lat AS driver_lat, dp.current_lng AS driver_lng,
-                u.no_show_count AS customer_no_show_count,
+                u.name as customer_name, u.phone as customer_phone, u.email as customer_email, u.avatar as customer_avatar, u.no_show_count AS customer_no_show_count,
+                d.name as driver_name, d.phone as driver_phone, d.avatar as driver_avatar,
                 dp.license_plate AS driver_license_plate
             FROM orders o
             JOIN order_deliveries del ON o.id = del.order_id
@@ -338,6 +365,7 @@ class Order
             LEFT JOIN order_addresses oa ON oa.order_id = o.id
             LEFT JOIN driver_profiles dp ON del.driver_id = dp.user_id
             LEFT JOIN users u ON o.customer_id = u.id
+            LEFT JOIN users d ON del.driver_id = d.id
             WHERE o.id = ? AND del.driver_id = ? AND o.is_archived = 0
             LIMIT 1
         ";
@@ -358,7 +386,10 @@ class Order
 
         $now = date('Y-m-d H:i:s'); // Dùng chung 1 mốc thời gian duy nhất cho cả chuyến
         
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) {
+            $this->db->beginTransaction();
+        }
         try {
             // TỐI ƯU HÓA: Sử dụng Bulk Update thay vì vòng lặp N truy vấn để chốt đơn nhanh chóng, tránh xung đột.
             $inClause = implode(',', array_fill(0, count($orderIds), '?'));
@@ -373,19 +404,14 @@ class Order
             // Logic ALL OR NOTHING (Tất cả hoặc không có gì)
             // Nếu số dòng cập nhật thực tế không bằng số lượng đơn yêu cầu -> Có đơn đã bị người khác hớt tay trên -> Hủy toàn bộ
             if ($stmtOrder->rowCount() !== count($orderIds)) {
-                $this->db->rollBack();
+                if ($ownsTransaction) $this->db->rollBack();
                 return [];
             }
             
-            $stmtDelivery = $this->db->prepare("UPDATE order_deliveries SET driver_id = ?, accepted_at = ?, batch_code = ?, batch_route_details = NULL WHERE order_id IN ($inClause)");
-            $paramsDelivery = array_merge([$driverId, $now, $batchCode], $orderIds);
+            // SỬA LỖI: Cập nhật batch_route_details cho TOÀN BỘ đơn trong cụm. Nếu chỉ lưu ở đơn đầu tiên, khi đơn đầu bị hủy/thu hồi, cả chuyến sẽ mất lộ trình AI.
+            $stmtDelivery = $this->db->prepare("UPDATE order_deliveries SET driver_id = ?, accepted_at = ?, batch_code = ?, batch_route_details = ? WHERE order_id IN ($inClause)");
+            $paramsDelivery = array_merge([$driverId, $now, $batchCode, $routeDetailsJson], $orderIds);
             $stmtDelivery->execute($paramsDelivery);
-            
-            // Chỉ lưu JSON lộ trình AI vào đơn hàng đầu tiên trong chuyến để tiết kiệm dung lượng CSDL.
-            if ($routeDetailsJson !== null) {
-                $this->db->prepare("UPDATE order_deliveries SET batch_route_details = ? WHERE order_id = ?")
-                    ->execute([$routeDetailsJson, $orderIds[0]]);
-            }
             
             $historyValues = [];
             $historyParams = [];
@@ -400,7 +426,9 @@ class Order
             $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES " . implode(', ', $historyValues))
                 ->execute($historyParams);
             
-            $this->db->commit();
+            if ($ownsTransaction) {
+                $this->db->commit();
+            }
 
             // Gửi thông báo cho khách hàng của tất cả các đơn trong chuyến ghép
             $inClause = implode(',', array_fill(0, count($orderIds), '?'));
@@ -437,7 +465,7 @@ class Order
 
             return $orderIds;
         } catch (\Throwable $e) {
-            if ($this->db->inTransaction()) {
+            if ($ownsTransaction && $this->db->inTransaction()) {
                 $this->db->rollBack();
             }
             error_log('Assign Multiple Orders Error: ' . $e->getMessage());
@@ -594,7 +622,11 @@ class Order
 
         if ($search !== '') {
             $where .= " AND (o.tracking_code LIKE ? OR u.name LIKE ? OR u.phone LIKE ? OR oa.receiver_phone LIKE ?)";
-            array_push($params, "%$search%", "%$search%", "%$search%", "%$search%");
+            // Tối ưu hóa: Dùng toán tử append []
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
         }
 
         return [$where, $params];
@@ -688,7 +720,7 @@ class Order
 
         try {
             // Lấy dữ liệu cũ để đối chiếu sự thay đổi trạng thái hoặc thanh toán
-            $stmtOld = $this->db->prepare("SELECT o.status, f.payment_status FROM orders o LEFT JOIN order_finances f ON o.id = f.order_id WHERE o.id = ?");
+            $stmtOld = $this->db->prepare("SELECT o.status, f.payment_status, f.shipping_fee, f.payment_method FROM orders o LEFT JOIN order_finances f ON o.id = f.order_id WHERE o.id = ?");
             $stmtOld->execute([$id]);
             $oldData = $stmtOld->fetch(PDO::FETCH_ASSOC);
 
@@ -702,7 +734,8 @@ class Order
             // Nếu có thay đổi trạng thái, cập nhật mốc thời gian ở bảng deliveries
             if ($status !== $oldData['status']) {
                 $timeColumn = null;
-                if ($status === 'completed') $timeColumn = "delivered_at";
+                if ($status === 'picking_up') $timeColumn = "picked_up_at";
+                elseif ($status === 'completed') $timeColumn = "delivered_at";
                 elseif ($status === 'cancelled') $timeColumn = "cancelled_at";
 
                 if ($timeColumn) {
@@ -719,14 +752,17 @@ class Order
 
             // 2. Cập nhật bảng order_finances
             $paymentStatus = $data['payment_status'] ?? $oldData['payment_status'];
+            $shippingFee = isset($data['shipping_fee']) ? (float)$data['shipping_fee'] : $oldData['shipping_fee'];
+            $paymentMethod = $data['payment_method'] ?? $oldData['payment_method'];
+            
             $financeTimeUpdate = "";
             if ($paymentStatus !== $oldData['payment_status']) {
                 if ($paymentStatus === 'paid') $financeTimeUpdate = ", paid_at = NOW()";
                 elseif ($paymentStatus === 'refunded') $financeTimeUpdate = ", refunded_at = NOW()";
             }
 
-            $stmtFinance = $this->db->prepare("UPDATE order_finances SET payment_status = ?, updated_at = NOW() {$financeTimeUpdate} WHERE order_id = ?");
-            $stmtFinance->execute([$paymentStatus, $id]);
+            $stmtFinance = $this->db->prepare("UPDATE order_finances SET payment_status = ?, shipping_fee = ?, payment_method = ?, updated_at = NOW() {$financeTimeUpdate} WHERE order_id = ?");
+            $stmtFinance->execute([$paymentStatus, $shippingFee, $paymentMethod, $id]);
 
             // 3. Nếu có thay đổi trạng thái, ghi nhận lịch sử rõ ràng phục vụ đối soát hội đồng chấm
             if ($status !== $oldData['status']) {
@@ -1109,24 +1145,30 @@ class Order
      */
     public function autoReassignOrder(int $orderId): bool
     {
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) {
+            $this->db->beginTransaction();
+        }
         try {
             $stmtOrder = $this->db->prepare("UPDATE orders SET status = 'searching_driver', updated_at = NOW() WHERE id = ? AND status = 'accepted'");
             $stmtOrder->execute([$orderId]);
 
             if ($stmtOrder->rowCount() === 0) {
-                $this->db->rollBack();
+                if ($ownsTransaction) $this->db->rollBack();
                 return false;
             }
 
-            $stmtDel = $this->db->prepare("UPDATE order_deliveries SET driver_id = NULL, accepted_at = NULL WHERE order_id = ?");
+            // SỬA LỖI NGẦM: Bắt buộc phải xóa batch_code và batch_route_details để đơn hàng không bị kẹt lại trong cụm cũ nếu được tài xế khác nhận
+            $stmtDel = $this->db->prepare("UPDATE order_deliveries SET driver_id = NULL, accepted_at = NULL, batch_code = NULL, batch_route_details = NULL WHERE order_id = ?");
             $stmtDel->execute([$orderId]);
 
             $desc = "Hệ thống tự động thu hồi đơn hàng do tài xế không đi lấy hàng quá thời gian quy định.";
             $stmtHist = $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, 'searching_driver', ?, NOW())");
             $stmtHist->execute([$orderId, $desc]);
 
-            $this->db->commit();
+            if ($ownsTransaction) {
+                $this->db->commit();
+            }
             
             // Tìm thông tin khách hàng để gửi thông báo trấn an
             $stmtInfo = $this->db->prepare("SELECT tracking_code, customer_id FROM orders WHERE id = ?");
@@ -1144,7 +1186,9 @@ class Order
             
             return true;
         } catch (\Throwable $e) {
-            $this->db->rollBack();
+            if ($ownsTransaction) {
+                $this->db->rollBack();
+            }
             return false;
         }
     }
@@ -1154,7 +1198,10 @@ class Order
      */
     public function autoCancelExpiredPendingOrders(): bool
     {
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) {
+            $this->db->beginTransaction();
+        }
         try {
             // Lấy danh sách đơn quá hạn 1 ngày (so với lúc tạo hoặc lúc hẹn lấy hàng)
             $stmt = $this->db->prepare("
@@ -1172,7 +1219,7 @@ class Order
             $expiredOrders = $stmt->fetchAll(\PDO::FETCH_ASSOC);
 
             if (empty($expiredOrders)) {
-                $this->db->rollBack();
+                if ($ownsTransaction) $this->db->rollBack();
                 return false;
             }
 
@@ -1195,10 +1242,14 @@ class Order
                 );
             }
 
-            $this->db->commit();
+            if ($ownsTransaction) {
+                $this->db->commit();
+            }
             return true;
         } catch (\Throwable $e) {
-            $this->db->rollBack();
+            if ($ownsTransaction) {
+                $this->db->rollBack();
+            }
             return false;
         }
     }

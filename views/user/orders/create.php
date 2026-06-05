@@ -9,15 +9,6 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
 
-<style>
-    /* Tối ưu hóa khoảng cách Header và chống tràn viền trên thiết bị di động */
-    @media (max-width: 768px) {
-        .user-page-header { margin-bottom: 12px !important; padding-bottom: 12px !important; }
-        .user-page-title { font-size: 20px !important; margin-bottom: 4px !important; }
-        .user-page-subtitle { display: block !important; font-size: 13px !important; } /* Khôi phục hiển thị mô tả phụ */
-    }
-</style>
-
 <div class="admin-container">
     
     <div class="user-page-header" style="margin-bottom: 24px; border: none; padding: 0;">
@@ -617,3 +608,4 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
 </script>
 
 <?php require_once __DIR__ . '/../../layouts/user_footer.php'; ?>
+

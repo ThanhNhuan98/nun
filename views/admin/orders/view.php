@@ -9,11 +9,6 @@
 
 <?php require_once __DIR__ . '/../../layouts/user_header.php'; ?>
 
-<style>
-    .proof-image-wrapper { margin-top: 10px; }
-    .proof-image { max-width: 100%; max-height: 200px; border-radius: 4px; border: 1px solid var(--border-color); object-fit: cover; }
-</style>
-
 <div class="admin-container">
     
     <div class="order-view-header">
@@ -23,28 +18,28 @@
             </a>
             Chi tiết đơn hàng #<?= htmlspecialchars($order['tracking_code']) ?>
         </div>
-        <a href="/admin/orders/edit/<?= $order['id'] ?>" class="btn-edit-primary">
-            <span class="material-symbols-outlined" style="font-size: 18px;">edit</span> Chỉnh sửa
-        </a>
+        <button type="button" class="btn-edit-primary" onclick="openEditModal()">
+        <span class="material-symbols-outlined icon-18">edit</span> Chỉnh sửa
+        </button>
     </div>
 
     <?php if ($order['status'] === 'disputed' || ($order['has_dispute'] ?? false)): ?>
-        <div class="alert-banner danger" style="margin-bottom: 24px; display: flex; gap: 12px; padding: 16px; background: #fee2e2; border: 1px solid #fca5a5; border-radius: 4px; color: #b91c1c;">
-            <span class="material-symbols-outlined" style="font-size: 24px;">warning</span>
-            <div>
-                <h4 style="margin: 0 0 6px 0; font-size: 16px; font-weight: 700;">Đơn hàng đang bị khiếu nại</h4>
-                <p style="margin: 0; font-size: 13px;">Khách hàng báo cáo sự cố. Vui lòng chuyển sang mục <a href="/admin/disputes" style="font-weight: bold; text-decoration: underline; color: #991b1b;">Quản lý Khiếu nại</a> để xem hình ảnh đính kèm và xử lý.</p>
+        <div class="alert-banner danger">
+        <span class="material-symbols-outlined icon-24">warning</span>
+            <div class="alert-banner-content">
+                <h4>Đơn hàng đang bị khiếu nại</h4>
+            <p>Khách hàng báo cáo sự cố. Vui lòng chuyển sang mục <a href="/admin/disputes" class="disputed-link">Quản lý Khiếu nại</a> để xem hình ảnh đính kèm và xử lý.</p>
             </div>
         </div>
     <?php endif; ?>
 
     <div class="view-grid top-row">
         <div class="info-card">
-            <div class="data-label" style="margin-bottom: 8px;">Mã vận đơn</div>
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 20px;">
+        <div class="data-label mb-8">Mã vận đơn</div>
+            <div class="flex-between-start">
                 <div class="data-value-large">#<?= htmlspecialchars($order['tracking_code']) ?></div>
                 
-                <div style="display: flex; gap: 8px;">
+                <div class="flex-gap-8">
                     <?php if (($order['payment_status'] ?? '') === 'refunded'): ?>
                         <span class="card-badge status-warning">ĐÃ HOÀN TIỀN</span>
                     <?php endif; ?>
@@ -61,7 +56,7 @@
                 </div>
             </div>
 
-            <div style="display: flex; gap: 40px;">
+            <div class="flex-gap-40">
                 <div class="data-group">
                     <span class="data-label">Ngày Hẹn Lấy Hàng</span>
                     <span class="data-value"><?= date('d/m/Y, H:i', strtotime($order['scheduled_at'])) ?></span>
@@ -76,7 +71,7 @@
                 <span class="material-symbols-outlined">format_align_left</span>
                 <div>
                     <span class="data-label" style="display: block; margin-bottom: 2px;">Ghi chú đơn hàng</span>
-                    <?= empty($order['note']) ? '<em>Không có ghi chú</em>' : nl2br(htmlspecialchars($order['note'])) ?>
+                    <?= empty($order['note']) ? '<em class="text-italic-muted">Không có ghi chú</em>' : nl2br(htmlspecialchars($order['note'])) ?>
                 </div>
             </div>
         </div>
@@ -93,11 +88,11 @@
                 </div>
                 <div class="payment-row">
                     <span>Phương thức TT</span>
-                    <span style="display: flex; align-items: center; gap: 6px; color: var(--text-main); font-weight: 500;">
+                    <span class="payment-method-row">
                         <?php 
-                            if (($order['payment_method'] ?? '') === 'transfer') echo 'Chuyển khoản <span class="material-symbols-outlined" style="font-size: 18px; color: var(--text-muted);">account_balance</span>';
-                            elseif (($order['payment_method'] ?? '') === 'wallet') echo 'Ví điện tử <span class="material-symbols-outlined" style="font-size: 18px; color: var(--text-muted);">account_balance_wallet</span>';
-                            else echo 'Tiền mặt (COD) <span class="material-symbols-outlined" style="font-size: 18px; color: var(--text-muted);">payments</span>';
+                            if (($order['payment_method'] ?? '') === 'transfer') echo 'Chuyển khoản <span class="material-symbols-outlined icon-muted-18">account_balance</span>';
+                            elseif (($order['payment_method'] ?? '') === 'wallet') echo 'Ví điện tử <span class="material-symbols-outlined icon-muted-18">account_balance_wallet</span>';
+                            else echo 'Tiền mặt (COD) <span class="material-symbols-outlined icon-muted-18">payments</span>';
                         ?>
                     </span>
                 </div>
@@ -107,7 +102,7 @@
                         $pStatus = $order['payment_status'] ?? 'pending';
                         if ($pStatus === 'paid') echo '<span class="card-badge status-completed">ĐÃ THANH TOÁN</span>';
                         elseif ($pStatus === 'refunded') echo '<span class="card-badge status-warning">ĐÃ HOÀN TIỀN</span>';
-                        else echo '<span class="card-badge status-pending" style="background:#f1f5f9; color:#64748b;">CHƯA THANH TOÁN</span>';
+                        else echo '<span class="card-badge status-pending badge-unpaid">CHƯA THANH TOÁN</span>';
                     ?>
                 </div>
             </div>
@@ -119,7 +114,7 @@
             <div class="info-card-header">
                 <div class="title-left"><span class="material-symbols-outlined">person</span> Người đặt hàng</div>
                 <?php if (!empty($order['customer_id'])): ?>
-                    <a href="/profile/<?= htmlspecialchars($order['customer_id']) ?>" style="color: var(--text-muted);" title="Xem hồ sơ"><span class="material-symbols-outlined" style="font-size: 18px;">open_in_new</span></a>
+                <a href="/profile/<?= htmlspecialchars($order['customer_id']) ?>" class="btn-icon-link" title="Xem hồ sơ"><span class="material-symbols-outlined icon-18">open_in_new</span></a>
                 <?php endif; ?>
             </div>
             <<?= !empty($order['customer_id']) ? 'a href="/profile/'.htmlspecialchars($order['customer_id']).'"' : 'div' ?> class="user-profile-flex">
@@ -136,8 +131,8 @@
                     <span class="user-info-sub"><span class="material-symbols-outlined">call</span> <?= htmlspecialchars($order['customer_phone'] ?? 'Chưa cập nhật') ?></span>
                     <span class="user-info-sub"><span class="material-symbols-outlined">mail</span> <?= htmlspecialchars($order['customer_email'] ?? 'Chưa cập nhật') ?></span>
                     <?php if (($order['customer_no_show_count'] ?? 0) > 0): ?>
-                        <span class="user-info-sub" style="color: var(--danger); font-weight: 600;">
-                            <span class="material-symbols-outlined" style="color: var(--danger);">warning</span>
+                        <span class="user-info-sub user-violation">
+                            <span class="material-symbols-outlined icon-danger">warning</span>
                             Vi phạm giao nhận: <?= htmlspecialchars($order['customer_no_show_count']) ?> lần
                         </span>
                     <?php endif; ?>
@@ -149,7 +144,7 @@
             <div class="info-card-header">
                 <div class="title-left"><span class="material-symbols-outlined">two_wheeler</span> Tài xế nhận đơn</div>
                 <?php if (!empty($order['driver_id'])): ?>
-                    <a href="/profile/<?= htmlspecialchars($order['driver_id']) ?>" style="color: var(--text-muted);" title="Xem hồ sơ"><span class="material-symbols-outlined" style="font-size: 18px;">open_in_new</span></a>
+                <a href="/profile/<?= htmlspecialchars($order['driver_id']) ?>" class="btn-icon-link" title="Xem hồ sơ"><span class="material-symbols-outlined icon-18">open_in_new</span></a>
                 <?php endif; ?>
             </div>
             <?php if (!empty($order['driver_name'])): ?>
@@ -169,21 +164,21 @@
             </<?= !empty($order['driver_id']) ? 'a' : 'div' ?>>
             
             <?php if (!empty($order['driver_id']) && in_array($order['status'], ['cancelled', 'returning', 'returned'])): ?>
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px dashed var(--border-color);">
-                    <form action="/admin/orders/penalize-driver/<?= $order['id'] ?>" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn phạt tài xế này? Nếu số dư âm, tài khoản sẽ bị khóa tự động.');" style="margin: 0;">
-                        <div style="margin-bottom: 8px; font-weight: 600; color: var(--danger); display: flex; align-items: center; gap: 5px; font-size: 14px;">
+                <div class="penalty-box">
+                    <form action="/admin/orders/penalize-driver/<?= $order['id'] ?>" method="POST" onsubmit="return confirm('Bạn có chắc chắn muốn phạt tài xế này? Nếu số dư âm, tài khoản sẽ bị khóa tự động.');" class="m-0">
+                        <div class="penalty-header">
                             <span class="material-symbols-outlined" style="font-size: 18px;">gavel</span> Phạt tài xế vi phạm
                         </div>
-                        <div style="display: flex; gap: 8px; align-items: stretch;">
-                            <input type="number" name="penalty_amount" class="form-control" placeholder="Số tiền..." value="50000" required style="width: 100px; padding: 6px; font-size: 13px;">
-                            <input type="text" name="reason" class="form-control" placeholder="Lý do phạt..." value="Báo cáo sai sự thật" required style="flex: 1; padding: 6px; font-size: 13px;">
-                            <button type="submit" class="btn-submit-primary" style="background: var(--danger); border: none; padding: 0 12px; font-size: 13px;">Phạt</button>
+                        <div class="penalty-form-row">
+                            <input type="number" name="penalty_amount" class="m-form-control penalty-input-sm" placeholder="Số tiền..." value="50000" required data-error="Vui lòng nhập số tiền.">
+                            <input type="text" name="reason" class="m-form-control penalty-input-lg" placeholder="Lý do phạt..." value="Báo cáo sai sự thật" required data-error="Vui lòng nhập lý do.">
+                            <button type="submit" class="btn-penalty">Phạt</button>
                         </div>
                     </form>
                 </div>
             <?php endif; ?>
             <?php else: ?>
-                <div style="display:flex; align-items:center; justify-content:center; flex:1; color: var(--text-muted); font-style: italic;">
+                <div class="flex-center-center text-italic-muted">
                     Chưa có tài xế nhận đơn
                 </div>
             <?php endif; ?>
@@ -202,7 +197,7 @@
                     <div class="timeline-title">Điểm lấy hàng</div>
                     <div class="timeline-address"><?= htmlspecialchars($order['sender_address'] ?? 'Chưa cập nhật') ?></div>
                     <div class="timeline-contact">
-                        <span class="material-symbols-outlined" style="font-size: 14px;">person</span> 
+                    <span class="material-symbols-outlined icon-14">person</span> 
                         <?= htmlspecialchars($order['sender_name'] ?? '') ?> - <?= htmlspecialchars($order['sender_phone'] ?? '') ?>
                     </div>
                 </div>
@@ -212,25 +207,25 @@
                     <div class="timeline-title">Điểm giao hàng</div>
                     <div class="timeline-address"><?= htmlspecialchars($order['receiver_address'] ?? 'Chưa cập nhật') ?></div>
                     <div class="timeline-contact">
-                        <span class="material-symbols-outlined" style="font-size: 14px;">person</span> 
+                    <span class="material-symbols-outlined icon-14">person</span> 
                         <?= htmlspecialchars($order['receiver_name'] ?? '') ?> - <?= htmlspecialchars($order['receiver_phone'] ?? '') ?>
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="info-card" style="padding: 0; border: 1px solid var(--border-color); overflow: hidden; border-radius: 4px;">
-            <div id="order-map" style="min-height: 300px; height: 100%; width: 100%; z-index: 1;"></div>
+    <div class="info-card info-card-map">
+        <div id="order-map" class="order-map-container"></div>
         </div>
     </div>
 
-    <div class="info-card" style="margin-bottom: 30px;">
-        <div class="info-card-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 15px;">
+<div class="info-card info-card-history">
+    <div class="info-card-header history-card-header">
             <div class="title-left"><span class="material-symbols-outlined">history</span> Lịch sử trạng thái</div>
         </div>
         
         <?php if (empty($history)): ?>
-            <p style="color: var(--text-muted); font-style: italic; margin: 0;">Không có dữ liệu lịch sử cho đơn hàng này.</p>
+            <p class="text-italic-muted m-0">Không có dữ liệu lịch sử cho đơn hàng này.</p>
         <?php else: ?>
             <ul class="history-list">
                 <?php foreach ($history as $h): ?>
@@ -252,7 +247,63 @@
         <?php endif; ?>
     </div>
 
-</div>
+    <div id="editModal" class="modal-backdrop">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Chỉnh sửa đơn hàng #<?= htmlspecialchars($order['tracking_code']) ?></h3>
+                <button type="button" class="modal-close" onclick="closeEditModal()">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            
+            <form action="/admin/orders/view/<?= $order['id'] ?>" method="POST" id="form-edit-order">
+                <div class="modal-body">
+                    <div class="m-form-group">
+                        <label>Trạng thái đơn hàng</label>
+                        <select name="status" class="m-form-control">
+                            <?php foreach (\App\Models\Order::STATUS_LABELS as $key => $label): ?>
+                                <option value="<?= $key ?>" <?= $order['status'] === $key ? 'selected' : '' ?>><?= $label ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div class="m-form-group">
+                        <label>Phí vận chuyển (VNĐ)</label>
+                        <input type="number" name="shipping_fee" class="m-form-control" value="<?= (int)($order['shipping_fee'] ?? 0) ?>">
+                    </div>
+
+                    <div class="m-form-group">
+                        <label>Phương thức thanh toán</label>
+                        <select name="payment_method" class="m-form-control">
+                            <option value="cash" <?= ($order['payment_method'] ?? '') === 'cash' ? 'selected' : '' ?>>Tiền mặt (COD)</option>
+                            <option value="transfer" <?= ($order['payment_method'] ?? '') === 'transfer' ? 'selected' : '' ?>>Chuyển khoản</option>
+                            <option value="wallet" <?= ($order['payment_method'] ?? '') === 'wallet' ? 'selected' : '' ?>>Ví điện tử</option>
+                        </select>
+                    </div>
+
+                    <div class="m-form-group">
+                        <label>Trạng thái thanh toán</label>
+                        <select name="payment_status" class="m-form-control">
+                            <option value="pending" <?= ($order['payment_status'] ?? '') === 'pending' ? 'selected' : '' ?>>Chờ thanh toán</option>
+                            <option value="unpaid" <?= ($order['payment_status'] ?? '') === 'unpaid' ? 'selected' : '' ?>>Chưa thanh toán</option>
+                            <option value="paid" <?= ($order['payment_status'] ?? '') === 'paid' ? 'selected' : '' ?>>Đã thanh toán</option>
+                            <option value="refunded" <?= ($order['payment_status'] ?? '') === 'refunded' ? 'selected' : '' ?>>Đã hoàn tiền</option>
+                        </select>
+                    </div>
+
+            <div class="m-form-group m-form-group-last">
+                        <label>Ghi chú</label>
+                        <textarea name="note" rows="3" class="m-form-control"><?= htmlspecialchars($order['note'] ?? '') ?></textarea>
+                    </div>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn-outline" onclick="closeEditModal()">Hủy</button>
+                    <button type="submit" class="btn-save">Lưu thay đổi</button>
+                </div>
+            </form>
+        </div>
+    </div>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.css" />
@@ -260,6 +311,24 @@
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
 <script>
+    // Xử lý Popup Modal
+    function openEditModal() {
+        document.getElementById('editModal').style.display = 'flex';
+        document.body.style.overflow = 'hidden'; // Khóa cuộn trang nền
+    }
+
+    function closeEditModal() {
+        document.getElementById('editModal').style.display = 'none';
+        document.body.style.overflow = ''; // Mở lại cuộn trang
+    }
+
+    // Đóng Modal khi click ra ngoài Overlay
+    document.getElementById('editModal').addEventListener('click', function(e) {
+        if (e.target === this) {
+            closeEditModal();
+        }
+    });
+
     // Truyền dữ liệu map từ PHP
     window.OrderMapConfig = {
         status: <?= json_encode(htmlspecialchars($order['status'] ?? '')) ?>,

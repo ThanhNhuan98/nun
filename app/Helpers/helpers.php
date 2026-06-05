@@ -181,7 +181,12 @@ if (!function_exists('app_nav_active')) {
     // Kiểm tra URL hiện hành để thêm class 'active' cho việc highlight Menu điều hướng.
     function app_nav_active(string $path, bool $exact = false): string
     {
-        $current = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+        // TỐI ƯU HÓA: Dùng static cache để không phải parse_url lại từ đầu cho mỗi mục menu hiển thị trên Sidebar.
+        static $current = null;
+        if ($current === null) {
+            $current = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
+        }
+
         if ($exact) {
             return $current === $path ? 'active' : '';
         }
@@ -539,6 +544,11 @@ if (!function_exists('app_compress_image_before_upload')) {
      */
     function app_compress_image_before_upload(string $sourcePath, int $maxWidth = 1024, int $quality = 80): bool
     {
+        // Kiểm tra an toàn tuyệt đối các hàm xử lý ảnh có tồn tại trong môi trường PHP hay không
+        if (!extension_loaded('gd') || !function_exists('imagecreatefromjpeg') || !function_exists('imagecreatefrompng')) {
+            return false;
+        }
+
         if (!file_exists($sourcePath)) return false;
         
         $info = getimagesize($sourcePath);

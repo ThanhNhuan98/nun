@@ -21,7 +21,7 @@ class DisputeController extends BaseController
         $page = max(1, (int)($query['page'] ?? 1));
         $statusFilter = trim($query['status'] ?? '');
         $search = trim($query['search'] ?? '');
-        $perPage = 15;
+        $perPage = 9;
         $offset = ($page - 1) * $perPage;
 
         $disputeModel = new Dispute();

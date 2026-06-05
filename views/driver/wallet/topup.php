@@ -6,10 +6,7 @@
     <div id="step-1" class="topup-wrapper">
         
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
-            <a href="/driver/receive-orders" class="topup-header-nav" style="margin-bottom: 0;">
-                <span class="material-symbols-outlined" style="font-size: 20px;">arrow_back</span>
-                Ví tài xế
-            </a>
+            
             <a href="/driver/wallet/withdraw" class="btn-withdraw-outline">
                 <span class="material-symbols-outlined" style="font-size: 18px;">payments</span> Rút tiền
             </a>
@@ -158,7 +155,11 @@
         document.getElementById('qr-image').src = qrUrl;
 
         document.getElementById('step-2').style.display = 'block';
-        document.getElementById('step-2').scrollIntoView({ behavior: 'smooth' });
+        
+        // Cuộn mượt mà xuống phần QR
+        setTimeout(() => {
+            document.getElementById('step-2').scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 100);
     }
 
     // Sao chép nội dung văn bản (số tài khoản, thông điệp chuyển khoản) vào khay nhớ tạm (Clipboard).
@@ -170,12 +171,14 @@
             const originalIcon = icon.innerText;
             
             icon.innerText = 'check';
-            icon.style.color = '#10b981'; // Màu xanh lá success
             
             setTimeout(() => {
                 icon.innerText = originalIcon;
-                icon.style.color = '';
             }, 2000);
+            
+            if (typeof showToast === 'function') {
+                showToast('Đã sao chép thành công!', 'success');
+            }
         });
     }
 </script>

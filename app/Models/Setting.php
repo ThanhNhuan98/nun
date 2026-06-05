@@ -55,7 +55,9 @@ class Setting
 
         foreach ($settings as $key => $value) {
             $values[] = "(?, ?)";
-            array_push($params, $key, $value);
+            // Tối ưu hóa: Dùng toán tử append [] thay cho array_push
+            $params[] = $key;
+            $params[] = $value;
         }
         
         $sql = "INSERT INTO settings (setting_key, setting_value) VALUES " . implode(', ', $values) . " ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)";

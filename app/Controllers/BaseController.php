@@ -31,7 +31,7 @@ abstract class BaseController
     protected function uploadToCloudinary(array $file, string $folder, ?string $publicId = null, array $extraOptions = []): string
     {
         try {
-            Configuration::instance($_ENV['CLOUDINARY_URL']);
+            Configuration::instance($_ENV['CLOUDINARY_URL'] ?? '');
             $uploadApi = new UploadApi();
             
             $options = ['folder' => $folder];
@@ -40,7 +40,7 @@ abstract class BaseController
 
             $result = $uploadApi->upload($file['tmp_name'], $options);
             return $result['secure_url'];
-        } catch (\Exception $e) {
+        } catch (\Throwable $e) {
             error_log('Cloudinary Upload Error: ' . $e->getMessage());
             throw new \RuntimeException('Lỗi đồng bộ ảnh lên máy chủ. Vui lòng thử lại sau.');
         }

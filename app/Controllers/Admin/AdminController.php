@@ -59,7 +59,7 @@ class AdminController extends BaseController
         $search = trim($query['search'] ?? '');
         
         $page = max(1, (int)($query['page'] ?? 1));
-        $perPage = 15;
+        $perPage = 9;
         $offset = ($page - 1) * $perPage;
 
         $orderModel = new Order();

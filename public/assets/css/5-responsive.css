@@ -1,0 +1,64 @@
+/* =========================================
+   MEDIA QUERIES TỔNG HỢP (RESPONSIVE)
+   ========================================= */
+
+/* Tablets & Desktop Small */
+@media (min-width: 600px) {
+    .eu-form-grid, .cu-role-grid, .cu-form-row { grid-template-columns: 1fr 1fr; }
+}
+
+@media (min-width: 768px) {
+    .eu-grid { grid-template-columns: 320px 1fr; }
+}
+
+@media (max-width: 768px) {
+    .profile-grid { grid-template-columns: 1fr; gap: 20px; }
+    .profile-form-row { grid-template-columns: 1fr; gap: 0; }
+    .profile-header-top, .profile-header-card { flex-direction: column; text-align: center; justify-content: center; }
+    .profile-header-card { padding: 20px; }
+    .od-grid { grid-template-columns: 1fr; }
+    .user-page-header { margin-bottom: 12px; padding-bottom: 12px; }
+    .user-page-title { font-size: 20px; margin-bottom: 4px; }
+    .user-page-subtitle { display: block; font-size: 13px; }
+}
+
+@media (max-width: 600px) {
+    .review-card-pro { padding: 24px 16px; margin: 20px 16px; }
+    .review-action-grid { grid-template-columns: 1fr; }
+    .review-action-grid .btn-cancel { order: 2; }
+    .review-action-grid .btn-submit { order: 1; }
+}
+
+/* Tablets lớn & Desktop */
+@media (min-width: 992px) {
+    .driver-grid { grid-template-columns: 1.4fr 1fr; align-items: start; }
+    .cu-layout { flex-direction: row; align-items: flex-start; }
+    .cu-main-form { flex: 1; }
+    .cu-sidebar { width: 320px; position: sticky; top: 24px; }
+}
+
+/* Mobile & Tablet nhỏ (Thiết lập chung) */
+@media (max-width: 992px) {
+    .admin-container { padding: 15px; }
+    .top-cards-grid { grid-template-columns: 1fr; gap: 16px; margin-bottom: 16px; }
+    .batch-grid { grid-template-columns: 1fr; gap: 16px; }
+    .batch-metrics-grid { grid-template-columns: 1fr 1fr; gap: 10px; }
+    .metric-col { border: none !important; }
+    
+    .btn-process-solid { width: 100%; }
+    .wallet-actions { flex-direction: column; }
+    .wallet-actions a { width: 100%; }
+
+    .active-layout-grid { grid-template-columns: 1fr; gap: 20px; }
+    .active-map-col { position: relative; top: 0; height: 45vh; min-height: 350px; }
+
+    .active-layout-v3 { grid-template-columns: 1fr; gap: 20px; }
+    .map-col-v3 { position: relative; top: 0; height: 50vh; min-height: 350px; margin-bottom: 10px; }
+    
+    /* Tối ưu hóa: Loại bỏ order-card, batch-card-v2, order-card-v3 khỏi padding chung để phần Header/Footer bên trong không bị ép lề làm vỡ góc giao diện */
+    .stat-card, .dispute-card, .info-card, .task-card-large, .settings-form-card, .detail-card-v2, .h-card, .od-card, .eu-card, .cu-card, .d-card { padding: 16px; border-radius: 8px; }
+}
+
+@media (min-width: 1024px) {
+    .order-grid { grid-template-columns: repeat(3, 1fr); }
+}

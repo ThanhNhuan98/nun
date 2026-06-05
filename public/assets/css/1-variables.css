@@ -1,0 +1,44 @@
+/* =========================================
+   1. VARIABLES & GLOBALS
+   ========================================= */
+:root {
+    --primary: #2563eb;
+    --primary-light: #eff6ff;
+    --success: #10b981;
+    --success-light: #d1fae5;
+    --warning: #f59e0b;
+    --warning-light: #fef3c7;
+    --danger: #ef4444;
+    --danger-light: #fee2e2;
+    --bg-body: #f8fafc;
+    --bg-card: #ffffff;
+    --text-main: #1e293b;
+    --text-muted: #64748b;
+    --border-color: #e2e8f0;
+    --sidebar-width: 260px;
+    --header-height: 70px;
+    --radius: 12px;
+    --shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+    --shadow-hover: 0 10px 24px rgba(0, 0, 0, 0.1);
+    
+    /* BIẾN MÀU SẮC CHỦ ĐẠO (TÔNG XANH TỔNG HỢP) */
+    --primary-blue: #1d4ed8;       /* Xanh dương đậm/chủ đạo */
+    --primary-hover: #1e40af;
+    --light-blue: #eff6ff;         /* Xanh nhạt cho cảnh báo/nền/box đang chọn */
+    --border-blue: #bfdbfe;
+    --dark-slate: #334155;         /* Xanh xám đậm cho Header đơn hàng */
+    --bg-gray: #f1f5f9;            /* Nền xám nhạt cho box hướng dẫn */
+    --status-red: #ef4444;
+    --status-green: #10b981;
+    --star-active: #facc15;        /* Màu vàng cho sao */
+    --star-inactive: #e2e8f0;      /* Màu xám cho sao trống */
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { 
+    min-height: 100vh; 
+}
+a { text-decoration: none; color: inherit; }
+
+@keyframes spin { 100% { transform: rotate(360deg); } }
+.icon-spin { animation: spin 1s linear infinite; display: inline-block; }

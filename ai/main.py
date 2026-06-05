@@ -2,10 +2,11 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import uvicorn
+import httpx
 
 # Thầy giả định file thuật toán hiện tại của em tên là route_optimizer.py
 # Em cần sửa lại file đó thành một module có chứa hàm dùng để import
-from route_optimizer import optimize_batches, osrm_route, traffic_meta, calculate_fee_breakdown
+from route_optimizer import optimize_batches_async, osrm_route_async, traffic_meta, calculate_fee_breakdown
 
 app = FastAPI(title="NUN Express AI Routing API", version="1.0.0")
 
@@ -34,9 +35,9 @@ async def optimize_routes(request: RoutingRequest):
         # Hỗ trợ tương thích ngược cho cả Pydantic V1 và V2
         data = request.model_dump() if hasattr(request, 'model_dump') else request.dict()
         
-        # Gọi hàm thuật toán cốt lõi với dữ liệu từ request
-        # Thay vì đọc file JSON trên ổ cứng như cũ, giờ hệ thống xử lý hoàn toàn trên RAM
-        result = optimize_batches(
+        # Tối ưu hóa sâu: Gọi thẳng hàm async thực thụ, tác vụ I/O sẽ chạy bất đồng bộ
+        # còn tác vụ CPU-bound đã được đẩy vào ThreadPool bên trong hàm này
+        result = await optimize_batches_async(
             driver_location=data['driver_location'],
             orders=data['orders'],
             max_orders_per_batch=data['max_orders_per_batch'],
@@ -55,7 +56,10 @@ async def calculate_fee(request: FeeRequest):
     try:
         data = request.model_dump() if hasattr(request, 'model_dump') else request.dict()
         
-        route = osrm_route(data['sender_lat'], data['sender_lng'], data['receiver_lat'], data['receiver_lng'], data.get('vehicle_speed', 28.0))
+        # Tối ưu hóa: Dùng httpx.AsyncClient để gọi API OSRM bất đồng bộ
+        async with httpx.AsyncClient() as client:
+            route = await osrm_route_async(data['sender_lat'], data['sender_lng'], data['receiver_lat'], data['receiver_lng'], client, data.get('vehicle_speed', 28.0))
+            
         surge_multiplier, surge_label = traffic_meta(data['scheduled_at'])
         fee = calculate_fee_breakdown(route["distance_km"], data['weight'], data['pricing'], data['service_type'], surge_multiplier)
 

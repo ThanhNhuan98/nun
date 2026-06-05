@@ -178,7 +178,7 @@ class OrderController extends BaseController
         $userId = $this->userId();
         $statusFilter = trim($query['status'] ?? '');
         $page = max(1, (int)($query['page'] ?? 1));
-        $perPage = 10;
+        $perPage = 9;
         $offset = ($page - 1) * $perPage;
         
         $orderModel = new Order();

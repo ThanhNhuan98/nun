@@ -1,5 +1,7 @@
 <?php require_once __DIR__ . '/../../layouts/user_header.php'; ?>
 
+<link rel="stylesheet" href="/assets/css/style.css">
+
 <div class="admin-container">
 
     <div class="active-page-header">
@@ -8,415 +10,251 @@
     </div>
 
     <?php if (empty($groupedOrders)): ?>
-        <div style="text-align: center; padding: 60px 20px; border: 1px solid var(--border-color); border-radius: 4px; background: #fff;">
-            <span class="material-symbols-outlined" style="font-size: 48px; color: #cbd5e1; margin-bottom: 16px;">work_history</span>
-            <h3 style="font-size: 16px; color: var(--text-main); margin-bottom: 8px;">Không có đơn hàng nào đang chạy</h3>
-            <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 24px;">Tất cả các đơn hàng của bạn đã hoàn thành. Hãy vào Radar để nhận chuyến mới!</p>
-            <a href="/driver/receive-orders" class="btn-process-solid" style="display: inline-flex; width: auto; align-items: center; gap: 6px;">
-                <span class="material-symbols-outlined" style="font-size: 18px;">radar</span> Tới Radar nhận đơn
+        <div class="empty-state-box">
+            <span class="material-symbols-outlined">work_history</span>
+            <h3>Không có đơn hàng nào đang chạy</h3>
+            <p>Tất cả các đơn hàng của bạn đã hoàn thành. Hãy vào Radar để nhận chuyến mới!</p>
+            <a href="/driver/receive-orders" class="btn-process-solid w-auto">
+                <span class="material-symbols-outlined">radar</span> Tới Radar nhận đơn
             </a>
         </div>
     <?php else: ?>
 
-        <!-- Bản đồ dẫn đường chuyến ghép -->
-        <div class="active-route-card live-navigation-card" style="margin-bottom: 24px; border-color: var(--primary); overflow: hidden;">
-            <div class="active-card-header" style="background: #eff6ff; padding: 12px 20px; border-bottom: 1px solid #bfdbfe;">
-                <div class="header-left" style="color: var(--primary);">
-                    <span class="material-symbols-outlined">navigation</span>
-                    BẢN ĐỒ DẪN ĐƯỜNG TRỰC TIẾP
-                </div>
-                <div class="driver-nav-actions">
-                    <a id="btn-google-batch-nav" class="driver-nav-open disabled" href="#" target="_blank" rel="noopener">
-                        <span class="material-symbols-outlined" style="font-size: 16px;">near_me</span> Google Maps
-                    </a>
-                </div>
-            </div>
-
-            <!-- Bọc riêng khu vực Map để các bảng nổi không đè lên Header -->
-            <div style="position: relative;">
-            <div id="driver-nav-panel" class="driver-nav-panel" style="display:none;">
-                <div class="driver-nav-panel-main">
-                    <span class="material-symbols-outlined">flag</span>
-                    <div>
-                        <div class="driver-nav-label">Điểm dừng tiếp theo</div>
-                        <div id="driver-next-stop" class="driver-next-stop">Đang cập nhật...</div>
+        <div class="active-layout-v3">
+            
+            <div class="map-col-v3">
+                <div class="map-wrapper-v3">
+                    <div class="map-target-card">
+                        <div class="mt-label">ĐIỂM ĐẾN TIẾP THEO</div>
+                        <div class="mt-address" id="nav-next-stop">Đang xác định vị trí...</div>
+                        <a id="btn-google-batch-nav" class="btn-mt-nav disabled" href="#" target="_blank" rel="noopener">
+                            <span class="material-symbols-outlined" style="font-size: 18px;">near_me</span> Dẫn đường Google Maps
+                        </a>
                     </div>
+                    
+                    <button onclick="recenterMap()" id="btn-recenter" class="btn-recenter-map" title="Định vị lại">
+                        <span class="material-symbols-outlined">my_location</span>
+                    </button>
+
+                    <div id="inline-route-map"></div>
                 </div>
-                <div id="driver-stop-count" class="driver-stop-count"></div>
             </div>
+            
+            <script>
+                let batchPointsForMap = [];
+                let fallbackDriverLat = 0;
+                let fallbackDriverLng = 0;
+            </script>
 
-            <!-- Hộp tóm tắt lộ trình nổi trên map -->
-            <div id="nav-summary-box" style="position: absolute; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 1000; background: rgba(255,255,255,0.95); backdrop-filter: blur(5px); padding: 10px 24px; border-radius: 30px; box-shadow: 0 10px 25px rgba(0,0,0,0.15); display: none; align-items: center; gap: 16px; border: 1px solid var(--primary);">
-                <span class="material-symbols-outlined" style="color: var(--primary); font-size: 32px;">directions_car</span>
-                <div id="nav-summary" style="display: flex; gap: 16px; align-items: center;"></div>
-            </div>
+            <div class="orders-col-v3">
+                <?php foreach ($groupedOrders as $batchCode => $batchData): ?>
+                    <?php
+                        $group = $batchData['orders'];
+                        $routeDetails = $batchData['route_details'];
+                        $isBatch = count($group) > 1;
+                        $totalFee = array_sum(array_column($group, 'shipping_fee'));
+                        $totalWeight = array_sum(array_column($group, 'weight'));
+                        
+                        // Lấy data cho map
+                        $pointsData = app_build_driver_route_points($group, $routeDetails);
+                    ?>
 
-            <!-- Nút Định vị lại -->
-            <button onclick="recenterMap()" id="btn-recenter" style="position: absolute; bottom: 30px; right: 10px; z-index: 1000; background: #fff; border: 2px solid rgba(0,0,0,0.2); border-radius: 4px; width: 34px; height: 34px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text-main); box-shadow: 0 1px 5px rgba(0,0,0,0.65);" title="Định vị lại">
-                <span class="material-symbols-outlined" style="font-size: 20px;">my_location</span>
-            </button>
+                    <script>
+                        if (batchPointsForMap.length === 0) batchPointsForMap = <?= json_encode($pointsData) ?>;
+                        if (fallbackDriverLat === 0) fallbackDriverLat = <?= (float)($group[0]['driver_lat'] ?? 0) ?>;
+                        if (fallbackDriverLng === 0) fallbackDriverLng = <?= (float)($group[0]['driver_lng'] ?? 0) ?>;
+                    </script>
 
-            <div id="inline-route-map" style="width: 100%; height: 500px; z-index: 1;"></div>
-            </div>
-        </div>
-        <script>
-            let batchPointsForMap = [];
-            let fallbackDriverLat = 0;
-            let fallbackDriverLng = 0;
-        </script>
-
-        <div class="active-orders-list">
-            <?php foreach ($groupedOrders as $batchCode => $batchData): ?>
-                <?php
-                    $group = $batchData['orders'];
-                    $routeDetails = $batchData['route_details'];
-                    $isBatch = count($group) > 1;
-                    $totalFee = array_sum(array_column($group, 'shipping_fee'));
-                    $totalWeight = array_sum(array_column($group, 'weight'));
-                ?>
-
-                <?php if ($isBatch): ?>
-                    <div class="active-route-card batch-mode">
-                        <div class="active-card-header batch">
-                            <div class="header-left">
-                                <span class="material-symbols-outlined">layers</span>
-                                CHUYẾN GHÉP (<?= count($group) ?> ĐƠN)
-                                <?php
-                                    $pointsData = app_build_driver_route_points($group, $routeDetails);
-                                    $pointsJson = htmlspecialchars(json_encode($pointsData), ENT_QUOTES, 'UTF-8');
-                                ?>
-                                <script>
-                                    if (batchPointsForMap.length === 0) batchPointsForMap = <?= json_encode($pointsData) ?>;
-                                    if (fallbackDriverLat === 0) fallbackDriverLat = <?= (float)($group[0]['driver_lat'] ?? 0) ?>;
-                                    if (fallbackDriverLng === 0) fallbackDriverLng = <?= (float)($group[0]['driver_lng'] ?? 0) ?>;
-                                </script>
-                                <?php if (!empty($pointsData)): ?>
-                                    <button type="button" onclick="showBatchRouteMap(<?= $pointsJson ?>)" class="btn-process-solid" style="padding: 4px 10px; font-size: 11px; margin-left: 10px; width: auto; background: #fff; color: var(--primary); border: 1px solid var(--primary);">Xem lộ trình</button>
-                                <?php endif; ?>
+                    <?php if ($isBatch): ?>
+                        <div class="batch-banner-v3">
+                            <div class="bs-left">
+                                <div class="bs-title">GỘP CHUYẾN</div>
+                                <div class="bs-meta"><?= count($group) ?> đơn hàng • Tổng: <?= number_format($totalWeight, 1) ?>kg</div>
                             </div>
-                            <div class="header-right">
-                                <div><span class="label">Tổng cước</span><strong class="text-primary"><?= app_money($totalFee, 'đ') ?></strong></div>
-                                <div><span class="label">Tổng TL</span><strong><?= number_format($totalWeight, 1) ?>kg</strong></div>
-                            </div>
+                            <div class="bs-right"><?= app_money($totalFee, 'đ') ?></div>
                         </div>
 
-                        <?php if (!empty($routeDetails)): ?>
-                            <div class="batch-route-timeline" style="padding: 20px; border-bottom: 1px solid #bfdbfe;">
-                                <div class="route-node">
-                                    <div class="node-dot start"></div>
-                                    <div class="node-title">Lộ trình tối ưu</div>
-                                    <div class="node-address">Thứ tự các điểm dừng do AI đề xuất</div>
-                                </div>
+                        <?php if (!empty($pointsData)): ?>
+                            <div class="route-toggle-bar route-toggle-bar-v2" onclick="toggleRouteTimeline('timeline-<?= app_e($batchCode) ?>', this)">
+                                <span class="rt-toggle-text">Xem chi tiết lộ trình AI (<?= count($pointsData) ?> điểm dừng)</span>
+                                <span class="material-symbols-outlined rt-toggle-icon">expand_more</span>
+                            </div>
 
-                                <?php foreach ($routeDetails as $step): ?>
-                                    <div class="route-node">
-                                        <div class="node-dot"></div>
-                                        <div class="node-title">
-                                            <?php if ($step['type'] === 'pickup'): ?>
-                                                <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary); vertical-align: bottom;">inventory_2</span> Lấy hàng
-                                            <?php else: ?>
-                                                <span class="material-symbols-outlined" style="font-size: 16px; color: var(--success); vertical-align: bottom;">local_shipping</span> Giao hàng
-                                            <?php endif; ?>
+                            <div id="timeline-<?= app_e($batchCode) ?>" class="batch-route-timeline-v2 collapsible-timeline">
+                                <div class="rt-timeline-title">
+                                    <span class="material-symbols-outlined" style="font-size: 18px;">route</span> Thứ tự điểm dừng AI đề xuất
+                                </div>
+                                <?php foreach ($pointsData as $index => $step): ?>
+                                    <div class="rt-node-v2">
+                                        <div class="rt-icon-v2 <?= $step['type'] ?>">
+                                            <span class="material-symbols-outlined">
+                                                <?= $step['type'] === 'pickup' ? 'inventory_2' : 'local_shipping' ?>
+                                            </span>
                                         </div>
-                                        <div class="node-address">
-                                            <?= app_e($step['address']) ?> (Đơn #<?= app_e($step['order_id']) ?>)
+                                        <div class="rt-content-v2">
+                                            <div class="rt-title-v2 fs-13">
+                                                Bước <?= $index + 1 ?>: <?= app_e($step['title']) ?> 
+                                                <small class="text-muted font-normal">#<?= app_e($step['tracking_code']) ?></small>
+                                            </div>
+                                            <div class="rt-address-v2 fs-12">
+                                                <?= app_e($step['address']) ?>
+                                            </div>
                                         </div>
                                     </div>
                                 <?php endforeach; ?>
                             </div>
                         <?php endif; ?>
+                    <?php endif; ?>
 
-                        <div class="active-card-body">
-                            <?php foreach ($group as $order): ?>
-                                <?php
-                                    $sClass = 'gray';
-                                    if (in_array($order['status'], ['picking_up', 'in_transit', 'shipping'])) $sClass = 'blue';
-                                ?>
-                                <div class="active-sub-order">
-                                    <div class="sub-order-content">
-                                        <div class="sub-header-row">
-                                            <span class="tracking-code-pill">#<?= app_e($order['tracking_code']) ?></span>
-                                            <span style="background-color: #f8fafc; color: <?= \App\Models\Order::getShippingMethodColor($order['shipping_method'] ?? null) ?>; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; border: 1px solid <?= \App\Models\Order::getShippingMethodColor($order['shipping_method'] ?? null) ?>;">
-                                                <?= \App\Models\Order::getShippingMethodLabel($order['shipping_method'] ?? null) ?>
-                                            </span>
-                                            <span class="status-badge-flat <?= $sClass ?>"><?= app_e(App\Models\Order::getStatusLabel($order['status'])) ?></span>
-                                        </div>
-
-                                        <div class="route-timeline-minimal">
-                                            <div class="r-node">
-                                                <span class="material-symbols-outlined r-icon">storefront</span>
-                                                <div>
-                                                    <div class="r-label">Điểm lấy (<strong><?= app_e($order['sender_name'] ?? 'Kho/Cửa hàng') ?></strong>)</div>
-                                                    <div class="r-address"><?= app_e($order['pickup_address']) ?></div>
-                                                    <a href="https://www.google.com/maps/dir/?api=1&destination=<?= (float)($order['sender_lat'] ?? 0) ?>,<?= (float)($order['sender_lng'] ?? 0) ?>&travelmode=driving" target="_blank" style="margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; background: #fff; color: #ea4335; padding: 4px 8px; border-radius: 4px; text-decoration: none; border: 1px solid #fca5a5; font-weight: 600; transition: 0.2s;">
-                                                        <span class="material-symbols-outlined" style="font-size: 14px;">near_me</span> Chỉ đường lấy hàng
-                                                    </a>
-                                                </div>
-                                            </div>
-                                            <div class="r-node">
-                                                <span class="material-symbols-outlined r-icon text-blue">location_on</span>
-                                                <div>
-                                                    <div class="r-label">Điểm giao (<strong><?= app_e($order['receiver_name'] ?? 'Khách hàng') ?></strong>)</div>
-                                                    <div class="r-address"><?= app_e($order['delivery_address']) ?></div>
-                                                    <?php if (($order['customer_no_show_count'] ?? 0) > 0): ?>
-                                                        <div style="margin-top: 6px; color: var(--danger); font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; background: var(--danger-light); padding: 2px 6px; border-radius: 4px; border: 1px solid #fca5a5;">
-                                                            <span class="material-symbols-outlined" style="font-size: 13px;">warning</span>
-                                                    Vi phạm giao nhận: <?= htmlspecialchars($order['customer_no_show_count']) ?> lần
-                                                        </div>
-                                                    <?php endif; ?>
-                                                    <a href="https://www.google.com/maps/dir/?api=1&destination=<?= (float)($order['receiver_lat'] ?? 0) ?>,<?= (float)($order['receiver_lng'] ?? 0) ?>&travelmode=driving" target="_blank" style="margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; background: #fff; color: #ea4335; padding: 4px 8px; border-radius: 4px; text-decoration: none; border: 1px solid #fca5a5; font-weight: 600; transition: 0.2s;">
-                                                        <span class="material-symbols-outlined" style="font-size: 14px;">near_me</span> Chỉ đường giao hàng
-                                                    </a>
-                                                </div>
-                                            </div>
-                                            <div class="r-node">
-                                                <span class="material-symbols-outlined r-icon" style="color: var(--warning);">assignment_late</span>
-                                                <div>
-                                                    <div class="r-label">Quản lý (<strong>Sự cố / Hủy đơn</strong>)</div>
-                                                    <div class="r-address">
-                                                        <a href="/driver/orders/view/<?= $order['id'] ?>" style="color: var(--primary); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-                                                            <span class="material-symbols-outlined" style="font-size: 16px;">open_in_new</span> Xem chi tiết & Báo cáo
-                                                        </a>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <?php if (!empty($order['note'])): ?>
-                                            <div class="r-node" style="margin-top: -8px;">
-                                                <span class="material-symbols-outlined r-icon" style="color: var(--text-muted); font-size: 16px !important;">edit_note</span>
-                                                <div>
-                                                    <div class="r-label" style="font-style: italic; color: var(--text-main);">"<?= app_e($order['note']) ?>"</div>
-                                                </div>
-                                            </div>
-                                            <?php endif; ?>
-                                        </div>
-                                    </div>
-                                    <div class="sub-order-actions" style="width: auto; min-width: 180px;">
-                                        <div class="s-weight" style="text-align: right; margin-bottom: 8px;">TL: <?= number_format((float)($order['weight'] ?? 0), 1) ?>kg</div>
-                                        <form action="/driver/orders/update-status/<?= $order['id'] ?>" method="POST" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:8px;">
-                                            <input type="hidden" name="redirect_to" value="active">
-                                            <?php if ($order['status'] === 'accepted'): ?>
-                                                <input type="hidden" name="status" value="picking_up">
-                                                <button type="submit" class="btn-process-solid" style="background:var(--warning); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Bắt đầu đi lấy</button>
-                                            <?php elseif ($order['status'] === 'picking_up'): ?>
-                                                <input type="hidden" name="status" value="in_transit">
-                                                <button type="submit" class="btn-process-solid" style="background:var(--primary); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Đã lấy hàng & Đi giao</button>
-                                            <?php elseif (in_array($order['status'], ['in_transit', 'shipping'])): ?>
-                                                <input type="hidden" name="status" value="completed">
-                                                <label style="font-size:11px; color:#d97706; font-weight:bold; margin-bottom: -4px;">* Mã PIN (Hỏi khách):</label>
-                                                <input type="text" name="delivery_pin" placeholder="4 số" pattern="\d{4}" maxlength="4" style="width: 100%; padding: 8px; border: 1px solid #fde047; border-radius: 4px; font-size: 14px; text-align: center; letter-spacing: 2px; font-weight: bold; color: var(--primary); margin-top: 8px;" required>
-                                                <label style="font-size:11px; color:var(--danger); font-weight:bold; margin-bottom: -4px;">* Chụp ảnh minh chứng:</label>
-                                                <div class="proof-action-btns" style="display: flex; gap: 8px; margin-bottom: 4px; margin-top: 8px;">
-                                                    <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:4px; background:#fff; color:#3b82f6; padding:8px; border-radius:4px; border:1px dashed #3b82f6; cursor:pointer; font-size:11px; font-weight:600;">
-                                                        <span class="material-symbols-outlined" style="font-size:16px;">photo_camera</span> Chụp ảnh
-                                                        <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleProofSync(this)">
-                                                    </label>
-                                                    <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:4px; background:#fff; color:#10b981; padding:8px; border-radius:4px; border:1px dashed #10b981; cursor:pointer; font-size:11px; font-weight:600;">
-                                                        <span class="material-symbols-outlined" style="font-size:16px;">image</span> Chọn ảnh
-                                                        <input type="file" accept="image/*" style="display:none;" onchange="handleProofSync(this)">
-                                                    </label>
-                                                </div>
-                                                <input type="file" name="proof_image" class="real-proof-input" accept="image/*" required style="opacity: 0; position: absolute; z-index: -1; width: 1px; height: 1px;">
-                                                <div class="active-image-preview" style="display: none; position: relative; margin-bottom: 8px; text-align: center;">
-                                                    <img src="" style="width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px; border: 1px solid #cbd5e1;">
-                                                    <button type="button" onclick="clearProofPreview(this)" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 0;"><span class="material-symbols-outlined" style="font-size: 14px;">close</span></button>
-                                                </div>
-                                                <button type="submit" class="btn-process-solid" style="background:var(--success); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Giao thành công</button>
-                                            <?php elseif ($order['status'] === 'returning'): ?>
-                                                <input type="hidden" name="status" value="returned">
-                                                <label style="font-size:11px; color:var(--danger); font-weight:bold; margin-bottom: -4px;">* Ảnh minh chứng hoàn hàng:</label>
-                                                <div class="proof-action-btns" style="display: flex; gap: 8px; margin-bottom: 4px; margin-top: 8px;">
-                                                    <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:4px; background:#fff; color:#ea580c; padding:8px; border-radius:4px; border:1px dashed #ea580c; cursor:pointer; font-size:11px; font-weight:600;">
-                                                        <span class="material-symbols-outlined" style="font-size:16px;">photo_camera</span> Chụp ảnh
-                                                        <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleProofSync(this)">
-                                                    </label>
-                                                    <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:4px; background:#fff; color:#10b981; padding:8px; border-radius:4px; border:1px dashed #10b981; cursor:pointer; font-size:11px; font-weight:600;">
-                                                        <span class="material-symbols-outlined" style="font-size:16px;">image</span> Chọn ảnh
-                                                        <input type="file" accept="image/*" style="display:none;" onchange="handleProofSync(this)">
-                                                    </label>
-                                                </div>
-                                                <input type="file" name="proof_image" class="real-proof-input" accept="image/*" required style="opacity: 0; position: absolute; z-index: -1; width: 1px; height: 1px;">
-                                                <div class="active-image-preview" style="display: none; position: relative; margin-bottom: 8px; text-align: center;">
-                                                    <img src="" style="width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px; border: 1px solid #cbd5e1;">
-                                                    <button type="button" onclick="clearProofPreview(this)" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 0;"><span class="material-symbols-outlined" style="font-size: 14px;">close</span></button>
-                                                </div>
-                                                <button type="submit" class="btn-process-solid" style="background:var(--warning); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Hoàn hàng xong</button>
-                                                <a href="/driver/orders/view/<?= $order['id'] ?>" class="btn-process-solid" style="background:#fff; color:var(--danger); border:1px solid var(--danger); padding:8px; border-radius:4px; font-weight:600; cursor:pointer; text-align:center; display:block; margin-top:4px; text-decoration:none;">Sự cố / Khách từ chối</a>
-                                            <?php endif; ?>
-                                        </form>
-                                    </div>
+                    <?php foreach ($group as $index => $order): ?>
+                        <?php
+                            $status = $order['status'];
+                            // Logic trạng thái Node Timeline
+                            $isPickupDone = in_array($status, ['in_transit', 'shipping', 'completed', 'returning', 'returned']);
+                            $isDeliveryDone = in_array($status, ['completed', 'returned']);
+                            
+                            // Class badge trạng thái
+                            $badgeStatusClass = $status === 'accepted' ? 'status-yellow' : 'status-blue';
+                            $statusLabel = App\Models\Order::getStatusLabel($status);
+                            $expressLabel = \App\Models\Order::getShippingMethodLabel($order['shipping_method'] ?? null);
+                            $expressClass = ($order['shipping_method'] ?? '') === 'express' ? 'express' : 'fast';
+                            
+                            // Highlight đơn hàng cần xử lý tiếp theo theo AI
+                            $isNextAction = ($isBatch && $index === 0);
+                        ?>
+                        
+                        <div class="order-card-v3 <?= $isNextAction ? 'order-card-next' : '' ?>">
+                            <?php if ($isNextAction): ?>
+                                <div class="next-stop-badge">
+                                    <span class="material-symbols-outlined" style="font-size: 14px;">api</span> ĐIỂM ĐẾN TIẾP THEO
                                 </div>
-                            <?php endforeach; ?>
-                        </div>
-                    </div>
-
-                <?php else: ?>
-                    <?php $order = $group[0]; ?>
-                    <div class="active-route-card">
-                        <div class="active-card-header">
-                            <div class="header-left" style="color: var(--text-main);">
-                                <span class="material-symbols-outlined" style="color: var(--text-muted);">local_shipping</span>
-                                ĐƠN LẺ
-                                <span style="color: var(--text-muted); font-weight: normal; margin-left: 6px; font-size: 13px;">#<?= app_e($order['tracking_code']) ?></span>
-                                <?php
-                                    $pointsData = app_build_driver_route_points([$order], $routeDetails);
-                                    $pointsJson = htmlspecialchars(json_encode($pointsData), ENT_QUOTES, 'UTF-8');
-                                ?>
-                                <script>
-                                    if (batchPointsForMap.length === 0) batchPointsForMap = <?= json_encode($pointsData) ?>;
-                                    if (fallbackDriverLat === 0) fallbackDriverLat = <?= (float)($order['driver_lat'] ?? 0) ?>;
-                                    if (fallbackDriverLng === 0) fallbackDriverLng = <?= (float)($order['driver_lng'] ?? 0) ?>;
-                                </script>
-                                <?php if (!empty($pointsData)): ?>
-                                    <button type="button" onclick="showBatchRouteMap(<?= $pointsJson ?>)" class="btn-process-solid" style="padding: 4px 10px; font-size: 11px; margin-left: 10px; width: auto; background: #fff; color: var(--text-main); border: 1px solid var(--border-color);">Xem lộ trình</button>
-                                <?php endif; ?>
-                            </div>
-                            <div class="header-right">
-                                <div><span class="label">Cước phí</span><strong class="text-primary"><?= app_money($order['shipping_fee'], 'đ') ?></strong></div>
-                                <div><span class="label">Trọng lượng</span><strong><?= number_format((float)($order['weight'] ?? 0), 1) ?>kg</strong></div>
-                            </div>
-                        </div>
-
-                        <div class="active-card-body">
-                            <div class="active-sub-order">
-                                <div class="sub-order-content">
-                                    <div class="sub-header-row">
-                                        <?php
-                                            $sClass = 'gray';
-                                            if (in_array($order['status'], ['picking_up', 'in_transit', 'shipping'])) $sClass = 'blue';
-                                        ?>
-                                        <span style="background-color: #f8fafc; color: <?= \App\Models\Order::getShippingMethodColor($order['shipping_method'] ?? null) ?>; padding: 4px 8px; border-radius: 4px; font-size: 11px; font-weight: 700; border: 1px solid <?= \App\Models\Order::getShippingMethodColor($order['shipping_method'] ?? null) ?>;">
-                                            <?= \App\Models\Order::getShippingMethodLabel($order['shipping_method'] ?? null) ?>
-                                        </span>
-                                        <span class="status-badge-flat <?= $sClass ?>"><?= app_e(App\Models\Order::getStatusLabel($order['status'])) ?></span>
-                                    </div>
-
-                                    <div class="route-timeline-minimal">
-                                        <div class="r-node">
-                                            <span class="material-symbols-outlined r-icon">storefront</span>
-                                            <div>
-                                                <div class="r-label">Điểm lấy (<strong><?= app_e($order['sender_name'] ?? 'Kho/Cửa hàng') ?></strong>)</div>
-                                                <div class="r-address"><?= app_e($order['pickup_address']) ?></div>
-                                                <a href="https://www.google.com/maps/dir/?api=1&destination=<?= (float)($order['sender_lat'] ?? 0) ?>,<?= (float)($order['sender_lng'] ?? 0) ?>&travelmode=driving" target="_blank" style="margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; background: #fff; color: #ea4335; padding: 4px 8px; border-radius: 4px; text-decoration: none; border: 1px solid #fca5a5; font-weight: 600; transition: 0.2s;">
-                                                    <span class="material-symbols-outlined" style="font-size: 14px;">near_me</span> Chỉ đường lấy hàng
-                                                </a>
-                                            </div>
-                                        </div>
-                                        <div class="r-node">
-                                            <span class="material-symbols-outlined r-icon text-blue">location_on</span>
-                                            <div>
-                                                <div class="r-label">Điểm giao (<strong><?= app_e($order['receiver_name'] ?? 'Khách hàng') ?></strong>)</div>
-                                                <div class="r-address"><?= app_e($order['delivery_address']) ?></div>
-                                                <?php if (($order['customer_no_show_count'] ?? 0) > 0): ?>
-                                                    <div style="margin-top: 6px; color: var(--danger); font-size: 11px; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; background: var(--danger-light); padding: 2px 6px; border-radius: 4px; border: 1px solid #fca5a5;">
-                                                        <span class="material-symbols-outlined" style="font-size: 13px;">warning</span>
-                                                        Vi phạm giao nhận: <?= htmlspecialchars($order['customer_no_show_count']) ?> lần
-                                                    </div>
-                                                <?php endif; ?>
-                                                <a href="https://www.google.com/maps/dir/?api=1&destination=<?= (float)($order['receiver_lat'] ?? 0) ?>,<?= (float)($order['receiver_lng'] ?? 0) ?>&travelmode=driving" target="_blank" style="margin-top: 6px; display: inline-flex; align-items: center; gap: 4px; font-size: 11px; background: #fff; color: #ea4335; padding: 4px 8px; border-radius: 4px; text-decoration: none; border: 1px solid #fca5a5; font-weight: 600; transition: 0.2s;">
-                                                    <span class="material-symbols-outlined" style="font-size: 14px;">near_me</span> Chỉ đường giao hàng
-                                                </a>
-                                            </div>
-                                        </div>
-                                        <div class="r-node">
-                                            <span class="material-symbols-outlined r-icon" style="color: var(--warning);">assignment_late</span>
-                                            <div>
-                                                <div class="r-label">Quản lý (<strong>Sự cố / Hủy đơn</strong>)</div>
-                                                <div class="r-address">
-                                                    <a href="/driver/orders/view/<?= $order['id'] ?>" style="color: var(--primary); font-weight: 600; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;">
-                                                        <span class="material-symbols-outlined" style="font-size: 16px;">open_in_new</span> Xem chi tiết & Báo cáo
-                                                    </a>
-                                                </div>
-                                            </div>
-                                        </div>
-                                            <?php if (!empty($order['note'])): ?>
-                                            <div class="r-node" style="margin-top: -8px;">
-                                                <span class="material-symbols-outlined r-icon" style="color: var(--text-muted); font-size: 16px !important;">edit_note</span>
-                                                <div>
-                                                    <div class="r-label" style="font-style: italic; color: var(--text-main);">"<?= app_e($order['note']) ?>"</div>
-                                                </div>
-                                            </div>
-                                            <?php endif; ?>
-                                    </div>
+                            <?php endif; ?>
+                            <div class="oc-header-v3 <?= $isNextAction ? 'oc-header-next' : '' ?>">
+                                <div class="oc-id-row">#<?= app_e($order['tracking_code']) ?></div>
+                                <div class="oc-badges">
+                                    <span class="oc-badge <?= $expressClass ?>"><?= app_e($expressLabel) ?></span>
+                                    <span class="oc-badge <?= $badgeStatusClass ?>"><?= app_e($statusLabel) ?></span>
                                 </div>
-                                <div class="sub-order-actions" style="width: auto; min-width: 180px;">
-                                    <form action="/driver/orders/update-status/<?= $order['id'] ?>" method="POST" enctype="multipart/form-data" style="display:flex; flex-direction:column; gap:8px;">
-                                        <input type="hidden" name="redirect_to" value="active">
-                                        <?php if ($order['status'] === 'accepted'): ?>
-                                            <input type="hidden" name="status" value="picking_up">
-                                            <button type="submit" class="btn-process-solid" style="background:var(--warning); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Bắt đầu đi lấy</button>
-                                        <?php elseif ($order['status'] === 'picking_up'): ?>
-                                            <input type="hidden" name="status" value="in_transit">
-                                            <button type="submit" class="btn-process-solid" style="background:var(--primary); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Đã lấy hàng & Đi giao</button>
-                                        <?php elseif (in_array($order['status'], ['in_transit', 'shipping'])): ?>
-                                            <input type="hidden" name="status" value="completed">
-                                            <label style="font-size:11px; color:#d97706; font-weight:bold; margin-bottom: -4px;">* Mã PIN (Hỏi khách):</label>
-                                            <input type="text" name="delivery_pin" placeholder="4 số" pattern="\d{4}" maxlength="4" style="width: 100%; padding: 8px; border: 1px solid #fde047; border-radius: 4px; font-size: 14px; text-align: center; letter-spacing: 2px; font-weight: bold; color: var(--primary); margin-top: 8px;" required>
-                                            <label style="font-size:11px; color:var(--danger); font-weight:bold; margin-bottom: -4px;">* Chụp ảnh minh chứng:</label>
-                                            <div class="proof-action-btns" style="display: flex; gap: 8px; margin-bottom: 4px; margin-top: 8px;">
-                                                <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:4px; background:#fff; color:#3b82f6; padding:8px; border-radius:4px; border:1px dashed #3b82f6; cursor:pointer; font-size:11px; font-weight:600;">
-                                                    <span class="material-symbols-outlined" style="font-size:16px;">photo_camera</span> Chụp ảnh
+                            </div>
+
+                            <div class="oc-body-v3">
+                                <div class="route-timeline-v3">
+                                    
+                                    <div class="rt-node <?= $isPickupDone ? 'done' : 'active' ?>">
+                                        <div class="rt-icon"></div>
+                                        <div class="rt-content">
+                                            <div class="rt-title">Lấy hàng: <strong><?= app_e($order['sender_name'] ?? 'Kho/Cửa hàng') ?></strong></div>
+                                            <div class="rt-address"><?= app_e($order['pickup_address']) ?></div>
+                                            <?php if (!$isPickupDone): ?>
+                                                <a href="https://www.google.com/maps/dir/?api=1&destination=<?= (float)($order['sender_lat'] ?? 0) ?>,<?= (float)($order['sender_lng'] ?? 0) ?>&travelmode=driving" target="_blank" class="rt-link">
+                                                    <span class="material-symbols-outlined">directions</span> Dẫn đường
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+
+                                    <div class="rt-node <?= $isDeliveryDone ? 'done' : ($isPickupDone ? 'active' : 'pending') ?>">
+                                        <div class="rt-icon"></div>
+                                        <div class="rt-content">
+                                            <div class="rt-title">Giao hàng: <strong><?= app_e($order['receiver_name'] ?? 'Khách hàng') ?></strong></div>
+                                            <div class="rt-address"><?= app_e($order['delivery_address']) ?></div>
+                                            <?php if ($isPickupDone && !$isDeliveryDone): ?>
+                                                <a href="https://www.google.com/maps/dir/?api=1&destination=<?= (float)($order['receiver_lat'] ?? 0) ?>,<?= (float)($order['receiver_lng'] ?? 0) ?>&travelmode=driving" target="_blank" class="rt-link">
+                                                    <span class="material-symbols-outlined">directions</span> Dẫn đường
+                                                </a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </div>
+
+                                    <div class="rt-node done <?= !empty($order['note']) ? 'mb-24' : 'mb-0' ?>">
+                                        <div class="rt-icon rt-icon-warning">
+                                            <span class="material-symbols-outlined">priority_high</span>
+                                        </div>
+                                        <div class="rt-content rt-content-opaque">
+                                            <div class="rt-title rt-title-main">Quản lý / Báo cáo sự cố</div>
+                                            <a href="/driver/orders/view/<?= $order['id'] ?>" class="rt-link rt-link-primary">
+                                                <span class="material-symbols-outlined">open_in_new</span> Xem chi tiết đơn hàng
+                                            </a>
+                                        </div>
+                                    </div>
+
+                                    <?php if (!empty($order['note'])): ?>
+                                    <div class="rt-node done mb-0">
+                                        <div class="rt-icon rt-icon-transparent">
+                                            <span class="material-symbols-outlined">edit_note</span>
+                                        </div>
+                                        <div class="rt-content rt-content-opaque">
+                                            <div class="rt-address rt-address-italic">"<?= app_e($order['note']) ?>"</div>
+                                        </div>
+                                    </div>
+                                    <?php endif; ?>
+                                </div>
+
+                                <form action="/driver/orders/update-status/<?= $order['id'] ?>" method="POST" enctype="multipart/form-data">
+                                    <input type="hidden" name="redirect_to" value="active">
+                                    
+                                    <?php if ($status === 'accepted'): ?>
+                                        <input type="hidden" name="status" value="picking_up">
+                                        <button type="submit" class="btn-blue-full">BẮT ĐẦU ĐI LẤY</button>
+                                    
+                                    <?php elseif ($status === 'picking_up'): ?>
+                                        <input type="hidden" name="status" value="in_transit">
+                                        <button type="submit" class="btn-blue-full">ĐÃ LẤY HÀNG</button>
+                                    
+                                    <?php elseif (in_array($status, ['in_transit', 'shipping'])): ?>
+                                        <input type="hidden" name="status" value="completed">
+                                        
+                                        <div class="auth-box-v3">
+                                            <div class="auth-label">XÁC THỰC GIAO HÀNG</div>
+                                            <div class="auth-input-group">
+                                                <input type="text" name="delivery_pin" placeholder="Nhập mã PIN" pattern="\d{4}" maxlength="4" required>
+                                                <label class="btn-cam-upload" title="Chụp ảnh minh chứng">
+                                                    <span class="material-symbols-outlined">photo_camera</span>
                                                     <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleProofSync(this)">
                                                 </label>
-                                                <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:4px; background:#fff; color:#10b981; padding:8px; border-radius:4px; border:1px dashed #10b981; cursor:pointer; font-size:11px; font-weight:600;">
-                                                    <span class="material-symbols-outlined" style="font-size:16px;">image</span> Chọn ảnh
-                                                    <input type="file" accept="image/*" style="display:none;" onchange="handleProofSync(this)">
-                                                </label>
                                             </div>
-                                            <input type="file" name="proof_image" class="real-proof-input" accept="image/*" required style="opacity: 0; position: absolute; z-index: -1; width: 1px; height: 1px;">
-                                            <div class="active-image-preview" style="display: none; position: relative; margin-bottom: 8px; text-align: center;">
-                                                <img src="" style="width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px; border: 1px solid #cbd5e1;">
-                                                <button type="button" onclick="clearProofPreview(this)" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 0;"><span class="material-symbols-outlined" style="font-size: 14px;">close</span></button>
-                                            </div>
-                                            <button type="submit" class="btn-process-solid" style="background:var(--success); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Giao thành công</button>
-                                        <?php elseif ($order['status'] === 'returning'): ?>
-                                            <input type="hidden" name="status" value="returned">
-                                            <label style="font-size:11px; color:var(--danger); font-weight:bold; margin-bottom: -4px;">* Ảnh minh chứng hoàn hàng:</label>
-                                            <div class="proof-action-btns" style="display: flex; gap: 8px; margin-bottom: 4px; margin-top: 8px;">
-                                                <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:4px; background:#fff; color:#ea580c; padding:8px; border-radius:4px; border:1px dashed #ea580c; cursor:pointer; font-size:11px; font-weight:600;">
-                                                    <span class="material-symbols-outlined" style="font-size:16px;">photo_camera</span> Chụp ảnh
+                                        </div>
+                                        
+                                        <input type="file" name="proof_image" class="real-proof-input" accept="image/*" required style="display:none;">
+                                        
+                                        <div class="active-image-preview" style="display: none;">
+                                            <img src="" class="preview-img-box">
+                                            <button type="button" onclick="clearProofPreview(this)" class="btn-remove-img">
+                                                <span class="material-symbols-outlined" style="font-size: 14px;">close</span>
+                                            </button>
+                                        </div>
+                                        
+                                        <button type="submit" class="btn-blue-full">GIAO THÀNH CÔNG</button>
+                                    
+                                    <?php elseif ($status === 'returning'): ?>
+                                        <input type="hidden" name="status" value="returned">
+                                        <div class="auth-box-v3">
+                                            <div class="auth-label">ẢNH HOÀN HÀNG CHO KHO</div>
+                                            <div class="auth-input-group">
+                                                <label class="btn-cam-upload-w100">
+                                                    <span class="material-symbols-outlined">photo_camera</span> Chụp ảnh minh chứng
                                                     <input type="file" accept="image/*" capture="environment" style="display:none;" onchange="handleProofSync(this)">
                                                 </label>
-                                                <label style="flex:1; display:flex; align-items:center; justify-content:center; gap:4px; background:#fff; color:#10b981; padding:8px; border-radius:4px; border:1px dashed #10b981; cursor:pointer; font-size:11px; font-weight:600;">
-                                                    <span class="material-symbols-outlined" style="font-size:16px;">image</span> Chọn ảnh
-                                                    <input type="file" accept="image/*" style="display:none;" onchange="handleProofSync(this)">
-                                                </label>
                                             </div>
-                                            <input type="file" name="proof_image" class="real-proof-input" accept="image/*" required style="opacity: 0; position: absolute; z-index: -1; width: 1px; height: 1px;">
-                                            <div class="active-image-preview" style="display: none; position: relative; margin-bottom: 8px; text-align: center;">
-                                                <img src="" style="width: 100%; max-height: 120px; object-fit: cover; border-radius: 4px; border: 1px solid #cbd5e1;">
-                                                <button type="button" onclick="clearProofPreview(this)" style="position: absolute; top: -8px; right: -8px; background: #ef4444; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; cursor: pointer; font-size: 12px; display: flex; align-items: center; justify-content: center; padding: 0;"><span class="material-symbols-outlined" style="font-size: 14px;">close</span></button>
-                                            </div>
-                                            <button type="submit" class="btn-process-solid" style="background:var(--warning); color:#fff; border:none; padding:8px; border-radius:4px; font-weight:600; cursor:pointer;">Hoàn hàng xong</button>
-                                            <a href="/driver/orders/view/<?= $order['id'] ?>" class="btn-process-solid" style="background:#fff; color:var(--danger); border:1px solid var(--danger); padding:8px; border-radius:4px; font-weight:600; cursor:pointer; text-align:center; display:block; margin-top:4px; text-decoration:none;">Sự cố / Khách từ chối</a>
-                                        <?php endif; ?>
-                                    </form>
-                                </div>
+                                        </div>
+                                        <input type="file" name="proof_image" class="real-proof-input" accept="image/*" required style="display:none;">
+                                        <div class="active-image-preview" style="display: none;">
+                                            <img src="" class="preview-img-box">
+                                            <button type="button" onclick="clearProofPreview(this)" class="btn-remove-img"><span class="material-symbols-outlined">close</span></button>
+                                        </div>
+                                        <button type="submit" class="btn-blue-full">HOÀN TRẢ XONG</button>
+                                        
+                                        <a href="/driver/orders/view/<?= $order['id'] ?>" class="btn-report-danger">BÁO CÁO SỰ CỐ / TỪ CHỐI</a>
+                                    <?php endif; ?>
+                                </form>
                             </div>
                         </div>
-                    </div>
-                <?php endif; ?>
+                    <?php endforeach; ?>
 
-            <?php endforeach; ?>
-        </div>
-    <?php endif; ?>
-</div>
-
-<div id="routeModal" style="display:none; position:fixed; top:0; left:0; right:0; bottom:0; background:rgba(0,0,0,0.6); z-index:9999; padding:20px; align-items:center; justify-content:center; backdrop-filter: blur(4px);">
-    <div style="background:#fff; width:100%; max-width:900px; height:85vh; border-radius:4px; display:flex; flex-direction:column; overflow:hidden; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1);">
-        <div style="padding:16px 20px; border-bottom:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; background: #f8fafc;">
-            <h3 style="margin:0; font-size:18px; color: var(--text-main); display: flex; align-items: center; gap: 8px;">
-                <span class="material-symbols-outlined" style="color: var(--primary);">route</span>
-                Bản đồ lộ trình đa điểm
-            </h3>
-            <div class="driver-nav-actions">
-                <a id="btn-google-modal-nav" class="driver-nav-open disabled" href="#" target="_blank" rel="noopener">
-                    <span class="material-symbols-outlined" style="font-size: 16px;">near_me</span> Google Maps
-                </a>
-                <button onclick="closeRouteModal()" style="background:none; border:none; font-size:28px; cursor:pointer; color: var(--text-muted); line-height: 1;">&times;</button>
+                <?php endforeach; ?>
             </div>
         </div>
-        <div id="multi-route-map" style="flex:1; width:100%;"></div>
-    </div>
+    <?php endif; ?>
 </div>
 
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
@@ -425,41 +263,46 @@
 <script src="https://unpkg.com/leaflet-routing-machine@3.2.12/dist/leaflet-routing-machine.js"></script>
 
 <script>
-    // Xử lý đồng bộ ảnh minh chứng (Preview) lên giao diện trước khi upload
+    // JS Xử lý hình ảnh 
     function handleProofSync(input) {
         if (input.files && input.files[0]) {
             const form = input.closest('form');
             const realInput = form.querySelector('.real-proof-input');
             const previewContainer = form.querySelector('.active-image-preview');
             const img = previewContainer.querySelector('img');
-            const actionBtns = form.querySelector('.proof-action-btns');
-
+            
             const dataTransfer = new DataTransfer();
             dataTransfer.items.add(input.files[0]);
             realInput.files = dataTransfer.files;
 
             img.src = URL.createObjectURL(input.files[0]);
             previewContainer.style.display = 'block';
-            actionBtns.style.display = 'none';
-
             input.value = '';
         }
     }
-    // Xóa ảnh minh chứng đã chọn khỏi giao diện
     function clearProofPreview(btn) {
         const form = btn.closest('form');
         const realInput = form.querySelector('.real-proof-input');
         const previewContainer = form.querySelector('.active-image-preview');
-        const actionBtns = form.querySelector('.proof-action-btns');
-
         realInput.value = '';
         previewContainer.style.display = 'none';
-        actionBtns.style.display = 'flex';
     }
-    let multiMap = null;
-    let multiRoutingControl = null;
 
-    // Các biến cho chế độ Dẫn đường Inline
+    // Hàm điều khiển thu gọn / mở rộng Lộ trình AI
+    function toggleRouteTimeline(timelineId, toggleBtn) {
+        const timeline = document.getElementById(timelineId);
+        const icon = toggleBtn.querySelector('.rt-toggle-icon');
+        
+        if (timeline.style.display === 'block') {
+            timeline.style.display = 'none';
+            icon.classList.remove('expanded');
+        } else {
+            timeline.style.display = 'block';
+            icon.classList.add('expanded');
+        }
+    }
+
+    // Các biến cho Map
     let inlineMap = null;
     let inlineRoutingControl = null;
     let driverMarker = null;
@@ -468,160 +311,81 @@
 
     function pushDriverLocation(position, force = false) {
         if (!position || !position.coords) return;
-
         const now = Date.now();
         if (!force && now - lastLocationPushTime < 10000) return;
         lastLocationPushTime = now;
-
         fetch('/api/driver/update-location', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                lat: position.coords.latitude,
-                lng: position.coords.longitude,
-                accuracy: position.coords.accuracy
-            })
+            body: JSON.stringify({ lat: position.coords.latitude, lng: position.coords.longitude, accuracy: position.coords.accuracy })
         }).catch(() => {});
     }
 
-    // Đưa bản đồ về lại vị trí trung tâm dựa trên GPS của thiết bị
     function recenterMap() {
         if (navigator.geolocation) {
             const btn = document.getElementById('btn-recenter');
-            if(btn) btn.innerHTML = '<span class="material-symbols-outlined icon-spin" style="font-size: 20px;">sync</span>';
-
+            if(btn) btn.innerHTML = '<span class="material-symbols-outlined icon-spin">sync</span>';
             navigator.geolocation.getCurrentPosition((pos) => {
                 const currentLat = pos.coords.latitude;
                 const currentLng = pos.coords.longitude;
-                if (inlineMap) inlineMap.setView([currentLat, currentLng], 17);
+                if (inlineMap) inlineMap.setView([currentLat, currentLng], 16);
                 if (driverMarker) driverMarker.setLatLng([currentLat, currentLng]);
                 pushDriverLocation(pos, true);
-                if(btn) btn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 20px;">my_location</span>';
+                if(btn) btn.innerHTML = '<span class="material-symbols-outlined">my_location</span>';
             }, (err) => {
-                if(btn) btn.innerHTML = '<span class="material-symbols-outlined" style="font-size: 20px;">my_location</span>';
-                alert("Không thể lấy vị trí hiện tại. Vui lòng kiểm tra quyền GPS.");
+                if(btn) btn.innerHTML = '<span class="material-symbols-outlined">my_location</span>';
             }, { enableHighAccuracy: true, timeout: 5000 });
-        } else {
-            alert("Trình duyệt của bạn không hỗ trợ định vị.");
         }
     }
 
-    // Tạo Icon Marker tùy chỉnh cho bản đồ Leaflet
+    // Hàm tính toán góc quay (Heading/Bearing) dựa trên 2 điểm tọa độ
+    function calculateBearing(lat1, lng1, lat2, lng2) {
+        const toRad = Math.PI / 180;
+        const toDeg = 180 / Math.PI;
+        const dLng = (lng2 - lng1) * toRad;
+        const y = Math.sin(dLng) * Math.cos(lat2 * toRad);
+        const x = Math.cos(lat1 * toRad) * Math.sin(lat2 * toRad) -
+                  Math.sin(lat1 * toRad) * Math.cos(lat2 * toRad) * Math.cos(dLng);
+        const brng = Math.atan2(y, x) * toDeg;
+        return (brng + 360) % 360;
+    }
+
     function createCustomMarkerIcon(icon, color) {
         return L.divIcon({
             className: 'custom-div-icon',
-            html: `<div style="background-color:${color};width:36px;height:36px;border-radius:50%;border:3px solid #fff;box-shadow:0 4px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;position:relative;"><span class="material-symbols-outlined" style="color:#fff;font-size:20px;">${icon}</span><div style="position:absolute;bottom:-8px;left:50%;transform:translateX(-50%);border-width:8px 6px 0;border-style:solid;border-color:#fff transparent transparent transparent;"></div><div style="position:absolute;bottom:-5px;left:50%;transform:translateX(-50%);border-width:6px 4px 0;border-style:solid;border-color:${color} transparent transparent transparent;"></div></div>`,
-            iconSize: [36, 44], iconAnchor: [18, 44], popupAnchor: [0, -44]
+            html: `<div style="background-color:${color};width:32px;height:32px;border-radius:50%;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);display:flex;align-items:center;justify-content:center;position:relative;"><span class="material-symbols-outlined marker-rotate-icon" style="color:#fff;font-size:18px;transition: transform 0.4s ease;">${icon}</span><div style="position:absolute;bottom:-6px;left:50%;transform:translateX(-50%);border-width:6px 5px 0;border-style:solid;border-color:#fff transparent transparent transparent;"></div><div style="position:absolute;bottom:-4px;left:50%;transform:translateX(-50%);border-width:5px 3px 0;border-style:solid;border-color:${color} transparent transparent transparent;"></div></div>`,
+            iconSize: [32, 38], iconAnchor: [16, 38], popupAnchor: [0, -38]
         });
     }
 
-    // Tạo đường dẫn URL để mở ứng dụng Google Maps
     function buildGoogleMapsUrl(points) {
         const validPoints = (points || []).filter(p => Number(p.lat) !== 0 && Number(p.lng) !== 0);
         if (validPoints.length === 0) return '#';
-
         const hasDriverOrigin = validPoints[0].type === 'driver';
         const stops = hasDriverOrigin ? validPoints.slice(1) : validPoints;
         if (stops.length === 0) return '#';
-
         const destination = stops[stops.length - 1];
         const intermediateStops = stops.slice(0, -1).slice(0, 8);
-        const params = new URLSearchParams({
-            api: '1',
-            travelmode: 'driving',
-            destination: `${destination.lat},${destination.lng}`
-        });
-
-        if (hasDriverOrigin) {
-            params.set('origin', `${validPoints[0].lat},${validPoints[0].lng}`);
-        }
-        if (intermediateStops.length > 0) {
-            params.set('waypoints', intermediateStops.map(p => `${p.lat},${p.lng}`).join('|'));
-        }
-
+        const params = new URLSearchParams({ api: '1', travelmode: 'driving', destination: `${destination.lat},${destination.lng}` });
+        if (hasDriverOrigin) params.set('origin', `${validPoints[0].lat},${validPoints[0].lng}`);
+        if (intermediateStops.length > 0) params.set('waypoints', intermediateStops.map(p => `${p.lat},${p.lng}`).join('|'));
         return `https://www.google.com/maps/dir/?${params.toString()}`;
     }
 
-    // Cập nhật Link mở Google Maps cho nút bấm trên giao diện
     function updateGoogleNavLink(elementId, points) {
         const link = document.getElementById(elementId);
         if (!link) return;
-
         const url = buildGoogleMapsUrl(points);
         link.href = url;
         link.classList.toggle('disabled', url === '#');
     }
 
-    // Hiển thị thông tin điểm dừng tiếp theo trên thanh điều hướng
-    function updateDriverNavPanel(routePoints, summary = null) {
-        const panel = document.getElementById('driver-nav-panel');
-        const nextStop = document.getElementById('driver-next-stop');
-        const stopCount = document.getElementById('driver-stop-count');
-        if (!panel || !nextStop || !stopCount) return;
-
-        const validStops = (routePoints || []).filter(p => p.type !== 'driver' && Number(p.lat) !== 0 && Number(p.lng) !== 0);
-        if (validStops.length === 0) {
-            panel.style.display = 'none';
-            return;
-        }
-
-        const firstStop = validStops[0];
-        panel.style.display = 'flex';
-        nextStop.textContent = firstStop.title || firstStop.address || 'Điểm dừng tiếp theo';
-        stopCount.textContent = summary
-            ? `${validStops.length} điểm dừng • ${(summary.totalDistance / 1000).toFixed(1)} km`
-            : `${validStops.length} điểm dừng`;
-    }
-
-    // Hiển thị bản đồ lộ trình đa điểm (dành cho chuyến ghép)
-    function showBatchRouteMap(points) {
-        document.getElementById('routeModal').style.display = 'flex';
-
-        if (!multiMap) {
-            multiMap = L.map('multi-route-map').setView([16.4637, 107.5909], 13);
-            L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-                maxZoom: 20,
-                subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-                attribution: '&copy; Google Maps'
-            }).addTo(multiMap);
-        }
-
-        if (multiRoutingControl) multiMap.removeControl(multiRoutingControl);
-
-        const validPoints = points.filter(p => p.lat !== 0 && p.lng !== 0);
-        if (validPoints.length === 0) return;
-        updateGoogleNavLink('btn-google-modal-nav', validPoints);
-
-        const waypoints = validPoints.map(p => L.latLng(p.lat, p.lng));
-        const pickupIcon = createCustomMarkerIcon('storefront', '#f59e0b');
-        const deliveryIcon = createCustomMarkerIcon('location_on', '#10b981');
-
-        multiRoutingControl = L.Routing.control({
-            waypoints: waypoints,
-            router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1', language: 'vi' }),
-            routeWhileDragging: false, addWaypoints: false, fitSelectedRoutes: true, show: true,
-            lineOptions: { styles: [{color: '#3b82f6', opacity: 0.9, weight: 6}] },
-            createMarker: function(i, wp, nWps) {
-                const pointInfo = validPoints[i];
-                const icon = pointInfo.type === 'pickup' ? pickupIcon : deliveryIcon;
-                return L.marker(wp.latLng, {icon: icon}).bindPopup(`<b>${i+1}. ${pointInfo.title}</b>`);
-            }
-        }).addTo(multiMap);
-
-        setTimeout(() => { multiMap.invalidateSize(); }, 300);
-    }
-
-    // Đóng Modal bản đồ lộ trình
-    function closeRouteModal() { document.getElementById('routeModal').style.display = 'none'; }
-
-    // Khởi tạo bản đồ dẫn đường trực tiếp (Inline Map)
     document.addEventListener('DOMContentLoaded', function() {
         if (batchPointsForMap && batchPointsForMap.length > 0) {
-            inlineMap = L.map('inline-route-map').setView([16.4637, 107.5909], 13);
+            // Tắt giao diện kéo/chạm mặc định của leaflet trên mobile để mượt hơn
+            inlineMap = L.map('inline-route-map', { zoomControl: false }).setView([16.4637, 107.5909], 14);
             L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-                maxZoom: 20,
-                subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-                attribution: '&copy; Google Maps'
+                maxZoom: 20, subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
             }).addTo(inlineMap);
 
             const validPoints = batchPointsForMap.filter(p => p.lat !== 0 && p.lng !== 0);
@@ -630,6 +394,15 @@
                 const deliveryIcon = createCustomMarkerIcon('location_on', '#10b981');
                 const driverIcon = createCustomMarkerIcon('two_wheeler', '#2563eb');
 
+                // Hàm cập nhật điểm đến tiếp theo lên UI
+                function updateNextStopUI(stops) {
+                    if(stops.length > 1) {
+                        document.getElementById('nav-next-stop').innerText = stops[1].address || stops[1].title || "Đang xử lý...";
+                    } else {
+                        document.getElementById('nav-next-stop').innerText = "Đã tới điểm cuối";
+                    }
+                }
+
                 if (navigator.geolocation) {
                     watchPositionId = navigator.geolocation.watchPosition((pos) => {
                         const currentLat = pos.coords.latitude;
@@ -637,77 +410,80 @@
                         pushDriverLocation(pos);
 
                         if (!inlineRoutingControl) {
-                            // Vẽ lần đầu tiên
                             drawInlineRoute([{ lat: currentLat, lng: currentLng, title: 'Vị trí của bạn', type: 'driver' }, ...validPoints]);
                         } else if (driverMarker) {
-                            // Cập nhật vị trí marker
+                            const prevLatLng = driverMarker.getLatLng();
                             const newLatLng = L.latLng(currentLat, currentLng);
-                            driverMarker.setLatLng(newLatLng);
+                            
+                            // Xoay đầu xe theo hướng di chuyển
+                            if (prevLatLng.lat !== currentLat || prevLatLng.lng !== currentLng) {
+                                const angle = calculateBearing(prevLatLng.lat, prevLatLng.lng, currentLat, currentLng);
+                                if (driverMarker._icon) {
+                                    const iconSpan = driverMarker._icon.querySelector('.marker-rotate-icon');
+                                    if (iconSpan) iconSpan.style.transform = `rotate(${angle}deg)`;
+                                }
+                            }
 
-                            // Cập nhật lại waypoint đầu tiên của lộ trình
-                            let waypoints = inlineRoutingControl.getWaypoints();
-                            waypoints[0].latLng = newLatLng;
-                            inlineRoutingControl.setWaypoints(waypoints);
+                            driverMarker.setLatLng(newLatLng);
+                            // TỐI ƯU HÓA: Bỏ gọi setWaypoints liên tục mỗi giây để tránh DDoSing máy chủ OSRM API.
+                            // Việc setLatLng của Marker ở trên đã đủ để trực quan hóa vị trí tài xế.
+                            
                             updateGoogleNavLink('btn-google-batch-nav', [{ lat: currentLat, lng: currentLng, title: 'Vị trí của bạn', type: 'driver' }, ...validPoints]);
-                            updateDriverNavPanel([{ lat: currentLat, lng: currentLng, title: 'Vị trí của bạn', type: 'driver' }, ...validPoints]);
                         }
                     }, (err) => {
-                        console.warn("Không lấy được GPS trực tiếp, dùng vị trí lưu trữ:", err);
                         if (!inlineRoutingControl) {
                             if (fallbackDriverLat !== 0 && fallbackDriverLng !== 0) {
-                                drawInlineRoute([{ lat: fallbackDriverLat, lng: fallbackDriverLng, title: 'Vị trí của bạn (Lưu trữ)', type: 'driver' }, ...validPoints]);
+                                drawInlineRoute([{ lat: fallbackDriverLat, lng: fallbackDriverLng, title: 'Vị trí của bạn (Lưu)', type: 'driver' }, ...validPoints]);
                             } else {
                                 drawInlineRoute(validPoints);
                             }
                         }
                     }, { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 });
                 } else {
-                    if (fallbackDriverLat !== 0 && fallbackDriverLng !== 0) {
-                        drawInlineRoute([{ lat: fallbackDriverLat, lng: fallbackDriverLng, title: 'Vị trí của bạn (Lưu trữ)', type: 'driver' }, ...validPoints]);
-                    } else {
-                        drawInlineRoute(validPoints);
-                    }
+                    drawInlineRoute(validPoints);
                 }
 
-                // Vẽ tuyến đường chi tiết nối các điểm trên bản đồ
                 function drawInlineRoute(routePoints) {
                     const waypoints = routePoints.map(p => L.latLng(p.lat, p.lng));
                     updateGoogleNavLink('btn-google-batch-nav', routePoints);
-                    updateDriverNavPanel(routePoints);
+                    updateNextStopUI(routePoints);
 
                     inlineRoutingControl = L.Routing.control({
                         waypoints: waypoints,
                         router: L.Routing.osrmv1({ serviceUrl: 'https://router.project-osrm.org/route/v1', language: 'vi' }),
-                        routeWhileDragging: false, addWaypoints: false, fitSelectedRoutes: true, show: true, collapsible: true,
-                        lineOptions: { styles: [{color: '#3b82f6', opacity: 0.9, weight: 6}] },
-                        createMarker: function(i, wp) {
-                            let icon = routePoints[i].type === 'pickup' ? pickupIcon : deliveryIcon;
-                            if (routePoints[i].type === 'driver') {
-                                icon = driverIcon;
-                                driverMarker = L.marker(wp.latLng, {icon: icon});
-                                return driverMarker.bindPopup(`<b>Vị trí của bạn</b>`);
+                        routeWhileDragging: false, addWaypoints: false, fitSelectedRoutes: false, show: false,
+                        routeLine: function(route, options) {
+                            var indices = route.waypointIndices;
+                            var group = L.featureGroup();
+                            
+                            if (!indices || indices.length < 2) {
+                                return L.polyline(route.coordinates, {color: '#3b82f6', weight: 5, opacity: 0.8});
                             }
-                            return L.marker(wp.latLng, {icon: icon}).bindPopup(`<b>${routePoints[i].type === 'driver' ? '' : i + '. '}${routePoints[i].title}</b>`);
+                            
+                            var line = L.polyline(route.coordinates, {color: '#3b82f6', weight: 5, opacity: 0.8});
+                            group.addLayer(line);
+                            return group;
+                        },
+                        createMarker: function(i, waypoint, n) {
+                            const p = routePoints[i];
+                            let icon = deliveryIcon;
+                            if (p.type === 'driver') icon = driverIcon;
+                            else if (p.type === 'pickup') icon = pickupIcon;
+
+                            const marker = L.marker(waypoint.latLng, { icon: icon });
+                            if (p.type === 'driver') driverMarker = marker;
+                            
+                            if (p.title) {
+                                marker.bindPopup(`<b>${p.title}</b><br>${p.address || ''}`);
+                            }
+                            return marker;
                         }
                     }).addTo(inlineMap);
-
-                    inlineRoutingControl.on('routesfound', function(e) {
-                        const routes = e.routes;
-                        const summary = routes[0].summary;
-                        updateDriverNavPanel(routePoints, summary);
-                        document.getElementById('nav-summary-box').style.display = 'flex';
-                        document.getElementById('nav-summary').innerHTML = `
-                            <div style="font-size: 20px; font-weight: 800; color: var(--success);">${Math.round(summary.totalTime / 60)} phút</div>
-                            <div style="font-size: 15px; color: var(--text-main); font-weight: 600;">${(summary.totalDistance / 1000).toFixed(1)} km</div>
-                        `;
-                    });
                 }
             }
-        } else {
-            const mapContainer = document.getElementById('inline-route-map');
-            if (mapContainer) mapContainer.parentElement.style.display = 'none';
         }
     });
 </script>
 
 <?php require_once __DIR__ . '/../../layouts/user_footer.php'; ?>
+ 

@@ -73,7 +73,7 @@
                             elseif ($d['status'] === 'resolved') { $badgeClass = 'status-completed'; }
                             elseif ($d['status'] === 'rejected') { $badgeClass = 'status-pending'; }
                         ?>
-                        <span class="card-badge <?= $badgeClass ?>" style="<?= in_array($d['status'], ['in_review', 'processing'], true) ? 'background: #fef3c7; color: #f59e0b;' : '' ?>">
+                        <span class="card-badge <?= $badgeClass ?>" style="<?= in_array($d['status'], ['in_review', 'processing'], true) ? 'background: #eff6ff; color: #2563eb;' : '' ?>">
                             <?= htmlspecialchars($d['status_label'] ?? $d['status']) ?>
                         </span>
                     </div>

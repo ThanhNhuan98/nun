@@ -166,7 +166,10 @@ class User
      */
     public function upgradeToDriver(int $userId, string $licensePlate, string $vehicleImage): bool
     {
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) {
+            $this->db->beginTransaction();
+        }
         try {
             // Lấy thông số mặc định cho tài xế mới
             $settingModel = new Setting();
@@ -177,10 +180,14 @@ class User
             $stmtDriver = $this->db->prepare("INSERT INTO driver_profiles (user_id, max_concurrent_orders, max_total_weight, license_plate, vehicle_registration_image, is_verified) VALUES (?, ?, ?, ?, ?, 0) ON DUPLICATE KEY UPDATE license_plate = VALUES(license_plate), vehicle_registration_image = VALUES(vehicle_registration_image), is_verified = 0");
             $stmtDriver->execute([$userId, $maxOrders, $maxWeight, $licensePlate, $vehicleImage]);
 
-            $this->db->commit();
+            if ($ownsTransaction) {
+                $this->db->commit();
+            }
             return true;
         } catch (\Exception $e) {
-            $this->db->rollBack();
+            if ($ownsTransaction) {
+                $this->db->rollBack();
+            }
             error_log("Lỗi nâng cấp tài xế: " . $e->getMessage());
             return false;
         }
@@ -261,7 +268,10 @@ class User
      */
     public function update(int $id, array $data): bool
     {
-        $this->db->beginTransaction();
+        $ownsTransaction = !$this->db->inTransaction();
+        if ($ownsTransaction) {
+            $this->db->beginTransaction();
+        }
         try {
             $email = $this->normalizeEmail($data['email'] ?? '');
             
@@ -279,7 +289,7 @@ class User
             $stmt->bindValue(':id', $id, PDO::PARAM_INT);
             
             if (!$stmt->execute()) {
-                $this->db->rollBack();
+                if ($ownsTransaction) $this->db->rollBack();
                 return false;
             }
 
@@ -304,10 +314,15 @@ class User
                     $stmtDriver->execute([$data['license_plate'], $id]);
                 }
             }
-            $this->db->commit();
+            
+            if ($ownsTransaction) {
+                $this->db->commit();
+            }
             return true;
         } catch (\PDOException $e) {
-            $this->db->rollBack();
+            if ($ownsTransaction) {
+                $this->db->rollBack();
+            }
             error_log("Lỗi cập nhật người dùng: " . $e->getMessage());
             return false;
         }

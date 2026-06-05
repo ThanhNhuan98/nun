@@ -257,9 +257,11 @@ document.addEventListener('DOMContentLoaded', () => {
             const newResult = doc.querySelector('#tracking-result-area');
             if (newResult) {
                 // Hủy bản đồ cũ trước khi DOM bị thay thế để ngăn rò rỉ bộ nhớ
-                destroyTrackingMap(); 
+                destroyTrackingMap();
                 document.getElementById('tracking-result-area').innerHTML = newResult.innerHTML;
                 initTrackingMap(); // Re-render bản đồ sau khi trích xuất kết quả AJAX
+            } else {
+                document.getElementById('tracking-result-area').innerHTML = '<div class="tracking-card tracking-error-card"><span class="material-symbols-outlined tracking-error-icon">error</span><h3 class="tracking-error-title">Lỗi tra cứu!</h3><p class="tracking-error-text">Không thể tải dữ liệu đơn hàng. Vui lòng thử lại hoặc kiểm tra mã vận đơn.</p></div>';
             }
             
             window.history.pushState({code: code}, '', url);
