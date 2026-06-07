@@ -253,7 +253,7 @@ class Order
 
         $sql = "
             SELECT 
-                o.id, o.tracking_code, o.status, o.created_at, o.updated_at, o.scheduled_at,
+                o.id, o.tracking_code, o.status, o.created_at, o.updated_at, o.scheduled_at, o.weight,
                 oa.sender_address AS pickup_address, oa.receiver_address AS delivery_address,
                 fin.shipping_fee
             FROM orders o
@@ -486,7 +486,7 @@ class Order
 
         $sql = "
             SELECT 
-                o.id, o.tracking_code, o.status, o.created_at, o.scheduled_at,
+                o.id, o.tracking_code, o.status, o.created_at, o.scheduled_at, o.weight,
                 fin.shipping_fee,
                 oa.sender_address, oa.receiver_address,
                 del.driver_id,
@@ -662,7 +662,7 @@ class Order
 
         $sql = "
             SELECT 
-                o.id, o.tracking_code, o.status, o.created_at, o.scheduled_at,
+                o.id, o.tracking_code, o.status, o.created_at, o.scheduled_at, o.weight,
                 u.name as customer_name, u.phone as customer_phone, 
                 del.driver_id,
                 d.name as driver_name, d.phone as driver_phone,

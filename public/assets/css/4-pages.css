@@ -927,7 +927,7 @@ body.landing-page { background: #fff; font-family: 'Inter', sans-serif; color: v
 .od-pill.danger { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
 .od-pin-box { background: var(--dark-slate); border-radius: 8px; margin-top: 24px; overflow: hidden; text-align: center; color: #fff; }
 .od-pin-header { padding: 16px; font-size: 14px; opacity: 0.9; }
-.od-pin-number { background: var(--primary-blue); padding: 24px; font-size: 48px; font-weight: 800; letter-spacing: 12px; display: flex; justify-content: center; align-items: center; gap: 12px; }
+.od-pin-number { background: #39445e; padding: 24px; font-size: 48px; font-weight: 800; letter-spacing: 12px; display: flex; justify-content: center; align-items: center; gap: 12px; }
 .od-pin-footer { padding: 12px 16px; font-size: 12px; opacity: 0.7; }
 .od-map-container { height: 400px; border-radius: 8px; overflow: hidden; position: relative; border: 1px solid var(--border-color); }
 .od-map-badge { position: absolute; top: 16px; left: 16px; z-index: 1000; background: rgba(255, 255, 255, 0.95); padding: 8px 12px; border-radius: 4px; font-weight: 700; font-size: 14px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); display: flex; align-items: center; gap: 8px; }

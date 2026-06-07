@@ -94,6 +94,7 @@
                     <div class="h-card-footer">
                         <div class="h-card-fee">
                             Cước phí: <strong><?= app_money($order['shipping_fee'] ?? 0, ' đ') ?></strong>
+                            <div style="font-size: 12px; color: var(--text-muted); margin-top: 4px;"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">weight</span> Khối lượng: <strong><?= app_e($order['weight'] ?? '0') ?> kg</strong></div>
                         </div>
                         <a href="/driver/orders/view/<?= $order['id'] ?>" class="btn-h-detail">Xem chi tiết</a>
                     </div>

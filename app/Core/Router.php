@@ -31,7 +31,7 @@ class Router
     public function get($path, $callback, array $middlewares = [])
     {
         $middlewares = array_merge($this->middlewareGroups, $middlewares);
-        // TỐI ƯU HÓA: Biên dịch sẵn Regex pattern cho các route động ngay lúc đăng ký
+        // Biên dịch sẵn Regex pattern cho các route động ngay lúc đăng ký
         $pattern = null;
         if (strpos($path, '{') !== false) {
             $pattern = preg_replace('/\/\{([a-zA-Z0-9_]+)\}/', '/(?P<$1>[a-zA-Z0-9_-]+)', $path);
@@ -44,7 +44,7 @@ class Router
     public function post($path, $callback, array $middlewares = [])
     {
         $middlewares = array_merge($this->middlewareGroups, $middlewares);
-        // TỐI ƯU HÓA: Biên dịch sẵn Regex pattern 
+        // Biên dịch sẵn Regex pattern 
         $pattern = null;
         if (strpos($path, '{') !== false) {
             $pattern = preg_replace('/\/\{([a-zA-Z0-9_]+)\}/', '/(?P<$1>[a-zA-Z0-9_-]+)', $path);
@@ -63,7 +63,7 @@ class Router
         // Nếu không khớp trực tiếp, kiểm tra các route động
         if ($routeInfo === false) {
             foreach ($this->routes[$method] ?? [] as $route => $info) {
-                // TỐI ƯU HÓA SÂU: Đã có pattern Regex biên dịch sẵn, không cần gọi preg_replace cực kỳ tốn chi phí ở đây nữa
+                //  Đã có pattern Regex biên dịch sẵn, không cần gọi preg_replace cực kỳ tốn chi phí ở đây nữa
                 if ($info['pattern'] === null) {
                     continue;
                 }

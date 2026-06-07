@@ -23,7 +23,7 @@ class OrderController extends BaseController
                 throw new \RuntimeException($validation['error'] ?? 'Ảnh minh chứng không hợp lệ.');
             }
             
-            // TỐI ƯU HÓA: Nén ảnh cục bộ bằng GD Library trước khi đẩy qua mạng tới Cloudinary
+            // Nén ảnh cục bộ bằng GD Library trước khi đẩy qua mạng tới Cloudinary
             if (function_exists('app_compress_image_before_upload')) {
                 app_compress_image_before_upload($_FILES['proof_image']['tmp_name']);
             }
@@ -93,7 +93,7 @@ class OrderController extends BaseController
             return ['batches' => [], 'message' => 'Không tìm thấy vị trí của bạn. Vui lòng bật định vị GPS và cấp quyền cho trình duyệt để hệ thống có thể ghép chuyến.'];
         }
 
-        // TỐI ƯU HÓA: Truyền tọa độ tài xế để Database chặn đứng các đơn hàng quá xa (>20km)
+        // Truyền tọa độ tài xế để Database chặn đứng các đơn hàng quá xa (>20km)
         $orders = $orderModel->getPendingForDriver($driverId, $driverLocation, 20);
         
         $batches = [];
@@ -114,7 +114,7 @@ class OrderController extends BaseController
         $driverMaxWeight = $dp ? (float)$dp['max_total_weight'] : $defaultMaxWeight;
         $fastMaxOrders = (int) $settingModel->get('fast_max_orders', 3);
         
-        // TỐI ƯU HÓA: Thay thế 3 truy vấn SQL rời rạc bằng 1 truy vấn tổng hợp duy nhất để giảm tải kết nối DB
+        // Thay thế 3 truy vấn SQL rời rạc bằng 1 truy vấn tổng hợp duy nhất để giảm tải kết nối DB
         $activeStats = $orderModel->getDriverActiveStats($driverId);
         $activeCount = (int) $activeStats['active_count'];
         $hasExpress = (bool) $activeStats['has_express'];
@@ -125,7 +125,7 @@ class OrderController extends BaseController
             return ['batches' => [], 'message' => 'Bạn đang thực hiện đơn Siêu tốc (độc quyền). Radar tự động ẩn các đơn khác để đảm bảo chất lượng dịch vụ.'];
         }
 
-        // Tối ưu hóa: Nếu tài xế đang giữ đơn Giao nhanh, tự động siết số lượng đơn tối đa trên Radar.
+        // Nếu tài xế đang giữ đơn Giao nhanh, tự động siết số lượng đơn tối đa trên Radar.
         if ($hasFast) {
             $driverMaxOrders = min($driverMaxOrders, $fastMaxOrders);
         }
@@ -181,7 +181,7 @@ class OrderController extends BaseController
             'fast_max_orders' => $fastMaxOrders
         ];
 
-        // TỐI ƯU HÓA: Thay thế shell_exec bằng Microservice API (FastAPI)
+        // Thay thế shell_exec bằng Microservice API (FastAPI)
         // Điều này ngăn chặn việc tràn bộ nhớ và nghẽn I/O ổ đĩa
         $aiServiceUrl = $_ENV['AI_SERVICE_URL'] ?? 'http://127.0.0.1:8000/api/v1/optimize-routes';
         
@@ -193,7 +193,7 @@ class OrderController extends BaseController
             'Content-Type: application/json',
             'Accept: application/json'
         ]);
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2); // Tối ưu: Nếu server Python sập, báo lỗi ngay lập tức sau 2s thay vì chờ đợi
+        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 2); // Nếu server Python sập, báo lỗi ngay lập tức sau 2s thay vì chờ đợi
         curl_setopt($ch, CURLOPT_TIMEOUT, 15); // Tăng Timeout lên 15s để AI có đủ thời gian xử lý nhiều cụm đơn
         
         $output = curl_exec($ch);
@@ -261,7 +261,7 @@ class OrderController extends BaseController
                             ? $firstOrderData['sender_lng'] 
                             : $firstOrderData['receiver_lng'];
 
-                        // Tối ưu hóa: Dùng công thức Haversine tính toán đường chim bay
+                        // Dùng công thức Haversine tính toán đường chim bay
                         // tránh gọi API OSRM nhiều lần gây giật lag
                         $distance_km = $osrmService->haversineDistance(
                             (float)$driverLocation['lat'], (float)$driverLocation['lng'],
@@ -521,7 +521,7 @@ class OrderController extends BaseController
         // Sắp xếp các đơn hàng bên trong mỗi chuyến ghép theo lộ trình AI
         foreach ($groupedByBatch as &$batch) {
             if (!empty($batch['route_details'])) {
-                // TỐI ƯU HÓA: Dùng hàm tính toán các điểm còn lại để lấy thứ tự hành động tiếp theo
+                // hàm tính toán các điểm còn lại để lấy thứ tự hành động tiếp theo
                 $pointsData = app_build_driver_route_points($batch['orders'], $batch['route_details']);
                 $sequenceMap = [];
                 foreach ($pointsData as $index => $step) {
@@ -1058,10 +1058,10 @@ class OrderController extends BaseController
                     if (!empty($activeTrackingCodes)) {
                         $pusher = new \App\Services\PusherService();
                         
-                        // TỐI ƯU HÓA: Áp dụng hàm map nội tại của PHP để duyệt dữ liệu nhanh hơn vòng lặp foreach
+                        //  Áp dụng hàm map nội tại của PHP để duyệt dữ liệu nhanh hơn vòng lặp foreach
                         $channels = array_map(fn($code) => 'tracking-' . $code, $activeTrackingCodes);
                         
-                        // TỐI ƯU HÓA: Truyền một MẢNG các kênh để gọi API 1 lần duy nhất (Batching I/O)
+                        //  Truyền một MẢNG các kênh để gọi API 1 lần duy nhất (Batching I/O)
                         $pusher->trigger($channels, 'location_update', [
                             'lat' => $lat,
                             'lng' => $lng

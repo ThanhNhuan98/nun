@@ -47,7 +47,8 @@
                     <?php 
                         $statusColors = [
                             'awaiting_payment' => 'status-pending', 'pending' => 'status-pending', 'searching_driver' => 'status-warning',
-                            'in_transit' => 'status-shipping', 'completed' => 'status-completed',
+                            'accepted' => 'status-shipping', 'picking_up' => 'status-shipping',
+                            'in_transit' => 'status-shipping', 'shipping' => 'status-shipping', 'completed' => 'status-completed',
                             'cancelled' => 'status-cancelled', 'disputed' => 'status-cancelled'
                         ];
                         $badgeClass = $statusColors[$order['status']] ?? 'status-pending';
@@ -64,6 +65,10 @@
                 <div class="data-group">
                     <span class="data-label">Dịch vụ</span>
                     <span class="data-value"><?= htmlspecialchars(\App\Models\Order::getShippingMethodLabel($order['shipping_method'] ?? 'standard')) ?></span>
+                </div>
+                <div class="data-group">
+                    <span class="data-label">Khối lượng</span>
+                    <span class="data-value"><?= app_e($order['weight'] ?? '0') ?> kg</span>
                 </div>
             </div>
 

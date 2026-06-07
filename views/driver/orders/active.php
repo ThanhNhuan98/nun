@@ -134,6 +134,7 @@
                                 <div class="oc-badges">
                                     <span class="oc-badge <?= $expressClass ?>"><?= app_e($expressLabel) ?></span>
                                     <span class="oc-badge <?= $badgeStatusClass ?>"><?= app_e($statusLabel) ?></span>
+                                    <span class="oc-badge" style="background: #f1f5f9; color: #475569;"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: bottom;">weight</span> <?= app_e($order['weight'] ?? '0') ?> kg</span>
                                 </div>
                             </div>
 

@@ -119,9 +119,12 @@ require_once __DIR__ . '/../../layouts/user_header.php';
                             <?php foreach ($batch['order_details'] as $order): ?>
                                 <div class="order-simple-item">
                                     <div class="order-simple-header">
-                                        <span class="order-simple-title">Đơn #<?= app_e($order['id']) ?></span>
+                                        <span class="order-simple-title">Đơn #<?= app_e($order['tracking_code'] ?? $order['id']) ?></span>
                                         <span class="order-simple-type" style="color: <?= $order['shipping_method_color'] ?? 'var(--primary)' ?>;">
                                             <?= app_e($order['shipping_method_label'] ?? 'Giao tiêu chuẩn') ?>
+                                        </span>
+                                        <span class="order-simple-type" style="color: var(--text-muted); font-size: 12px; background: #f1f5f9; padding: 2px 6px; border-radius: 4px; display: inline-flex; align-items: center; gap: 2px;">
+                                            <span class="material-symbols-outlined" style="font-size: 14px;">weight</span> <?= app_e($order['weight'] ?? '0') ?> kg
                                         </span>
                                     </div>
                                     <div class="order-simple-location">
@@ -164,7 +167,16 @@ require_once __DIR__ . '/../../layouts/user_header.php';
                                     </div>
                                     <div class="rt-address-v2">
                                         <?= app_e($step['address']) ?>
-                                        <small>(Đơn #<?= app_e($step['order_id']) ?>)</small>
+                                        <?php 
+                                            $stepTrackingCode = $step['order_id'];
+                                            foreach($batch['order_details'] as $od) {
+                                                if($od['id'] == $step['order_id']) {
+                                                    $stepTrackingCode = $od['tracking_code'];
+                                                    break;
+                                                }
+                                            }
+                                        ?>
+                                        <small>(Đơn #<?= app_e($stepTrackingCode) ?>)</small>
                                     </div>
                                 </div>
                             </div>

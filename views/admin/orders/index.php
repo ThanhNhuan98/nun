@@ -40,7 +40,7 @@
             'searching_driver' => 'Đang tìm tài xế',
             'accepted' => 'Đã nhận đơn',
             'picking_up' => 'Đang lấy hàng',
-            'shipping' => 'Đang giao hàng',
+            'in_transit' => 'Đang giao hàng',
             'completed' => 'Hoàn thành',
             'returning' => 'Đang chuyển hoàn',
             'returned' => 'Đã hoàn hàng',
@@ -74,7 +74,7 @@
                             $rawStatusClass = app_status_class($order['status']); 
                             $cardBadgeClass = 'status-pending'; 
                             if (strpos($rawStatusClass, 'success') !== false || $order['status'] == 'completed') $cardBadgeClass = 'status-completed';
-                            if (strpos($rawStatusClass, 'info') !== false || $order['status'] == 'in_transit') $cardBadgeClass = 'status-shipping';
+                            if (strpos($rawStatusClass, 'info') !== false || in_array($order['status'], ['accepted', 'picking_up', 'in_transit', 'shipping'])) $cardBadgeClass = 'status-shipping';
                             if (strpos($rawStatusClass, 'danger') !== false || $order['status'] == 'cancelled') $cardBadgeClass = 'status-cancelled';
                         ?>
                         <span class="card-badge <?= $cardBadgeClass ?>">
@@ -127,6 +127,7 @@
                         </div>
                         <div style="display: flex; align-items: center; gap: 15px;">
                             <div class="time-block" style="text-align: right; color: #64748b; font-size: 13px;">
+                                <strong style="color: var(--text-main); font-size: 12px; display: block; margin-bottom: 2px;"><span class="material-symbols-outlined" style="font-size: 14px; vertical-align: middle;">weight</span> <?= app_e($order['weight'] ?? '0') ?> kg</strong>
                                 <?= app_datetime($order['scheduled_at'], 'd/m/Y') ?><br>
                                 <?= app_datetime($order['scheduled_at'], 'H:i') ?>
                             </div>
