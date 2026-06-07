@@ -28,6 +28,9 @@ class Validator
     ];
 
     private static array $fieldNames = [
+        'name' => 'Họ và tên',
+        'phone' => 'Số điện thoại',
+        'email' => 'Địa chỉ email',
         'sender_name' => 'Tên người gửi',
         'sender_phone' => 'Số điện thoại người gửi',
         'receiver_name' => 'Tên người nhận',
@@ -45,7 +48,23 @@ class Validator
         'account' => 'Tài khoản',
         'password' => 'Mật khẩu',
         'password_confirm' => 'Xác nhận mật khẩu',
-        'otp' => 'Mã xác thực OTP'
+        'current_password' => 'Mật khẩu hiện tại',
+        'new_password' => 'Mật khẩu mới',
+        'confirm_password' => 'Xác nhận mật khẩu',
+        'otp' => 'Mã xác thực OTP',
+        'amount' => 'Số tiền',
+        'bank_account' => 'Số tài khoản ngân hàng',
+        'bank_name' => 'Tên ngân hàng',
+        'reason' => 'Lý do khiếu nại/hủy đơn',
+        'issue_type' => 'Loại sự cố',
+        'resolution_note' => 'Ghi chú giải quyết',
+        'platform_fee_percent' => 'Phần trăm phí nền tảng',
+        'max_concurrent_orders' => 'Giới hạn số đơn ghép',
+        'max_total_weight' => 'Giới hạn tải trọng xe',
+        'sender_lat' => 'Tọa độ lấy hàng',
+        'sender_lng' => 'Tọa độ lấy hàng',
+        'receiver_lat' => 'Tọa độ giao hàng',
+        'receiver_lng' => 'Tọa độ giao hàng'
     ];
 
     // Khởi tạo bộ xác thực dữ liệu (Validator) với mảng dữ liệu đầu vào.
@@ -123,7 +142,7 @@ class Validator
     // Kiểm tra trường dữ liệu không được bỏ trống.
     protected function ruleRequired(string $field, $value): bool
     {
-        return !empty(trim((string)$value));
+        return $value !== null && trim((string)$value) !== '';
     }
 
     // Kiểm tra định dạng địa chỉ email hợp lệ.

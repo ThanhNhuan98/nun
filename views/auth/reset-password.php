@@ -21,47 +21,49 @@
 </head>
 <body>
     <?= app_render_toast(); ?>
-    <div class="auth-card">
-        <h2 class="auth-card-title">Đặt lại mật khẩu</h2>
-        <p class="auth-card-desc">Vui lòng nhập mật khẩu mới cho tài khoản của bạn</p>
-
-        <?php if (!empty($errors)): ?>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    <?php foreach ($errors as $err): ?>
-                    if (typeof showToast === 'function') showToast('<?= app_e($err) ?>', 'error');
-                    <?php endforeach; ?>
-                });
-            </script>
-        <?php endif; ?>
-
-        <form action="/reset-password" method="POST">
-            <div class="input-group">
-                <label class="auth-label">Mật khẩu mới <span class="text-danger">*</span></label>
-                <div class="input-wrapper">
-                    <span class="material-symbols-outlined input-icon-prefix">lock_outline</span>
-                    <input type="password" name="password" class="auth-input password-field" placeholder="Nhập mật khẩu mới" required minlength="6" oninvalid="this.setCustomValidity('Vui lòng nhập mật khẩu mới (ít nhất 6 ký tự).')" oninput="this.setCustomValidity('')">
-                    <span class="material-symbols-outlined input-icon-suffix toggle-password">visibility_off</span>
+    <div class="auth-page-wrapper">
+        <div class="auth-card">
+            <h2 class="auth-card-title">Đặt lại mật khẩu</h2>
+            <p class="auth-card-desc">Vui lòng nhập mật khẩu mới cho tài khoản của bạn</p>
+    
+            <?php if (!empty($errors)): ?>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        <?php foreach ($errors as $err): ?>
+                        if (typeof showToast === 'function') showToast('<?= app_e($err) ?>', 'error');
+                        <?php endforeach; ?>
+                    });
+                </script>
+            <?php endif; ?>
+    
+            <form action="/reset-password" method="POST">
+                <div class="input-group">
+                    <label class="auth-label">Mật khẩu mới <span class="text-danger">*</span></label>
+                    <div class="input-wrapper">
+                        <span class="material-symbols-outlined input-icon-prefix">lock_outline</span>
+                        <input type="password" name="password" class="auth-input password-field" placeholder="Nhập mật khẩu mới" required minlength="6" oninvalid="this.setCustomValidity('Vui lòng nhập mật khẩu mới (ít nhất 6 ký tự).')" oninput="this.setCustomValidity('')">
+                        <span class="material-symbols-outlined input-icon-suffix toggle-password">visibility_off</span>
+                    </div>
                 </div>
-            </div>
-            
-            <div class="input-group">
-                <label class="auth-label">Xác nhận mật khẩu mới <span class="text-danger">*</span></label>
-                <div class="input-wrapper">
-                    <span class="material-symbols-outlined input-icon-prefix">lock_reset</span>
-                    <input type="password" name="password_confirm" class="auth-input password-field" placeholder="Nhập lại mật khẩu mới" required minlength="6" oninvalid="this.setCustomValidity('Vui lòng xác nhận mật khẩu mới (ít nhất 6 ký tự).')" oninput="this.setCustomValidity('')">
-                    <span class="material-symbols-outlined input-icon-suffix toggle-password">visibility_off</span>
+                
+                <div class="input-group">
+                    <label class="auth-label">Xác nhận mật khẩu mới <span class="text-danger">*</span></label>
+                    <div class="input-wrapper">
+                        <span class="material-symbols-outlined input-icon-prefix">lock_reset</span>
+                        <input type="password" name="password_confirm" class="auth-input password-field" placeholder="Nhập lại mật khẩu mới" required minlength="6" oninvalid="this.setCustomValidity('Vui lòng xác nhận mật khẩu mới (ít nhất 6 ký tự).')" oninput="this.setCustomValidity('')">
+                        <span class="material-symbols-outlined input-icon-suffix toggle-password">visibility_off</span>
+                    </div>
                 </div>
-            </div>
-
-            <button type="submit" class="auth-btn-primary">
-                Cập nhật mật khẩu
-            </button>
-        </form>
-
-        <p class="login-text" style="margin-top: 24px; text-align: center;">
-            Quay lại <a href="/login" class="login-link">Đăng nhập</a>
-        </p>
+    
+                <button type="submit" class="auth-btn-primary">
+                    Cập nhật mật khẩu
+                </button>
+            </form>
+    
+            <p class="login-text" style="margin-top: 24px; text-align: center;">
+                Quay lại <a href="/login" class="login-link">Đăng nhập</a>
+            </p>
+        </div>
     </div>
 
     <script>

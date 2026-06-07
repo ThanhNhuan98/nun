@@ -112,15 +112,22 @@ class OrderController extends BaseController
         
         $defaultMaxWeight = (float) $settingModel->get('default_max_total_weight', 100);
         $driverMaxWeight = $dp ? (float)$dp['max_total_weight'] : $defaultMaxWeight;
+        $fastMaxOrders = (int) $settingModel->get('fast_max_orders', 3);
         
         // TỐI ƯU HÓA: Thay thế 3 truy vấn SQL rời rạc bằng 1 truy vấn tổng hợp duy nhất để giảm tải kết nối DB
         $activeStats = $orderModel->getDriverActiveStats($driverId);
         $activeCount = (int) $activeStats['active_count'];
         $hasExpress = (bool) $activeStats['has_express'];
+        $hasFast = (bool) ($activeStats['has_fast'] ?? 0);
         $currentWeight = (float) $activeStats['current_weight'];
         
         if ($hasExpress) {
             return ['batches' => [], 'message' => 'Bạn đang thực hiện đơn Siêu tốc (độc quyền). Radar tự động ẩn các đơn khác để đảm bảo chất lượng dịch vụ.'];
+        }
+
+        // Tối ưu hóa: Nếu tài xế đang giữ đơn Giao nhanh, tự động siết số lượng đơn tối đa trên Radar.
+        if ($hasFast) {
+            $driverMaxOrders = min($driverMaxOrders, $fastMaxOrders);
         }
         
         $availableCapacity = max(0, $driverMaxOrders - $activeCount);
@@ -170,7 +177,8 @@ class OrderController extends BaseController
             'orders' => $orders,
             'max_orders_per_batch' => $maxOrdersPerBatch,
             'max_weight_capacity' => $availableWeightCapacity,
-            'vehicle_speed' => $vehicleSpeed
+            'vehicle_speed' => $vehicleSpeed,
+            'fast_max_orders' => $fastMaxOrders
         ];
 
         // TỐI ƯU HÓA: Thay thế shell_exec bằng Microservice API (FastAPI)
@@ -201,22 +209,41 @@ class OrderController extends BaseController
 
         if ($result && isset($result['status']) && $result['status'] === 'success') {
             $orderMap = [];
-            foreach ($orders as $o) $orderMap[$o['id']] = $o;
+            foreach ($orders as $o) {
+                $o['formatted_scheduled_at'] = !empty($o['scheduled_at']) 
+                    ? date('H:i d/m/Y', strtotime($o['scheduled_at'])) 
+                    : 'Càng sớm càng tốt';
+                $o['shipping_method_label'] = \App\Models\Order::getShippingMethodLabel($o['shipping_method'] ?? null);
+                $o['shipping_method_color'] = \App\Models\Order::getShippingMethodColor($o['shipping_method'] ?? null);
+                $orderMap[$o['id']] = $o;
+            }
             
             $osrmService = new OsrmService();
 
             foreach ($result['batches'] as &$batch) {
                 $totalFee = 0;
                 $totalWeight = 0;
+                $orderDetails = [];
                 foreach ($batch['order_ids'] as $oid) {
                     if (isset($orderMap[$oid])) {
                         $order = $orderMap[$oid];
                         $totalFee += (float) ($order['shipping_fee'] ?? 0);
                         $totalWeight += (float) ($order['weight'] ?? 1.0);
+                        $orderDetails[] = $order;
                     }
                 }
                 $batch['total_fee'] = $totalFee;
                 $batch['total_weight'] = $totalWeight;
+                $batch['order_details'] = $orderDetails;
+
+                // Cập nhật thêm thông tin phương thức giao hàng vào route_details để View dễ hiển thị
+                foreach ($batch['route_details'] as &$route) {
+                    if (isset($orderMap[$route['order_id']])) {
+                        $route['shipping_method_label'] = $orderMap[$route['order_id']]['shipping_method_label'];
+                        $route['shipping_method_color'] = $orderMap[$route['order_id']]['shipping_method_color'];
+                    }
+                }
+                unset($route);
 
                 // Tính thời gian tiếp cận (access_duration_s) dựa trên route_details
                 $access_duration_s = 0;
@@ -265,17 +292,21 @@ class OrderController extends BaseController
             }
             unset($batch);
 
+            // Sắp xếp đa tầng các chuyến ghép để hiển thị cho tài xế
             usort($batches, function($a, $b) {
+                // Cấp 1: Ưu tiên theo loại hình dịch vụ (Express > Fast > Standard)
                 $prioA = $a['priority'] ?? 2;
                 $prioB = $b['priority'] ?? 2;
                 if ($prioA !== $prioB) {
                     return $prioA <=> $prioB; // Số nhỏ ưu tiên hơn (0=express, 1=fast, 2=standard)
                 }
+                // Cấp 2: Ưu tiên theo độ khẩn cấp (Đơn hàng nào hẹn giờ sớm hơn thì lên trước để đảm bảo SLA)
                 $timeA = $a['most_urgent_time'] ?? '9999-12-31 23:59:59';
                 $timeB = $b['most_urgent_time'] ?? '9999-12-31 23:59:59';
                 if ($timeA !== $timeB) {
-                    return strcmp($timeA, $timeB);
+                    return strcmp($timeA, $timeB); // So sánh chuỗi thời gian, cái nào nhỏ hơn (sớm hơn) thì lên trước
                 }
+                // Cấp 3: Nếu cùng loại và cùng độ khẩn cấp, mới xét đến hiệu quả kinh tế (Điểm hiệu quả cao hơn lên trước)
                 return ($b['efficiency_score'] ?? 0) <=> ($a['efficiency_score'] ?? 0);
             });
         } else {
@@ -316,7 +347,16 @@ class OrderController extends BaseController
                 $batches[] = [
                     'batch_id' => 'ĐƠN LẺ',
                     'order_ids' => [$o['id']],
-                    'route_details' => [['type' => 'pickup', 'order_id' => $o['id'], 'address' => $o['pickup_address']], ['type' => 'delivery', 'order_id' => $o['id'], 'address' => $o['delivery_address']]],
+                    'route_details' => [
+                        [
+                            'type' => 'pickup', 'order_id' => $o['id'], 'address' => $o['pickup_address'],
+                            'shipping_method_label' => $o['shipping_method_label'], 'shipping_method_color' => $o['shipping_method_color']
+                        ], 
+                        [
+                            'type' => 'delivery', 'order_id' => $o['id'], 'address' => $o['delivery_address'],
+                            'shipping_method_label' => $o['shipping_method_label'], 'shipping_method_color' => $o['shipping_method_color']
+                        ]
+                    ],
                     'total_orders' => 1,
                     'total_fee' => (float)($o['shipping_fee'] ?? 0),
                     'total_weight' => (float)($o['weight'] ?? 1.0),
@@ -654,6 +694,23 @@ class OrderController extends BaseController
                                 'Cộng tiền cước vận chuyển',
                                 "Hệ thống đã cộng " . number_format($driverEarnings, 0, ',', '.') . "đ vào ví của bạn (Cước vận chuyển đơn hàng #{$order['tracking_code']}).",
                                 'wallet',
+                                "/driver/orders/view/$orderId"
+                            );
+                        }
+                    }
+
+                    // THƯỞNG GIAO SIÊU TỐC: Giảm 1 lần vi phạm cho tài xế nếu hoàn thành xuất sắc
+                    if ($newStatus === 'completed' && ($order['shipping_method'] ?? '') === 'express') {
+                        $stmtReduceViolation = $db->prepare("UPDATE users SET violation_count = violation_count - 1 WHERE id = ? AND violation_count > 0");
+                        $stmtReduceViolation->execute([$driverId]);
+                        if ($stmtReduceViolation->rowCount() > 0) {
+                            $successMessage .= " Thưởng giao Siêu tốc: Bạn đã được giảm 1 lần vi phạm!";
+                            $userModel = new User();
+                            $userModel->createNotification(
+                                $driverId,
+                                'Thưởng giao Siêu tốc',
+                                "Chúc mừng! Vì đã hoàn thành xuất sắc đơn hàng Siêu tốc #{$order['tracking_code']}, hệ thống đã xóa 1 lỗi vi phạm cho bạn.",
+                                'system',
                                 "/driver/orders/view/$orderId"
                             );
                         }
@@ -1005,14 +1062,25 @@ class OrderController extends BaseController
                         $channels = array_map(fn($code) => 'tracking-' . $code, $activeTrackingCodes);
                         
                         // TỐI ƯU HÓA: Truyền một MẢNG các kênh để gọi API 1 lần duy nhất (Batching I/O)
-                        $pusher->trigger($channels, 'location_update', ['lat' => $lat, 'lng' => $lng]);
+                        $pusher->trigger($channels, 'location_update', [
+                            'lat' => $lat,
+                            'lng' => $lng
+                        ]);
+                        
+                        $pusher->trigger('admin-global-tracking', 'driver_location_update', [
+                            'driver_id' => $driverId,
+                            'lat' => $lat,
+                            'lng' => $lng
+                        ]);
                     }
-                } catch (\Throwable $e) {}
+                } catch (\Throwable $e) {
+                    error_log('Pusher Update Location Error: ' . $e->getMessage());
+                }
             }
 
-            return $response->json(['success' => $success]);
+            return $response->json(['success' => true]);
         }
 
-        return $response->json(['success' => false, 'message' => 'Toa do khong hop le'], 400);
+        return $response->json(['success' => false, 'message' => 'Tọa độ không hợp lệ'], 400);
     }
 }

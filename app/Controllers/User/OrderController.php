@@ -51,15 +51,15 @@ class OrderController extends BaseController
                 'pickup_address_detail' => 'max:255',
                 'delivery_address' => 'required|max:500',
                 'delivery_address_detail' => 'max:255',
-                'sender_lat' => 'required|numeric',
-                'sender_lng' => 'required|numeric',
-                'receiver_lat' => 'required|numeric',
-                'receiver_lng' => 'required|numeric',
+                'sender_lat' => 'required|float',
+                'sender_lng' => 'required|float',
+                'receiver_lat' => 'required|float',
+                'receiver_lng' => 'required|float',
                 'weight' => 'required|float|gt:0',
                 'shipping_method' => 'required|in:standard,fast,express',
                 'payment_method' => 'required|in:cash,transfer',
                 'note' => 'max:1000',
-                'scheduled_at' => 'required|after_now|before_one_week',
+                'scheduled_at' => 'datetime|after_now|before_one_week',
             ])->throw();
 
             // Yêu cầu 1: Không cho phép địa chỉ lấy và giao trùng nhau

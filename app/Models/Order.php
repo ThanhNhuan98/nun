@@ -621,8 +621,13 @@ class Order
         }
 
         if ($search !== '') {
-            $where .= " AND (o.tracking_code LIKE ? OR u.name LIKE ? OR u.phone LIKE ? OR oa.receiver_phone LIKE ?)";
+            $where .= " AND (o.tracking_code LIKE ? OR u.name LIKE ? OR u.phone LIKE ? OR oa.sender_name LIKE ? OR oa.sender_phone LIKE ? OR oa.receiver_name LIKE ? OR oa.receiver_phone LIKE ? OR d.name LIKE ? OR d.phone LIKE ?)";
             // Tối ưu hóa: Dùng toán tử append []
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
             $params[] = "%$search%";
             $params[] = "%$search%";
             $params[] = "%$search%";
@@ -643,7 +648,7 @@ class Order
         if ($search === '') {
             $sql = "SELECT COUNT(o.id) FROM orders o $where";
         } else {
-            $sql = "SELECT COUNT(o.id) FROM orders o LEFT JOIN users u ON o.customer_id = u.id LEFT JOIN order_addresses oa ON oa.order_id = o.id $where";
+            $sql = "SELECT COUNT(o.id) FROM orders o LEFT JOIN users u ON o.customer_id = u.id LEFT JOIN order_addresses oa ON oa.order_id = o.id LEFT JOIN order_deliveries del ON o.id = del.order_id LEFT JOIN users d ON del.driver_id = d.id $where";
         }
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -974,7 +979,8 @@ class Order
             SELECT
                 COUNT(*) as total_active,
                 COALESCE(SUM(o.weight), 0) as active_weight,
-                SUM(CASE WHEN o.shipping_method = 'express' THEN 1 ELSE 0 END) as express_count
+                SUM(CASE WHEN o.shipping_method = 'express' THEN 1 ELSE 0 END) as express_count,
+                SUM(CASE WHEN o.shipping_method = 'fast' THEN 1 ELSE 0 END) as fast_count
             FROM orders o JOIN order_deliveries od ON o.id = od.order_id
             WHERE od.driver_id = ? AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning')
         ");
@@ -983,6 +989,7 @@ class Order
         $activeCount = (int) $activeStats['total_active'];
         $activeWeight = (float) ($activeStats['active_weight'] ?? 0);
         $activeExpressCount = (int) $activeStats['express_count'];
+        $activeFastCount = (int) $activeStats['fast_count'];
 
         if ($activeExpressCount > 0) {
             foreach ($orderIds as $oid) $response['rejected_orders'][$oid] = 'Bạn đang thực hiện đơn Siêu tốc (độc quyền), không thể nhận thêm đơn.';
@@ -992,7 +999,12 @@ class Order
         $settingModel = new Setting();
         $defaultMaxOrders = (int) $settingModel->get('default_max_concurrent_orders', 10);
         $defaultMaxWeight = (float) $settingModel->get('default_max_total_weight', 100);
+        $fastMaxOrders = (int) $settingModel->get('fast_max_orders', 3);
         $maxOrders = isset($driver['max_concurrent_orders']) ? (int) $driver['max_concurrent_orders'] : $defaultMaxOrders;
+        
+        if ($activeFastCount > 0) {
+            $maxOrders = min($maxOrders, $fastMaxOrders);
+        }
         $maxTotalWeight = isset($driver['max_total_weight']) ? (float) $driver['max_total_weight'] : $defaultMaxWeight;
         $currentLoad = $activeWeight;
 
@@ -1018,6 +1030,7 @@ class Order
             }
             
             $isExpress = $orderData[$oid]['shipping_method'] === 'express';
+            $isFast = $orderData[$oid]['shipping_method'] === 'fast';
             if ($isExpress) {
                 if ($activeCount > 0) {
                     $response['rejected_orders'][$oid] = 'Bạn đang có đơn hàng khác, không thể nhận đơn Siêu tốc.';
@@ -1027,6 +1040,10 @@ class Order
                     $response['rejected_orders'][$oid] = 'Đơn Siêu tốc phải được nhận độc lập, không thể ghép chung.';
                     continue;
                 }
+            }
+            
+            if ($isFast) {
+                $maxOrders = min($maxOrders, $fastMaxOrders);
             }
 
             if (!empty($orderData[$oid]['scheduled_at'])) {
@@ -1038,7 +1055,11 @@ class Order
                 }
             }
             if ($activeCount >= $maxOrders) {
-                $response['rejected_orders'][$oid] = "Đã đạt giới hạn ({$activeCount}/{$maxOrders} đơn)";
+                if ($maxOrders <= $fastMaxOrders && ($isFast || $activeFastCount > 0)) {
+                    $response['rejected_orders'][$oid] = "Đã đạt giới hạn ({$activeCount}/{$maxOrders} đơn do quy định đơn Giao nhanh)";
+                } else {
+                    $response['rejected_orders'][$oid] = "Đã đạt giới hạn ({$activeCount}/{$maxOrders} đơn)";
+                }
                 continue;
             }
             $weight = $orderData[$oid]['weight'];
@@ -1063,7 +1084,8 @@ class Order
             SELECT 
                 COUNT(*) as active_count,
                 COALESCE(SUM(o.weight), 0) as current_weight,
-                MAX(CASE WHEN o.shipping_method = 'express' THEN 1 ELSE 0 END) as has_express
+                MAX(CASE WHEN o.shipping_method = 'express' THEN 1 ELSE 0 END) as has_express,
+                MAX(CASE WHEN o.shipping_method = 'fast' THEN 1 ELSE 0 END) as has_fast
             FROM orders o
             JOIN order_deliveries od ON o.id = od.order_id
             WHERE od.driver_id = ? AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning')

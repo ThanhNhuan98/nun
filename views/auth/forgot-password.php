@@ -22,28 +22,30 @@
 </head>
 <body>
     <?= app_render_toast(); ?>
-    <div class="auth-card">
-        <h2 class="auth-card-title">Quên mật khẩu?</h2>
-        <p class="auth-card-desc">Nhập email hoặc số điện thoại để nhận mã OTP</p>
-
-        <form action="/request-otp" method="POST">
-            <div class="input-group">
-                <label class="auth-label">Email hoặc SĐT <span class="text-danger">*</span></label>
-                <div class="input-wrapper">
-                    <span class="material-symbols-outlined input-icon-prefix">mail</span>
-                    <input type="text" name="email_or_phone" value="<?= app_e($old['email_or_phone'] ?? '') ?>" placeholder="Nhập email hoặc số điện thoại" required class="auth-input" oninvalid="this.setCustomValidity('Vui lòng nhập email hoặc số điện thoại.')" oninput="this.setCustomValidity('')">
+    <div class="auth-page-wrapper">
+        <div class="auth-card">
+            <h2 class="auth-card-title">Quên mật khẩu?</h2>
+            <p class="auth-card-desc">Nhập email hoặc số điện thoại để nhận mã OTP</p>
+    
+            <form action="/request-otp" method="POST">
+                <div class="input-group">
+                    <label class="auth-label">Email hoặc SĐT <span class="text-danger">*</span></label>
+                    <div class="input-wrapper">
+                        <span class="material-symbols-outlined input-icon-prefix">mail</span>
+                        <input type="text" name="email_or_phone" value="<?= app_e($old['email_or_phone'] ?? '') ?>" placeholder="Nhập email hoặc số điện thoại" required class="auth-input" oninvalid="this.setCustomValidity('Vui lòng nhập email hoặc số điện thoại.')" oninput="this.setCustomValidity('')">
+                    </div>
                 </div>
-            </div>
-
-            <button type="submit" class="auth-btn-primary">
-                Gửi mã OTP
-            </button>
-        </form>
-
-        <p class="login-text" style="margin-top: 24px; text-align: center;">
-            Quay lại <a href="/login" class="login-link">Đăng nhập</a> hoặc 
-            <a href="/register" class="login-link">Đăng ký</a>
-        </p>
+    
+                <button type="submit" class="auth-btn-primary">
+                    Gửi mã OTP
+                </button>
+            </form>
+    
+            <p class="login-text" style="margin-top: 24px; text-align: center;">
+                Quay lại <a href="/login" class="login-link">Đăng nhập</a> hoặc 
+                <a href="/register" class="login-link">Đăng ký</a>
+            </p>
+        </div>
     </div>
 </body>
 </html>

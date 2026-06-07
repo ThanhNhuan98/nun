@@ -16,7 +16,7 @@ require_once __DIR__ . '/../../layouts/user_header.php';
 <div class="admin-container">
     <div class="active-page-header">
         <h2 class="active-page-title"><?= app_e($pageTitle ?? 'Nhận đơn hàng mới') ?></h2>
-        <p class="active-page-subtitle">Hệ thống AI đang quét các đơn hàng phù hợp xung quanh bạn.</p>
+        <p class="active-page-subtitle">Radar đang tìm kiếm các chuyến đi phù hợp gần bạn.</p>
     </div>
 
     <div class="top-cards-grid">
@@ -28,7 +28,7 @@ require_once __DIR__ . '/../../layouts/user_header.php';
                         <span class="live-indicator">Live</span>
                     <?php endif; ?>
                 </strong>
-                <span>Bật để AI quét và gợi ý chuyến.</span>
+                <span>Bật để Radar quét và gợi ý chuyến.</span>
             </div>
             <label class="toggle-switch">
                 <input type="checkbox" id="driver-online-toggle" <?= ($isOnline ?? false) ? 'checked' : '' ?> onchange="toggleDriverOnline(this)">
@@ -51,7 +51,7 @@ require_once __DIR__ . '/../../layouts/user_header.php';
     <?php if (!empty($message) && !empty($batches)): ?>
         <div class="ai-warning-box">
             <div class="ai-warning-header">
-                <span class="material-symbols-outlined">warning</span> Sự cố ghép chuyến AI
+                <span class="material-symbols-outlined">info</span> Lưu ý từ hệ thống
             </div>
             <?= app_e($message) ?>
         </div>
@@ -71,8 +71,8 @@ require_once __DIR__ . '/../../layouts/user_header.php';
                     <div class="batch-header-v2">
                         <div class="batch-title">
                             <?php if (strpos($batch['batch_id'], 'BATCH_') !== false): ?>
-                                <span class="material-symbols-outlined" style="color: var(--primary);">auto_awesome</span>
-                                NUN AI ĐỀ XUẤT #<?= app_e(str_replace('BATCH_', '', $batch['batch_id'])) ?>
+                                <span class="material-symbols-outlined" style="color: var(--primary);">lightbulb</span>
+                                GỢI Ý CHUYẾN #<?= app_e(str_replace('BATCH_', '', $batch['batch_id'])) ?>
                             <?php else: ?>
                                 <span class="material-symbols-outlined">route</span>
                                 LỘ TRÌNH <?= app_e($batch['batch_id']) ?>
@@ -80,10 +80,16 @@ require_once __DIR__ . '/../../layouts/user_header.php';
                         </div>
                         <div style="display: flex; gap: 8px; align-items: center;">
                             <?php if (strpos($batch['batch_id'], 'BATCH_') !== false): ?>
-                                <span class="badge-best-choice" title="Lộ trình đã được tối ưu hóa bởi Trí tuệ nhân tạo"><span class="material-symbols-outlined" style="font-size: 14px;">auto_awesome</span> AI Gợi ý</span>
+                                <span class="badge-best-choice" title="Lộ trình ghép chuyến tối ưu giúp tiết kiệm thời gian"><span class="material-symbols-outlined" style="font-size: 14px;">recommend</span> Khuyên nhận</span>
                             <?php endif; ?>
                             <?php if (($batch['priority'] ?? 2) < 2): ?>
-                                <span class="badge-batch-type"><?= $batch['priority'] === 0 ? 'SIÊU TỐC' : 'GIAO NHANH' ?></span>
+                                <?php if ($batch['priority'] === 0): ?>
+                                    <span class="badge-batch-type" style="background-color: var(--danger); color: white;" title="Hoàn thành đơn này sẽ được giảm 1 lần vi phạm!">
+                                        <span class="material-symbols-outlined" style="font-size: 14px; vertical-align: bottom;">card_giftcard</span> SIÊU TỐC
+                                    </span>
+                                <?php else: ?>
+                                    <span class="badge-batch-type">GIAO NHANH</span>
+                                <?php endif; ?>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -102,7 +108,7 @@ require_once __DIR__ . '/../../layouts/user_header.php';
                             <div class="metric-value"><?= $batch['total_trip_duration_minutes'] ?>p</div>
                         </div>
                         <div class="metric-col">
-                            <span class="metric-label">Điểm AI</span>
+                            <span class="metric-label">Độ hiệu quả</span>
                             <div class="metric-value"><?= $batch['efficiency_score'] ?></div>
                         </div>
                     </div>
@@ -132,7 +138,7 @@ require_once __DIR__ . '/../../layouts/user_header.php';
                     </div>
 
                     <div class="route-toggle-bar" onclick="toggleRouteTimeline('timeline-<?= app_e($batch['batch_id']) ?>', this)">
-                        <span class="rt-toggle-text">Xem chi tiết lộ trình AI</span>
+                        <span class="rt-toggle-text">Xem chi tiết lộ trình</span>
                         <span class="material-symbols-outlined rt-toggle-icon">expand_more</span>
                     </div>
 

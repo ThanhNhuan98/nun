@@ -15,41 +15,43 @@
 <body>
     <?= app_render_toast(); ?>
 
-    <div class="auth-card">
-        <div class="card-top-accent"></div>
-
-        <div class="auth-icon-wrapper">
-            <span class="material-symbols-outlined">lock</span>
+    <div class="auth-page-wrapper">
+        <div class="auth-card">
+            <div class="card-top-accent"></div>
+    
+            <div class="auth-icon-wrapper">
+                <span class="material-symbols-outlined">lock</span>
+            </div>
+    
+            <h2 class="auth-title">Xác thực tài khoản</h2>
+            <p class="auth-desc">Mã OTP gồm 6 chữ số đã được gửi đến email<br><strong><?= app_e($email ?? 'của bạn') ?></strong>.</p>
+    
+            <form action="/auth/verify" method="POST">
+                
+                <div class="otp-input-group">
+                    <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autofocus>
+                    <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]*">
+                    <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]*">
+                    <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]*">
+                    <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]*">
+                    <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]*">
+                </div>
+    
+                <input type="text" id="real-otp" name="otp" required pattern="\d{6}" title="Mã OTP phải là 6 chữ số." oninvalid="this.setCustomValidity('Vui lòng nhập đủ 6 chữ số mã OTP.')" oninput="this.setCustomValidity('')" style="position: absolute; opacity: 0; width: 0; height: 0; border: none; padding: 0;">
+    
+                <div class="info-box">
+                    <span class="material-symbols-outlined unfilled info-box-icon">info</span>
+                    <span class="info-box-text">Vui lòng kiểm tra cả hộp thư rác nếu chưa thấy email.</span>
+                </div>
+    
+                <button type="submit" class="auth-btn">Xác thực</button>
+            </form>
+    
+            <a href="/register" class="back-link">
+                <span class="material-symbols-outlined back-icon">arrow_back</span>
+                Quay lại trang đăng ký
+            </a>
         </div>
-
-        <h2 class="auth-title">Xác thực tài khoản</h2>
-        <p class="auth-desc">Mã OTP gồm 6 chữ số đã được gửi đến email<br><strong><?= app_e($email ?? 'của bạn') ?></strong>.</p>
-
-        <form action="/auth/verify" method="POST">
-            
-            <div class="otp-input-group">
-                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]*" autofocus>
-                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]*">
-                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]*">
-                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]*">
-                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]*">
-                <input type="text" class="otp-box" maxlength="1" inputmode="numeric" pattern="[0-9]*">
-            </div>
-
-            <input type="text" id="real-otp" name="otp" required pattern="\d{6}" title="Mã OTP phải là 6 chữ số." oninvalid="this.setCustomValidity('Vui lòng nhập đủ 6 chữ số mã OTP.')" oninput="this.setCustomValidity('')" style="position: absolute; opacity: 0; width: 0; height: 0; border: none; padding: 0;">
-
-            <div class="info-box">
-                <span class="material-symbols-outlined unfilled info-box-icon">info</span>
-                <span class="info-box-text">Vui lòng kiểm tra cả hộp thư rác nếu chưa thấy email.</span>
-            </div>
-
-            <button type="submit" class="auth-btn">Xác thực</button>
-        </form>
-
-        <a href="/register" class="back-link">
-            <span class="material-symbols-outlined back-icon">arrow_back</span>
-            Quay lại trang đăng ký
-        </a>
     </div>
 
     <script>

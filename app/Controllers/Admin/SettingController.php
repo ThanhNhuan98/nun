@@ -32,6 +32,10 @@ class SettingController extends BaseController
                 $data['max_order_weight'] = max(1, (float) $data['max_order_weight']);
             }
 
+            if (isset($data['fast_max_orders'])) {
+                $data['fast_max_orders'] = max(1, (int) $data['fast_max_orders']);
+            }
+
             // Bọc trong transaction để đảm bảo an toàn
             $db = Database::getInstance();
             $db->beginTransaction();

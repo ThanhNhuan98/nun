@@ -343,7 +343,7 @@ def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity,
         fallback_duration += int((dist / vehicle_speed) * 3600)
     return {'route_details': route_details, 'total_duration_s': fallback_duration}
 
-async def optimize_batches_async(driver_location, orders, max_orders_per_batch, max_weight_capacity, vehicle_speed=28.0):
+async def optimize_batches_async(driver_location, orders, max_orders_per_batch, max_weight_capacity, vehicle_speed=28.0, fast_max_orders=3):
     """
     Thuật toán Gom cụm (Clustering).
     Nhận danh sách toàn bộ đơn hàng đang chờ, nhóm các đơn hàng nằm gần nhau (< 3km) vào cùng một chuyến đi.
@@ -390,15 +390,24 @@ async def optimize_batches_async(driver_location, orders, max_orders_per_batch, 
             orders_to_remove = []
             
             is_seed_express = seed_order_data.get('shipping_method') == 'express'
+            
+            # Tối ưu hóa: Nếu Hạt giống là Giao Nhanh, giới hạn radar gom đơn để đảm bảo nhẹ việc
+            current_max_orders = min(max_orders_per_batch, fast_max_orders) if seed_order_data.get('shipping_method') == 'fast' else max_orders_per_batch
 
             # Chống ghép chuyến: Nếu Hạt giống là đơn Siêu tốc (Express), Bỏ qua bước gom cụm
             if not is_seed_express:
                 for order in unassigned_orders:
-                    if len(current_batch_data) >= max_orders_per_batch:
+                    if len(current_batch_data) >= current_max_orders:
                         break 
                         
                     # Không được phép bốc đơn Siêu Tốc vào chuyến ghép này
                     if order.get('shipping_method') == 'express':
+                        continue
+                        
+                    is_candidate_fast = order.get('shipping_method') == 'fast'
+                    temp_max = min(current_max_orders, fast_max_orders) if is_candidate_fast else current_max_orders
+                    
+                    if len(current_batch_data) >= temp_max:
                         continue
 
                     o_lat = float(order['sender_lat'])
@@ -419,6 +428,8 @@ async def optimize_batches_async(driver_location, orders, max_orders_per_batch, 
                         current_batch_data.append(order)
                         current_batch_weight += candidate_weight
                         orders_to_remove.append(order)
+                        if is_candidate_fast:
+                            current_max_orders = min(current_max_orders, fast_max_orders)
 
             # Xóa các đơn đã được ghép khỏi hàng chờ phân bổ (Tối ưu hóa: Dùng Set để lọc O(N) thay vì O(N^2) của remove trong vòng lặp)
             if orders_to_remove:
@@ -520,7 +531,8 @@ if __name__ == "__main__":
                 payload.get('orders', []),
                 payload.get('max_orders_per_batch', 5),
                 payload.get('max_weight_capacity', 0),
-                payload.get('vehicle_speed', 28.0)
+                payload.get('vehicle_speed', 28.0),
+                payload.get('fast_max_orders', 3)
             ))
             print(json.dumps(result, ensure_ascii=False))
             sys.exit(0)
@@ -536,7 +548,8 @@ if __name__ == "__main__":
                 payload.get('orders', []),
                 payload.get('max_orders_per_batch', 5),
                 payload.get('max_weight_capacity', 0),
-                payload.get('vehicle_speed', 28.0)
+                payload.get('vehicle_speed', 28.0),
+                payload.get('fast_max_orders', 3)
             ))
             print(json.dumps(result, ensure_ascii=False))
             sys.exit(0)

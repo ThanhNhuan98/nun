@@ -113,6 +113,24 @@ class DashboardModel
             }
         }
 
+        // Lấy danh sách tài xế đang hoạt động và mã đơn họ đang chạy
+        $stmtDrivers = $this->db->query("
+            SELECT 
+                u.name, dp.license_plate, u.phone, dp.current_lat, dp.current_lng, dp.balance, u.violation_count,
+                COUNT(o.id) as active_orders,
+                GROUP_CONCAT(CONCAT(o.tracking_code, ':', o.status) SEPARATOR ',') as tracking_codes,
+                SUM(fin.shipping_fee) as total_active_fee
+            FROM users u
+            JOIN driver_profiles dp ON u.id = dp.user_id
+            JOIN order_deliveries od ON u.id = od.driver_id
+            JOIN orders o ON od.order_id = o.id
+            LEFT JOIN order_finances fin ON fin.order_id = o.id
+            WHERE o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning') AND o.is_archived = 0
+            GROUP BY u.id
+            ORDER BY active_orders DESC
+        ");
+        $activeDrivers = $stmtDrivers->fetchAll(PDO::FETCH_ASSOC) ?: [];
+
         return [
             'total_users' => (int) ($userStats['total'] ?? 0),
             'blocked_users' => (int) ($userStats['blocked'] ?? 0),
@@ -126,6 +144,7 @@ class DashboardModel
             'chart_month_revenues' => array_values($chartMonthRevenues),
             'chart_year_labels' => $chartYearLabels,
             'chart_year_revenues' => array_values($chartYearRevenues),
+            'active_drivers' => $activeDrivers,
         ];
     }
 }

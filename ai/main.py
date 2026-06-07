@@ -17,6 +17,7 @@ class RoutingRequest(BaseModel):
     max_orders_per_batch: int
     max_weight_capacity: float
     vehicle_speed: Optional[float] = 28.0
+    fast_max_orders: Optional[int] = 3
 
 class FeeRequest(BaseModel):
     sender_lat: float
@@ -42,7 +43,8 @@ async def optimize_routes(request: RoutingRequest):
             orders=data['orders'],
             max_orders_per_batch=data['max_orders_per_batch'],
             max_weight_capacity=data['max_weight_capacity'],
-            vehicle_speed=data.get('vehicle_speed', 28.0)
+            vehicle_speed=data.get('vehicle_speed', 28.0),
+            fast_max_orders=data.get('fast_max_orders', 3)
         )
         
         # Trả về kết quả JSON cho PHP

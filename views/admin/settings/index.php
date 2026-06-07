@@ -77,6 +77,16 @@
 
                 <div class="settings-row">
                     <div class="settings-label-col">
+                        <label for="fast_max_orders">Giới hạn ghép đơn "Giao nhanh"</label>
+                        <p>Số đơn hàng tối đa trong một chuyến đi nếu có chứa ít nhất 1 đơn "Giao nhanh" (để đảm bảo không làm trễ cam kết thời gian).</p>
+                    </div>
+                    <div class="settings-input-col">
+                        <input type="number" id="fast_max_orders" name="fast_max_orders" class="form-control" min="1" step="1" value="<?= app_e($settings['fast_max_orders'] ?? '3') ?>" required style="text-align: right;">
+                    </div>
+                </div>
+
+                <div class="settings-row">
+                    <div class="settings-label-col">
                         <label for="no_show_threshold_for_ban">Giới hạn "Vi phạm giao nhận" (Lần)</label>
                         <p>Số lần từ chối gửi/nhận hàng hoặc không liên lạc được tối đa trước khi tài khoản khách hàng bị hệ thống tự động khóa vĩnh viễn.</p>
                     </div>

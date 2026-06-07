@@ -15,69 +15,71 @@
 <body>
     <?= app_render_toast(); ?>
 
-    <div class="auth-card">
-        <h2 class="auth-card-title">Tạo tài khoản mới</h2>
-        <p class="auth-card-desc">Tham gia NUN Express để trải nghiệm dịch vụ giao hàng nhanh chóng.</p>
+    <div class="auth-page-wrapper">
+        <div class="auth-card">
+            <h2 class="auth-card-title">Tạo tài khoản mới</h2>
+            <p class="auth-card-desc">Tham gia NUN Express để trải nghiệm dịch vụ giao hàng nhanh chóng.</p>
 
-        <?php if (!empty($errors)): ?>
-            <script>
-                document.addEventListener('DOMContentLoaded', function() {
-                    <?php foreach ($errors as $error): ?>
-                    if (typeof showToast === 'function') showToast('<?= app_e($error) ?>', 'error');
-                    <?php endforeach; ?>
-                });
-            </script>
-        <?php endif; ?>
+            <?php if (!empty($errors)): ?>
+                <script>
+                    document.addEventListener('DOMContentLoaded', function() {
+                        <?php foreach ($errors as $error): ?>
+                        if (typeof showToast === 'function') showToast('<?= app_e($error) ?>', 'error');
+                        <?php endforeach; ?>
+                    });
+                </script>
+            <?php endif; ?>
 
-        <form method="POST" action="/register" enctype="multipart/form-data">
-            <div class="input-group">
-                <label class="auth-label" for="name">Họ và tên <span class="text-danger">*</span></label>
-                <div class="input-wrapper">
-                    <span class="material-symbols-outlined input-icon-prefix">person_outline</span>
-                    <input type="text" id="name" name="name" class="auth-input" placeholder="VD: Nguyễn Văn A" required value="<?= app_e($old['name'] ?? '') ?>" oninvalid="this.setCustomValidity('Vui lòng nhập họ và tên.')" oninput="this.setCustomValidity('')">
+            <form method="POST" action="/register" enctype="multipart/form-data">
+                <div class="input-group">
+                    <label class="auth-label" for="name">Họ và tên <span class="text-danger">*</span></label>
+                    <div class="input-wrapper">
+                        <span class="material-symbols-outlined input-icon-prefix">person_outline</span>
+                        <input type="text" id="name" name="name" class="auth-input" placeholder="VD: Nguyễn Văn A" required value="<?= app_e($old['name'] ?? '') ?>" oninvalid="this.setCustomValidity('Vui lòng nhập họ và tên.')" oninput="this.setCustomValidity('')">
+                    </div>
                 </div>
-            </div>
 
-            <div class="input-group">
-                <label class="auth-label" for="phone">Số điện thoại <span class="text-danger">*</span></label>
-                <div class="input-wrapper">
-                    <span class="material-symbols-outlined input-icon-prefix">call</span>
-                    <input type="text" id="phone" name="phone" class="auth-input" placeholder="09xx..." required value="<?= app_e($old['phone'] ?? '') ?>" oninvalid="this.setCustomValidity('Vui lòng nhập số điện thoại.')" oninput="this.setCustomValidity('')">
+                <div class="input-group">
+                    <label class="auth-label" for="phone">Số điện thoại <span class="text-danger">*</span></label>
+                    <div class="input-wrapper">
+                        <span class="material-symbols-outlined input-icon-prefix">call</span>
+                        <input type="text" id="phone" name="phone" class="auth-input" placeholder="09xx..." required value="<?= app_e($old['phone'] ?? '') ?>" oninvalid="this.setCustomValidity('Vui lòng nhập số điện thoại.')" oninput="this.setCustomValidity('')">
+                    </div>
                 </div>
-            </div>
 
-            <div class="input-group">
-                <label class="auth-label" for="email">Email</label>
-                <div class="input-wrapper">
-                    <span class="material-symbols-outlined input-icon-prefix">mail</span>
-                    <input type="email" id="email" name="email" class="auth-input" placeholder="VD: a@gmail.com" value="<?= app_e($old['email'] ?? '') ?>">
+                <div class="input-group">
+                    <label class="auth-label" for="email">Email</label>
+                    <div class="input-wrapper">
+                        <span class="material-symbols-outlined input-icon-prefix">mail</span>
+                        <input type="email" id="email" name="email" class="auth-input" placeholder="VD: a@gmail.com" value="<?= app_e($old['email'] ?? '') ?>">
+                    </div>
                 </div>
-            </div>
 
-            <div class="input-group">
-                <label class="auth-label" for="password">Mật khẩu <span class="text-danger">*</span></label>
-                <div class="input-wrapper">
-                    <span class="material-symbols-outlined input-icon-prefix">lock_outline</span>
-                    <input type="password" id="password" name="password" class="auth-input password-field" placeholder="Nhập mật khẩu" required oninvalid="this.setCustomValidity('Vui lòng nhập mật khẩu.')" oninput="this.setCustomValidity('')">
-                    <span class="material-symbols-outlined input-icon-suffix toggle-password">visibility_off</span>
+                <div class="input-group">
+                    <label class="auth-label" for="password">Mật khẩu <span class="text-danger">*</span></label>
+                    <div class="input-wrapper">
+                        <span class="material-symbols-outlined input-icon-prefix">lock_outline</span>
+                        <input type="password" id="password" name="password" class="auth-input password-field" placeholder="Nhập mật khẩu" required oninvalid="this.setCustomValidity('Vui lòng nhập mật khẩu.')" oninput="this.setCustomValidity('')">
+                        <span class="material-symbols-outlined input-icon-suffix toggle-password">visibility_off</span>
+                    </div>
                 </div>
-            </div>
 
-            <div class="input-group">
-                <label class="auth-label" for="password_confirm">Xác nhận mật khẩu <span class="text-danger">*</span></label>
-                <div class="input-wrapper">
-                    <span class="material-symbols-outlined input-icon-prefix">lock_reset</span>
-                    <input type="password" id="password_confirm" name="password_confirm" class="auth-input password-field" placeholder="Nhập lại mật khẩu" required oninvalid="this.setCustomValidity('Vui lòng xác nhận mật khẩu.')" oninput="this.setCustomValidity('')">
-                    <span class="material-symbols-outlined input-icon-suffix toggle-password">visibility_off</span>
+                <div class="input-group">
+                    <label class="auth-label" for="password_confirm">Xác nhận mật khẩu <span class="text-danger">*</span></label>
+                    <div class="input-wrapper">
+                        <span class="material-symbols-outlined input-icon-prefix">lock_reset</span>
+                        <input type="password" id="password_confirm" name="password_confirm" class="auth-input password-field" placeholder="Nhập lại mật khẩu" required oninvalid="this.setCustomValidity('Vui lòng xác nhận mật khẩu.')" oninput="this.setCustomValidity('')">
+                        <span class="material-symbols-outlined input-icon-suffix toggle-password">visibility_off</span>
+                    </div>
                 </div>
-            </div>
 
-            <button type="submit" class="auth-btn-primary">Đăng ký tài khoản</button>
-        </form>
+                <button type="submit" class="auth-btn-primary">Đăng ký tài khoản</button>
+            </form>
 
-        <p class="login-text">
-            Đã có tài khoản? <a href="/login" class="login-link">Đăng nhập</a>
-        </p>
+            <p class="login-text">
+                Đã có tài khoản? <a href="/login" class="login-link">Đăng nhập</a>
+            </p>
+        </div>
     </div>
 
     <script>
