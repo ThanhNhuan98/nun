@@ -92,7 +92,7 @@ class Order
     // Tạo mới một đơn hàng và các dữ liệu liên kết
     public function create(array $data)
     {
-        // TỐI ƯU HÓA: Tạo mã vận đơn Unique tuyệt đối
+        //  Tạo mã vận đơn Unique tuyệt đối
         $randomPart = strtoupper(substr(uniqid(), -5));
         $trackingCode = 'NUN' . ($data['customer_id'] ?? '0') . $randomPart . random_int(10, 99);
         $paymentMethod = $data['payment_method'] ?? 'cash';
@@ -197,7 +197,7 @@ class Order
     }
 
     /**
-     * TỐI ƯU HÓA (OPTIMIZATION): Spatial Bounding Box Pre-filtering
+     *  Spatial Bounding Box Pre-filtering
      * Lọc trước các đơn hàng nằm ngoài bán kính cho phép (mặc định 20km) ngay tại tầng CSDL
      * Giúp giảm tải đột phá (Search Space Reduction) cho tiến trình Python AI.
      */
@@ -305,7 +305,7 @@ class Order
     }
 
     /**
-     * TỐI ƯU HÓA: Chỉ lấy mảng mã vận đơn đang hoạt động (Phục vụ WebSockets Location Update nhanh hơn)
+     * Chỉ lấy mảng mã vận đơn đang hoạt động (Phục vụ WebSockets Location Update nhanh hơn)
      */
     public function getActiveTrackingCodesForDriver(int $driverId): array
     {
@@ -391,7 +391,7 @@ class Order
             $this->db->beginTransaction();
         }
         try {
-            // TỐI ƯU HÓA: Sử dụng Bulk Update thay vì vòng lặp N truy vấn để chốt đơn nhanh chóng, tránh xung đột.
+            //  Sử dụng Bulk Update thay vì vòng lặp N truy vấn để chốt đơn nhanh chóng, tránh xung đột.
             $inClause = implode(',', array_fill(0, count($orderIds), '?'));
             $routeDetailsJson = !empty($routeDetails)
                 ? json_encode($routeDetails, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
@@ -418,7 +418,7 @@ class Order
             $desc = 'Tài xế đã nhận đơn hàng và đang di chuyển đến điểm lấy hàng.';
             foreach ($orderIds as $orderId) {
                 $historyValues[] = "(?, 'accepted', ?, ?)";
-            // TỐI ƯU HÓA: Dùng toán tử append [] thay cho array_push trong vòng lặp để giảm overhead gọi hàm
+            // Dùng toán tử append [] thay cho array_push trong vòng lặp để giảm overhead gọi hàm
             $historyParams[] = $orderId;
             $historyParams[] = $desc;
             $historyParams[] = $now;
@@ -622,7 +622,7 @@ class Order
 
         if ($search !== '') {
             $where .= " AND (o.tracking_code LIKE ? OR u.name LIKE ? OR u.phone LIKE ? OR oa.sender_name LIKE ? OR oa.sender_phone LIKE ? OR oa.receiver_name LIKE ? OR oa.receiver_phone LIKE ? OR d.name LIKE ? OR d.phone LIKE ?)";
-            // Tối ưu hóa: Dùng toán tử append []
+            //  Dùng toán tử append []
             $params[] = "%$search%";
             $params[] = "%$search%";
             $params[] = "%$search%";
@@ -644,7 +644,7 @@ class Order
     {
         [$where, $params] = $this->buildAdminFilters($statusFilter, $search);
 
-        // TỐI ƯU HÓA: Nếu không có truy vấn tìm kiếm, lược bỏ các lệnh JOIN dư thừa để tăng tốc độ đếm phân trang
+        //  Nếu không có truy vấn tìm kiếm, lược bỏ các lệnh JOIN dư thừa để tăng tốc độ đếm phân trang
         if ($search === '') {
             $sql = "SELECT COUNT(o.id) FROM orders o $where";
         } else {
@@ -946,7 +946,7 @@ class Order
     }
 
     /**
-     * Tối ưu hóa: Kiểm tra giới hạn nhận nhiều đơn hàng cùng lúc (Tránh lỗi N+1 Query)
+     * Kiểm tra giới hạn nhận nhiều đơn hàng cùng lúc (Tránh lỗi N+1 Query)
      */
     public function canDriverAcceptMultipleOrders(int $driverId, array $orderIds): array
     {
@@ -1076,7 +1076,7 @@ class Order
     }
 
     /**
-     * TỐI ƯU HÓA: Gộp 3 câu truy vấn I/O riêng lẻ thành 1 truy vấn duy nhất.
+     *  Gộp 3 câu truy vấn I/O riêng lẻ thành 1 truy vấn duy nhất.
      */
     public function getDriverActiveStats(int $driverId): array
     {

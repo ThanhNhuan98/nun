@@ -55,7 +55,6 @@
     .active-layout-v3 { grid-template-columns: 1fr; gap: 20px; }
     .map-col-v3 { position: relative; top: 0; height: 50vh; min-height: 350px; margin-bottom: 10px; }
     
-    /* Tối ưu hóa: Loại bỏ order-card, batch-card-v2, order-card-v3 khỏi padding chung để phần Header/Footer bên trong không bị ép lề làm vỡ góc giao diện */
     .stat-card, .dispute-card, .info-card, .task-card-large, .settings-form-card, .detail-card-v2, .h-card, .od-card, .eu-card, .cu-card, .d-card { padding: 16px; border-radius: 8px; }
 }
 

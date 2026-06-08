@@ -115,7 +115,7 @@ class Notification
             $params = [];
             foreach ($adminIds as $adminId) {
                 $values[] = "(?, ?, ?, ?, ?, 0, NOW())";
-                // Tối ưu hóa: Dùng toán tử append [] thay cho array_push trong vòng lặp để giảm overhead
+                //  Dùng toán tử append [] thay cho array_push trong vòng lặp để giảm overhead
                 $params[] = $adminId;
                 $params[] = $title;
                 $params[] = $message;
@@ -129,7 +129,7 @@ class Notification
                 //  thông báo đẩy (Real-time) qua WebSockets cho tất cả Admin
                 try {
                     $pusher = new \App\Services\PusherService();
-                    // TỐI ƯU HÓA: Gộp mạng (Network Batching) thay vì gọi API Pusher riêng lẻ N lần trong vòng lặp
+                    //  Gộp mạng (Network Batching) thay vì gọi API Pusher riêng lẻ N lần trong vòng lặp
                     $channels = array_map(fn($id) => 'notify-user-' . $id, $adminIds);
                     $pusher->trigger($channels, 'new_notification', [
                         'title' => $title,

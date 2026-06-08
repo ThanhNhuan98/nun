@@ -181,7 +181,7 @@ if (!function_exists('app_nav_active')) {
     // Kiểm tra URL hiện hành để thêm class 'active' cho việc highlight Menu điều hướng.
     function app_nav_active(string $path, bool $exact = false): string
     {
-        // TỐI ƯU HÓA: Dùng static cache để không phải parse_url lại từ đầu cho mỗi mục menu hiển thị trên Sidebar.
+        // Dùng static cache để không phải parse_url lại từ đầu cho mỗi mục menu hiển thị trên Sidebar.
         static $current = null;
         if ($current === null) {
             $current = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
@@ -539,7 +539,7 @@ if (!function_exists('app_component')) {
 
 if (!function_exists('app_compress_image_before_upload')) {
     /**
-     * TỐI ƯU HÓA: Nén và giảm kích thước ảnh cục bộ (Local Compression) trước khi đẩy lên Cloudinary.
+     *  Nén và giảm kích thước ảnh cục bộ (Local Compression) trước khi đẩy lên Cloudinary.
      * Giúp giảm dung lượng ảnh từ 5-10MB xuống còn ~150KB, tăng tốc độ phản hồi cho tài xế lên gấp 5 lần.
      */
     function app_compress_image_before_upload(string $sourcePath, int $maxWidth = 1024, int $quality = 80): bool

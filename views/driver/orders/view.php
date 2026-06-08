@@ -403,7 +403,7 @@
                 });
 
                 if (routingControl) {
-                    // TỐI ƯU HÓA: Không gọi setWaypoints để tránh re-render OSRM Router liên tục mỗi giây khi GPS cập nhật.
+                    //  Không gọi setWaypoints để tránh re-render OSRM Router liên tục mỗi giây khi GPS cập nhật.
                     // Vị trí Marker tài xế sẽ được tự động dịch chuyển qua setLatLng ở hàm watchPosition phía dưới.
                     return;
                 }

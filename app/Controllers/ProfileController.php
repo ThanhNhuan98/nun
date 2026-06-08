@@ -62,7 +62,7 @@ class ProfileController extends BaseController
                     throw new \Exception($validation['error'] ?? 'Ảnh không hợp lệ.');
                 }
 
-                // TỐI ƯU HÓA: Nén ảnh cục bộ trước khi đẩy lên đường truyền mạng tới Cloudinary
+                // Nén ảnh cục bộ trước khi đẩy lên đường truyền mạng tới Cloudinary
                 if (function_exists('app_compress_image_before_upload')) {
                     app_compress_image_before_upload($_FILES['avatar']['tmp_name'], 800, 85);
                 }

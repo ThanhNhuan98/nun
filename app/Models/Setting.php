@@ -55,7 +55,7 @@ class Setting
 
         foreach ($settings as $key => $value) {
             $values[] = "(?, ?)";
-            // Tối ưu hóa: Dùng toán tử append [] thay cho array_push
+            //  Dùng toán tử append [] thay cho array_push
             $params[] = $key;
             $params[] = $value;
         }

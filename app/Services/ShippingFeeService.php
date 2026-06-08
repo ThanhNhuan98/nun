@@ -142,14 +142,12 @@ class ShippingFeeService
     private function resolveErrorMessage(array $result): string
     {
         if (!empty($result['message'])) {
-            return 'Lỗi AI: ' . $result['message'];
+            error_log('Lỗi AI Pricing: ' . $result['message']);
+        } elseif (!empty($result['_raw_output'])) {
+            error_log('Lỗi AI Pricing: ' . trim((string) $result['_raw_output']));
         }
 
-        if (!empty($result['_raw_output'])) {
-            return 'Lỗi AI: ' . trim((string) $result['_raw_output']);
-        }
-
-        return 'Lỗi AI: Không có phản hồi từ Python.';
+        return 'Hệ thống định tuyến thông minh đang bận, đã áp dụng mức cước phí tiêu chuẩn của hệ thống.';
     }
 
     // Lọc và trả về loại hình dịch vụ hợp lệ (standard, fast, express).

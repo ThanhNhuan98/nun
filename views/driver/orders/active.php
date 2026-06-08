@@ -426,7 +426,7 @@
                             }
 
                             driverMarker.setLatLng(newLatLng);
-                            // TỐI ƯU HÓA: Bỏ gọi setWaypoints liên tục mỗi giây để tránh DDoSing máy chủ OSRM API.
+                            // Bỏ gọi setWaypoints liên tục mỗi giây để tránh DDoSing máy chủ OSRM API.
                             // Việc setLatLng của Marker ở trên đã đủ để trực quan hóa vị trí tài xế.
                             
                             updateGoogleNavLink('btn-google-batch-nav', [{ lat: currentLat, lng: currentLng, title: 'Vị trí của bạn', type: 'driver' }, ...validPoints]);
