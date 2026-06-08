@@ -24,13 +24,30 @@
             
             <div class="map-col-v3">
                 <div class="map-wrapper-v3">
-                    <div class="map-target-card">
-                        <div class="mt-label">ĐIỂM ĐẾN TIẾP THEO</div>
-                        <div class="mt-address" id="nav-next-stop">Đang xác định vị trí...</div>
-                        <a id="btn-google-batch-nav" class="btn-mt-nav disabled" href="#" target="_blank" rel="noopener">
+                    <div class="map-target-card" style="border: 2px solid #3b82f6; background: #eff6ff; box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);">
+                        <div class="mt-label" style="color: #2563eb; font-weight: 800; display: flex; align-items: center; gap: 6px;">
+                            <span class="material-symbols-outlined" style="font-size: 18px; animation: pulse 2s infinite;">my_location</span> ĐIỂM ĐẾN TIẾP THEO
+                        </div>
+                        <div class="mt-address" id="nav-next-stop" style="font-size: 15px; font-weight: 700; color: #1e293b;">Đang xác định vị trí...</div>
+                        <a id="btn-google-batch-nav" class="btn-mt-nav disabled" href="#" target="_blank" rel="noopener" style="background: #2563eb; color: #fff; border: none; font-weight: 600; padding: 10px 16px;">
                             <span class="material-symbols-outlined" style="font-size: 18px;">near_me</span> Dẫn đường Google Maps
                         </a>
                     </div>
+                    <style>
+                        @keyframes pulse {
+                            0% { transform: scale(1); opacity: 1; }
+                            50% { transform: scale(1.2); opacity: 0.7; }
+                            100% { transform: scale(1); opacity: 1; }
+                        }
+                        
+                        /* Thêm animation chuyển động cho chặng lộ trình tiếp theo */
+                        .route-active-segment {
+                            animation: dash 15s linear infinite;
+                        }
+                        @keyframes dash {
+                            to { stroke-dashoffset: -1000; }
+                        }
+                    </style>
                     
                     <button onclick="recenterMap()" id="btn-recenter" class="btn-recenter-map" title="Định vị lại">
                         <span class="material-symbols-outlined">my_location</span>
@@ -85,18 +102,21 @@
                                     <span class="material-symbols-outlined" style="font-size: 18px;">route</span> Thứ tự điểm dừng AI đề xuất
                                 </div>
                                 <?php foreach ($pointsData as $index => $step): ?>
-                                    <div class="rt-node-v2">
-                                        <div class="rt-icon-v2 <?= $step['type'] ?>">
+                                    <div class="rt-node-v2" <?= $index === 0 ? 'style="background: #eff6ff; padding: 12px; border-radius: 8px; border: 1px solid #bfdbfe; margin-left: -12px; width: calc(100% + 24px); position: relative;"' : '' ?>>
+                                        <div class="rt-icon-v2 <?= $step['type'] ?>" <?= $index === 0 ? 'style="box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2); animation: pulse 2s infinite;"' : '' ?>>
                                             <span class="material-symbols-outlined">
                                                 <?= $step['type'] === 'pickup' ? 'inventory_2' : 'local_shipping' ?>
                                             </span>
                                         </div>
                                         <div class="rt-content-v2">
-                                            <div class="rt-title-v2 fs-13">
+                                            <div class="rt-title-v2 fs-13" <?= $index === 0 ? 'style="color: #1d4ed8; font-weight: 700;"' : '' ?>>
                                                 Bước <?= $index + 1 ?>: <?= app_e($step['title']) ?> 
-                                                <small class="text-muted font-normal">#<?= app_e($step['tracking_code']) ?></small>
+                                                <?php if ($index === 0): ?>
+                                                    <span style="background: #2563eb; color: white; padding: 2px 8px; border-radius: 12px; font-size: 10px; margin-left: 6px; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px;">Điểm đến tiếp theo</span>
+                                                <?php endif; ?>
+                                                <small class="text-muted font-normal" <?= $index === 0 ? 'style="color: #60a5fa;"' : '' ?>>#<?= app_e($step['tracking_code']) ?></small>
                                             </div>
-                                            <div class="rt-address-v2 fs-12">
+                                            <div class="rt-address-v2 fs-12" <?= $index === 0 ? 'style="color: #3b82f6; font-weight: 500;"' : '' ?>>
                                                 <?= app_e($step['address']) ?>
                                             </div>
                                         </div>
@@ -123,10 +143,10 @@
                             $isNextAction = ($isBatch && $index === 0);
                         ?>
                         
-                        <div class="order-card-v3 <?= $isNextAction ? 'order-card-next' : '' ?>">
+                        <div class="order-card-v3 <?= $isNextAction ? 'order-card-next' : '' ?>" <?= $isNextAction ? 'style="border: 2px solid #3b82f6; box-shadow: 0 8px 16px rgba(59, 130, 246, 0.15); transform: translateY(-2px); transition: all 0.3s ease;"' : '' ?>>
                             <?php if ($isNextAction): ?>
-                                <div class="next-stop-badge">
-                                    <span class="material-symbols-outlined" style="font-size: 14px;">api</span> ĐIỂM ĐẾN TIẾP THEO
+                                <div class="next-stop-badge" style="background: #2563eb; color: white; font-weight: 700; padding: 6px 12px; font-size: 12px; border-bottom-left-radius: 8px; border-bottom-right-radius: 8px; display: inline-flex; align-items: center; gap: 6px; margin-bottom: 12px; text-transform: uppercase; letter-spacing: 0.5px; border-top-left-radius: 8px;">
+                                    <span class="material-symbols-outlined" style="font-size: 16px; animation: pulse 2s infinite;">near_me</span> ĐIỂM ĐẾN TIẾP THEO (AI ĐỀ XUẤT)
                                 </div>
                             <?php endif; ?>
                             <div class="oc-header-v3 <?= $isNextAction ? 'oc-header-next' : '' ?>">
@@ -458,11 +478,32 @@
                             var group = L.featureGroup();
                             
                             if (!indices || indices.length < 2) {
-                                return L.polyline(route.coordinates, {color: '#3b82f6', weight: 5, opacity: 0.8});
+                                return L.polyline(route.coordinates, {color: '#ef4444', weight: 6, opacity: 0.9});
                             }
                             
-                            var line = L.polyline(route.coordinates, {color: '#3b82f6', weight: 5, opacity: 0.8});
-                            group.addLayer(line);
+                            // Phân tách chặng đường đầu tiên (Tài xế -> Điểm tiếp theo)
+                            var firstSegment = route.coordinates.slice(indices[0], indices[1] + 1);
+                            var activeLine = L.polyline(firstSegment, {
+                                color: '#ef4444', // Đỏ nổi bật
+                                weight: 6,
+                                opacity: 1,
+                                dashArray: '12, 12',
+                                className: 'route-active-segment'
+                            });
+                            group.addLayer(activeLine);
+                            
+                            // Các chặng còn lại (Điểm tiếp theo -> Các điểm sau) làm mờ đi
+                            if (indices.length > 2) {
+                                var remainingSegment = route.coordinates.slice(indices[1]);
+                                var dimLine = L.polyline(remainingSegment, {
+                                    color: '#94a3b8', // Xám nhạt
+                                    weight: 4,
+                                    opacity: 0.6,
+                                    dashArray: '5, 8'
+                                });
+                                group.addLayer(dimLine);
+                            }
+                            
                             return group;
                         },
                         createMarker: function(i, waypoint, n) {

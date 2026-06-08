@@ -334,7 +334,7 @@ ALTER TABLE `driver_penalties`
 ALTER TABLE `driver_profiles`
   ADD PRIMARY KEY (`user_id`),
   ADD KEY `idx_driver_profiles_location` (`current_lat`,`current_lng`),
-  ADD KEY `idx_driver_profiles_online` (`is_online`,`status`);
+  ADD KEY `idx_driver_profiles_online` (`is_online`,`is_verified`);
 
 --
 -- Chỉ mục cho bảng `driver_reviews`

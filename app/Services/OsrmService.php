@@ -4,7 +4,10 @@ namespace App\Services;
 
 class OsrmService
 {
-    private const OSRM_BASE_URL = 'https://router.project-osrm.org';
+    private function baseUrl(): string
+    {
+        return rtrim($_ENV['OSRM_BASE_URL'] ?? 'https://router.project-osrm.org', '/');
+    }
 
     /**
      * Lấy thông tin lộ trình (khoảng cách, thời gian) giữa 2 điểm.
@@ -17,7 +20,7 @@ class OsrmService
     public function getRoute(float $lat1, float $lon1, float $lat2, float $lon2): array
     {
         $coords = "{$lon1},{$lat1};{$lon2},{$lat2}";
-        $url = self::OSRM_BASE_URL . "/route/v1/driving/{$coords}?overview=false";
+        $url = $this->baseUrl() . "/route/v1/driving/{$coords}?overview=false";
 
         try {
             // Sử dụng context để set timeout, tránh chờ đợi quá lâu

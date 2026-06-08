@@ -300,14 +300,25 @@ class User
                     $maxWeight = max(1.0, (float)($data['max_total_weight'] ?? 100));
                     $licensePlate = $data['license_plate'] ?? '';
                     $isVerified = $data['is_driver_verified'] ?? 0;
+                    $vehicleImage = $data['vehicle_registration_image'] ?? null;
                     
                     if (isset($data['balance'])) {
                         $balance = (float)$data['balance'];
-                        $stmtDriver = $this->db->prepare("INSERT INTO driver_profiles (user_id, max_concurrent_orders, max_total_weight, balance, license_plate, is_verified) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE max_concurrent_orders = VALUES(max_concurrent_orders), max_total_weight = VALUES(max_total_weight), balance = VALUES(balance), license_plate = VALUES(license_plate), is_verified = VALUES(is_verified)");
-                        $stmtDriver->execute([$id, $maxOrders, $maxWeight, $balance, $licensePlate, $isVerified]);
+                        if ($vehicleImage !== null && $vehicleImage !== '') {
+                            $stmtDriver = $this->db->prepare("INSERT INTO driver_profiles (user_id, max_concurrent_orders, max_total_weight, balance, license_plate, is_verified, vehicle_registration_image) VALUES (?, ?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE max_concurrent_orders = VALUES(max_concurrent_orders), max_total_weight = VALUES(max_total_weight), balance = VALUES(balance), license_plate = VALUES(license_plate), is_verified = VALUES(is_verified), vehicle_registration_image = VALUES(vehicle_registration_image)");
+                            $stmtDriver->execute([$id, $maxOrders, $maxWeight, $balance, $licensePlate, $isVerified, $vehicleImage]);
+                        } else {
+                            $stmtDriver = $this->db->prepare("INSERT INTO driver_profiles (user_id, max_concurrent_orders, max_total_weight, balance, license_plate, is_verified) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE max_concurrent_orders = VALUES(max_concurrent_orders), max_total_weight = VALUES(max_total_weight), balance = VALUES(balance), license_plate = VALUES(license_plate), is_verified = VALUES(is_verified)");
+                            $stmtDriver->execute([$id, $maxOrders, $maxWeight, $balance, $licensePlate, $isVerified]);
+                        }
                     } else {
-                        $stmtDriver = $this->db->prepare("INSERT INTO driver_profiles (user_id, max_concurrent_orders, max_total_weight, license_plate, is_verified) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE max_concurrent_orders = VALUES(max_concurrent_orders), max_total_weight = VALUES(max_total_weight), license_plate = VALUES(license_plate), is_verified = VALUES(is_verified)");
-                        $stmtDriver->execute([$id, $maxOrders, $maxWeight, $licensePlate, $isVerified]);
+                        if ($vehicleImage !== null && $vehicleImage !== '') {
+                            $stmtDriver = $this->db->prepare("INSERT INTO driver_profiles (user_id, max_concurrent_orders, max_total_weight, license_plate, is_verified, vehicle_registration_image) VALUES (?, ?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE max_concurrent_orders = VALUES(max_concurrent_orders), max_total_weight = VALUES(max_total_weight), license_plate = VALUES(license_plate), is_verified = VALUES(is_verified), vehicle_registration_image = VALUES(vehicle_registration_image)");
+                            $stmtDriver->execute([$id, $maxOrders, $maxWeight, $licensePlate, $isVerified, $vehicleImage]);
+                        } else {
+                            $stmtDriver = $this->db->prepare("INSERT INTO driver_profiles (user_id, max_concurrent_orders, max_total_weight, license_plate, is_verified) VALUES (?, ?, ?, ?, ?) ON DUPLICATE KEY UPDATE max_concurrent_orders = VALUES(max_concurrent_orders), max_total_weight = VALUES(max_total_weight), license_plate = VALUES(license_plate), is_verified = VALUES(is_verified)");
+                            $stmtDriver->execute([$id, $maxOrders, $maxWeight, $licensePlate, $isVerified]);
+                        }
                     }
                 } elseif (isset($data['license_plate'])) { // Xử lý cho luồng Cập nhật Profile bình thường
                     $stmtDriver = $this->db->prepare("UPDATE driver_profiles SET license_plate = ? WHERE user_id = ?");

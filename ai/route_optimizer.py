@@ -1,6 +1,7 @@
 import json
 import sys
 import io
+import os
 import httpx # Tối ưu: Dùng httpx để hỗ trợ gọi API bất đồng bộ (async)
 import concurrent.futures
 try:
@@ -14,6 +15,7 @@ import asyncio
 
 # Bán kính Trái Đất tính bằng km (Hằng số toàn cục)
 EARTH_RADIUS_KM = 6371.0
+OSRM_BASE_URL = os.getenv("OSRM_BASE_URL", "http://router.project-osrm.org").rstrip("/")
 
 def haversine_distance(lat1, lon1, lat2, lon2):
     """
@@ -71,7 +73,7 @@ async def osrm_table_async(locations, client: httpx.AsyncClient):
     # OSRM yêu cầu định dạng "kinh_độ,vĩ_độ;kinh_độ,vĩ_độ..."
     coords = ";".join([f"{lon},{lat}" for lat, lon in locations])
     # Sử dụng máy chủ OSRM public, hoặc đổi thành URL local của bạn (VD: http://localhost:5000)
-    url = f"http://router.project-osrm.org/table/v1/driving/{coords}?annotations=duration"
+    url = f"{OSRM_BASE_URL}/table/v1/driving/{coords}?annotations=duration"
 
     try:
         # Tối ưu: Dùng httpx.AsyncClient để gọi API không block luồng chính
@@ -90,7 +92,7 @@ async def osrm_route_async(lat1, lon1, lat2, lon2, client: httpx.AsyncClient, ve
     Gọi API OSRM để tìm lộ trình lái xe thực tế nối 2 điểm.
     Được gọi khi Khách hàng tạo đơn để tính chính xác quãng đường (distance_km) và thời gian (duration_s).
     """
-    url = f"http://router.project-osrm.org/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false"
+    url = f"{OSRM_BASE_URL}/route/v1/driving/{lon1},{lat1};{lon2},{lat2}?overview=false"
 
     try:
         response = await client.get(url, timeout=10.0)
