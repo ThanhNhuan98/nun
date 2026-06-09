@@ -37,9 +37,13 @@ class OsrmService
             }
 
             $route = $payload['routes'][0];
+            $distanceKm = (float) ($route['distance'] ?? 0) / 1000;
+            // Tính lại duration cho chuẩn tốc độ xe máy (28km/h) thay vì dùng duration của ô tô từ OSRM
+            $durationS = ($distanceKm > 0) ? ($distanceKm / 28) * 3600 : 0;
+
             return [
-                'distance_km' => (float) ($route['distance'] ?? 0) / 1000,
-                'duration_s' => (int) ($route['duration'] ?? 0),
+                'distance_km' => $distanceKm,
+                'duration_s' => (int) $durationS,
                 'source' => 'osrm',
             ];
         } catch (\Exception $e) {

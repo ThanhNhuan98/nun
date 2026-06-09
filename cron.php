@@ -18,6 +18,7 @@ if (class_exists('Dotenv\Dotenv') && file_exists(__DIR__ . '/.env')) {
 }
 
 use App\Models\Order;
+use App\Models\Setting;
 use App\Models\User;
 
 // Thiết lập đường dẫn file log
@@ -38,19 +39,22 @@ function logMessage($message) {
 logMessage("Bắt đầu chạy tiến trình nền Cron-job...");
 
 $orderModel = new Order();
+$settingModel = new Setting();
 $userModel = new User();
+$pickupTimeoutMinutes = max(1, (int) $settingModel->get('driver_pickup_timeout_minutes', 15));
 
-// 2. Tự động hủy các đơn hàng chờ quá 24h không có tài xế nhận
+// 2. Tự động hủy các đơn hàng chờ quá hạn không có tài xế nhận
 if ($orderModel->autoCancelExpiredPendingOrders()) {
-    logMessage("- [Thành công] Đã hủy các đơn hàng quá hạn 24h không có ai nhận.");
+    $autoCancelHours = max(1, (int) $settingModel->get('pending_order_auto_cancel_hours', 24));
+    logMessage("- [Thành công] Đã hủy các đơn hàng quá hạn {$autoCancelHours}h không có ai nhận.");
 }
 
-// 3. Tự động thu hồi đơn hàng tài xế giam quá lâu (15 phút không đi lấy)
-$stuckOrders = $orderModel->getStuckAcceptedOrders(15);
+// 3. Tự động thu hồi đơn hàng tài xế giam quá lâu
+$stuckOrders = $orderModel->getStuckAcceptedOrders($pickupTimeoutMinutes);
 if (!empty($stuckOrders)) {
     foreach ($stuckOrders as $stuckOrder) {
         if ($orderModel->autoReassignOrder($stuckOrder['id'])) {
-            $userModel->createNotification($stuckOrder['driver_id'], 'Cảnh báo: Thu hồi đơn hàng', "Hệ thống đã tự động thu hồi đơn #{$stuckOrder['tracking_code']} do bạn không đi lấy hàng sau 15 phút. Bạn đã mất phí nhận đơn.", 'system', '/driver/history');
+            $userModel->createNotification($stuckOrder['driver_id'], 'Cảnh báo: Thu hồi đơn hàng', "Hệ thống đã tự động thu hồi đơn #{$stuckOrder['tracking_code']} do bạn không đi lấy hàng sau {$pickupTimeoutMinutes} phút. Bạn đã mất phí nhận đơn.", 'system', '/driver/history');
             logMessage("- [Cảnh báo] Đã thu hồi đơn hàng #{$stuckOrder['tracking_code']} từ tài xế ID {$stuckOrder['driver_id']}.");
         }
     }

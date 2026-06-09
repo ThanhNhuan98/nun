@@ -97,6 +97,16 @@
 
                 <div class="settings-row">
                     <div class="settings-label-col">
+                        <label for="violation_threshold_for_ban">Ngưỡng khóa tài xế do vi phạm</label>
+                        <p>Số lần vi phạm tối đa của tài xế trước khi tài khoản bị khóa tự động.</p>
+                    </div>
+                    <div class="settings-input-col">
+                        <input type="number" id="violation_threshold_for_ban" name="violation_threshold_for_ban" class="form-control" min="1" step="1" value="<?= app_e($settings['violation_threshold_for_ban'] ?? '5') ?>" required style="text-align: right;">
+                    </div>
+                </div>
+
+                <div class="settings-row">
+                    <div class="settings-label-col">
                         <label>Cước phí: Giao tiêu chuẩn</label>
                         <p>Lần lượt: Giá nền, Giá mỗi kg, Giá mỗi km.</p>
                     </div>
@@ -168,6 +178,93 @@
                             <input type="number" id="vehicle_speed_kmh" name="vehicle_speed_kmh" class="form-control" min="1" step="0.1" value="<?= app_e($settings['vehicle_speed_kmh'] ?? '28.0') ?>" required style="text-align: right;">
                             <span class="suffix">km/h</span>
                         </div>
+                    </div>
+                </div>
+
+                <div class="settings-row">
+                    <div class="settings-label-col">
+                        <label for="driver_radar_radius_km">Bán kính radar tài xế</label>
+                        <p>Khoảng cách tối đa để hệ thống tìm đơn phù hợp quanh vị trí hiện tại của tài xế.</p>
+                    </div>
+                    <div class="settings-input-col">
+                        <div class="input-suffix-group">
+                            <input type="number" id="driver_radar_radius_km" name="driver_radar_radius_km" class="form-control" min="1" step="0.1" value="<?= app_e($settings['driver_radar_radius_km'] ?? '20') ?>" required style="text-align: right;">
+                            <span class="suffix">km</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-row">
+                    <div class="settings-label-col">
+                        <label>Thời gian tự động xử lý đơn</label>
+                        <p>Lần lượt: thu hồi tài xế không đi lấy, tự hủy đơn chờ quá hạn, hiển thị đơn hẹn trước giờ lấy.</p>
+                    </div>
+                    <div class="settings-input-col" style="width: auto; display: flex; gap: 10px;">
+                        <div class="input-suffix-group" style="width: 140px;">
+                            <input type="number" name="driver_pickup_timeout_minutes" class="form-control" min="1" value="<?= app_e($settings['driver_pickup_timeout_minutes'] ?? '15') ?>" required>
+                            <span class="suffix">phút</span>
+                        </div>
+                        <div class="input-suffix-group" style="width: 140px;">
+                            <input type="number" name="pending_order_auto_cancel_hours" class="form-control" min="1" value="<?= app_e($settings['pending_order_auto_cancel_hours'] ?? '24') ?>" required>
+                            <span class="suffix">giờ</span>
+                        </div>
+                        <div class="input-suffix-group" style="width: 140px;">
+                            <input type="number" name="scheduled_order_visible_before_minutes" class="form-control" min="1" value="<?= app_e($settings['scheduled_order_visible_before_minutes'] ?? '120') ?>" required>
+                            <span class="suffix">phút</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-row">
+                    <div class="settings-label-col">
+                        <label>Giới hạn giao dịch ví</label>
+                        <p>Số tiền tối thiểu khi tài xế nạp tiền hoặc rút tiền từ ví.</p>
+                    </div>
+                    <div class="settings-input-col" style="width: auto; display: flex; gap: 10px;">
+                        <div class="input-suffix-group" style="width: 160px;">
+                            <input type="number" name="min_wallet_topup_amount" class="form-control" min="1" step="1000" value="<?= app_e($settings['min_wallet_topup_amount'] ?? '10000') ?>" required>
+                            <span class="suffix">đ nạp</span>
+                        </div>
+                        <div class="input-suffix-group" style="width: 160px;">
+                            <input type="number" name="min_wallet_withdraw_amount" class="form-control" min="1" step="1000" value="<?= app_e($settings['min_wallet_withdraw_amount'] ?? '50000') ?>" required>
+                            <span class="suffix">đ rút</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-row">
+                    <div class="settings-label-col">
+                        <label>Thông tin VietQR nhận tiền</label>
+                        <p>Tài khoản nhận thanh toán đơn hàng online và nạp ví tài xế.</p>
+                    </div>
+                    <div class="settings-input-col" style="width: auto; display: grid; grid-template-columns: repeat(2, minmax(180px, 1fr)); gap: 10px;">
+                        <input type="text" name="bank_id" class="form-control" value="<?= app_e($settings['bank_id'] ?? 'VCB') ?>" placeholder="Mã ngân hàng, VD: VCB" required>
+                        <input type="text" name="bank_name" class="form-control" value="<?= app_e($settings['bank_name'] ?? 'Vietcombank') ?>" placeholder="Tên ngân hàng" required>
+                        <input type="text" name="bank_account_no" class="form-control" value="<?= app_e($settings['bank_account_no'] ?? '1234567890') ?>" placeholder="Số tài khoản" required>
+                        <input type="text" name="bank_account_name" class="form-control" value="<?= app_e($settings['bank_account_name'] ?? 'CONG TY TNHH NUN EXPRESS') ?>" placeholder="Chủ tài khoản" required>
+                    </div>
+                </div>
+
+                <div class="settings-row">
+                    <div class="settings-label-col">
+                        <label for="auto_refund_on_system_cancel">Chính sách hoàn tiền lỗi hệ thống</label>
+                        <p>Bật để đơn online đã thanh toán bị hủy tự động do hệ thống không phục vụ được sẽ được ghi nhận hoàn tiền.</p>
+                    </div>
+                    <div class="settings-input-col">
+                        <select id="auto_refund_on_system_cancel" name="auto_refund_on_system_cancel" class="form-control">
+                            <option value="1" <?= (($settings['auto_refund_on_system_cancel'] ?? '1') === '1') ? 'selected' : '' ?>>Bật tự động ghi nhận hoàn tiền</option>
+                            <option value="0" <?= (($settings['auto_refund_on_system_cancel'] ?? '1') === '0') ? 'selected' : '' ?>>Tắt tự động ghi nhận hoàn tiền</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="settings-row">
+                    <div class="settings-label-col">
+                        <label for="refund_processing_note">Ghi chú hoàn tiền</label>
+                        <p>Thông báo hiển thị cho khách khi hệ thống ghi nhận hoàn tiền online.</p>
+                    </div>
+                    <div class="settings-input-col">
+                        <textarea id="refund_processing_note" name="refund_processing_note" class="form-control" rows="3" style="resize: vertical;"><?= app_e($settings['refund_processing_note'] ?? 'Số tiền sẽ được hoàn về phương thức thanh toán ban đầu trong 1-3 ngày làm việc.') ?></textarea>
                     </div>
                 </div>
 

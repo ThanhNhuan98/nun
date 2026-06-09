@@ -84,7 +84,7 @@ class OrderController extends BaseController
 
             $settingModel = new Setting();
             $maxOrderWeight = (float) $settingModel->get('max_order_weight', $settingModel->get('default_max_total_weight', 100));
-            
+
             if (isset($data['weight']) && (float) $data['weight'] > $maxOrderWeight) {
                 $_SESSION['flash_error'] = "Cân nặng đơn hàng không được vượt quá {$maxOrderWeight}kg.";
                 throw new ValidationException([], $data);
@@ -135,7 +135,7 @@ class OrderController extends BaseController
 
             // Lưu thông báo thành công
             $_SESSION['flash_success'] = "Tạo đơn hàng thành công! Mã đơn: #" . $trackingCode;
-            
+
             if (($data['payment_method'] ?? 'cash') === 'transfer') {
                 return $response->redirect('/user/orders/payment/' . $trackingCode);
             }
@@ -150,7 +150,7 @@ class OrderController extends BaseController
     private function renderCreateForm(Response $response, array $params = [])
     {
         $orderModel = new Order();
-        $recentAddresses = $orderModel->getRecentAddresses($this->userId(), 3); // Đổi số 3 thành số lượng bạn muốn
+        $recentAddresses = $orderModel->getRecentAddresses($this->userId(), 3);
 
         $defaults = [
             'pageTitle' => 'Tạo đơn hàng mới',
@@ -180,7 +180,7 @@ class OrderController extends BaseController
         $page = max(1, (int)($query['page'] ?? 1));
         $perPage = 9;
         $offset = ($page - 1) * $perPage;
-        
+
         $orderModel = new Order();
         $totalOrders = $orderModel->countAllByUserId($userId, $statusFilter);
         $orders = $orderModel->findAllByUserId($userId, $statusFilter, $perPage, $offset);
@@ -209,7 +209,7 @@ class OrderController extends BaseController
         }
 
         $history = $orderModel->getOrderHistory($order['id']);
-        
+
         $reviewModel = new Review();
         $existingReview = $reviewModel->findByOrderAndCustomer($order['id'], $userId);
 
@@ -233,9 +233,9 @@ class OrderController extends BaseController
     {
         $trackingCode = $request->getRouteParam('code');
         $orderModel = new Order();
-        
+
         $location = $orderModel->getDriverLocationByTrackingCode($trackingCode);
-        
+
         $coordinates = $location
             ? app_normalize_coordinates($location['current_lat'] ?? null, $location['current_lng'] ?? null)
             : null;
@@ -255,12 +255,12 @@ class OrderController extends BaseController
     public function apiCalculateFee(Request $request, Response $response)
     {
         $data = $request->getJsonBody() ?: $request->getBody();
-        
+
         $settingModel = new Setting();
         $maxOrderWeight = (float) $settingModel->get('max_order_weight', $settingModel->get('default_max_total_weight', 100));
         if (isset($data['weight']) && (float) $data['weight'] > $maxOrderWeight) {
             return $response->json([
-                'success' => false, 
+                'success' => false,
                 'message' => "Cân nặng đơn hàng không được vượt quá {$maxOrderWeight}kg.",
                 'error' => "Cân nặng đơn hàng không được vượt quá {$maxOrderWeight}kg."
             ]);
@@ -270,7 +270,7 @@ class OrderController extends BaseController
 
         if ($quote['success']) {
             return $response->json([
-                'success' => true, 
+                'success' => true,
                 'fee' => $quote['shipping_fee'],
                 'base_fee' => $quote['base_fee'] ?? $quote['shipping_fee'],
                 'surge_fee' => $quote['surge_fee'] ?? 0,
@@ -346,7 +346,7 @@ class OrderController extends BaseController
         $rating = (int) ($data['rating'] ?? 0);
         $driverId = (int) ($data['driver_id'] ?? 0);
         $comment = app_sanitize($data['comment'] ?? '');
-        
+
         $tags = $data['tags'] ?? [];
         if (!empty($tags) && is_array($tags)) {
             $tagString = implode(', ', array_map('app_sanitize', $tags));
@@ -359,7 +359,7 @@ class OrderController extends BaseController
         }
 
         $reviewModel = new Review();
-        
+
         if ($reviewModel->findByOrderAndCustomer($orderId, $userId)) {
             $_SESSION['flash_error'] = 'Bạn đã đánh giá đơn hàng này rồi.';
             return $response->redirect("/user/orders/review/{$orderId}");
@@ -388,9 +388,18 @@ class OrderController extends BaseController
             return $response->redirect('/user/orders');
         }
 
+        $settingModel = new Setting();
+        $paymentSettings = [
+            'bank_id' => $settingModel->get('bank_id', 'VCB'),
+            'bank_name' => $settingModel->get('bank_name', 'Vietcombank'),
+            'bank_account_no' => $settingModel->get('bank_account_no', '1234567890'),
+            'bank_account_name' => $settingModel->get('bank_account_name', 'CONG TY TNHH NUN EXPRESS'),
+        ];
+
         return $response->render('user/orders/payment', [
             'pageTitle' => 'Thanh toán đơn hàng #' . $order['tracking_code'],
-            'order' => $order
+            'order' => $order,
+            'paymentSettings' => $paymentSettings
         ]);
     }
 
@@ -406,7 +415,7 @@ class OrderController extends BaseController
         if ($order && $order['status'] === 'awaiting_payment') {
             $orderModel->updatePaymentStatus($order['id'], 'paid');
             $orderModel->updateStatus($order['id'], 'searching_driver', 'Khách hàng đã thanh toán thành công. Bắt đầu tìm tài xế.');
-            
+
             $_SESSION['flash_success'] = "Thanh toán thành công! Hệ thống đang tìm tài xế cho đơn hàng của bạn.";
         }
 
@@ -467,10 +476,19 @@ class OrderController extends BaseController
             $refunded = ($order['payment_status'] ?? '') === 'paid' && $orderModel->refundPaidOrder($order['id']);
             if ($refunded) {
                 $orderModel->addStatusHistory($order['id'], 'cancelled', 'Hệ thống hoàn tiền cho khách do khách tự hủy đơn đã thanh toán.');
+
+                $userModel = new User();
+                $userModel->createNotification(
+                    $userId,
+                    'Hoàn tiền đơn hàng',
+                    "Hệ thống đã ghi nhận yêu cầu hoàn lại " . number_format($order['shipping_fee'] ?? 0, 0, ',', '.') . "đ tiền cước cho đơn hàng #{$order['tracking_code']} do bạn đã chủ động hủy đơn.",
+                    'system',
+                    "/user/orders/track/{$order['tracking_code']}"
+                );
             }
             $db->commit();
             $_SESSION['flash_success'] = $refunded
-                ? "Đã hủy đơn hàng thành công. Hệ thống đã ghi nhận hoàn tiền cho đơn đã thanh toán."
+                ? "Đã hủy đơn hàng thành công. Hệ thống đang hoàn lại " . number_format($order['shipping_fee'] ?? 0, 0, ',', '.') . "đ tiền cước cho bạn."
                 : "Đã hủy đơn hàng thành công.";
         } catch (\Exception $e) {
             $db->rollBack();
@@ -508,7 +526,7 @@ class OrderController extends BaseController
         try {
             $dbReason = $fullReason;
             $proofImagePath = '';
-            
+
             // Tận dụng SDK Cloudinary để upload file an toàn
             if (isset($_FILES['proof_image']) && $_FILES['proof_image']['error'] === UPLOAD_ERR_OK) {
                 $validation = app_validate_uploaded_image($_FILES['proof_image']);

@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use App\Core\Request;
 use App\Core\Response;
 use App\Models\Wallet;
+use App\Models\Setting;
 
 class WalletController extends BaseController
 {
@@ -17,12 +18,15 @@ class WalletController extends BaseController
         $walletModel = new Wallet();
         $currentBalance = $walletModel->getBalance($driverId);
 
+        $settingModel = new Setting();
+        $minTopup = (float) $settingModel->get('min_wallet_topup_amount', 10000);
+
         if ($request->isPost()) {
             $data = $request->getBody();
             $amount = (float) ($data['amount'] ?? 0);
 
-            if ($amount < 10000) {
-                $_SESSION['flash_error'] = 'Số tiền nạp tối thiểu là 10.000đ.';
+            if ($amount < $minTopup) {
+                $_SESSION['flash_error'] = 'Số tiền nạp tối thiểu là ' . number_format($minTopup, 0, ',', '.') . 'đ.';
             } else {
                 if ($walletModel->add($driverId, $amount, 'deposit', 'Driver wallet top-up')) {
                     $_SESSION['flash_success'] = 'Nạp thành công ' . number_format($amount, 0, ',', '.') . 'đ vào ví.';
@@ -35,7 +39,14 @@ class WalletController extends BaseController
 
         return $response->render('driver/wallet/topup', [
             'pageTitle' => 'Nạp tiền vào ví',
-            'currentBalance' => $currentBalance
+            'currentBalance' => $currentBalance,
+            'minTopup' => $minTopup,
+            'paymentSettings' => [
+                'bank_id' => $settingModel->get('bank_id', 'VCB'),
+                'bank_name' => $settingModel->get('bank_name', 'Vietcombank'),
+                'bank_account_no' => $settingModel->get('bank_account_no', '1234567890'),
+                'bank_account_name' => $settingModel->get('bank_account_name', 'CONG TY TNHH NUN EXPRESS')
+            ]
         ]);
     }
 }

@@ -1,4 +1,12 @@
-<?php require_once __DIR__ . '/../../layouts/user_header.php'; ?>
+<?php
+$minTopupAmount = (int) ($minTopup ?? 10000);
+$paymentSettings = $paymentSettings ?? [];
+$bankId = $paymentSettings['bank_id'] ?? 'VCB';
+$bankName = $paymentSettings['bank_name'] ?? 'Vietcombank';
+$accountNo = $paymentSettings['bank_account_no'] ?? '1234567890';
+$accountName = $paymentSettings['bank_account_name'] ?? 'CONG TY TNHH NUN EXPRESS';
+require_once __DIR__ . '/../../layouts/user_header.php';
+?>
 
 <div class="admin-container">
     
@@ -24,13 +32,13 @@
         <div class="topup-form-group">
             <label for="amount">Số tiền cần nạp (VNĐ)</label>
             <div style="display: flex; gap: 10px;">
-                <input type="number" id="amount" class="topup-input" min="10000" step="1000" placeholder="Ví dụ: 50000" style="margin-bottom: 0;">
+                <input type="number" id="amount" class="topup-input" min="<?= app_e($minTopupAmount) ?>" step="1000" placeholder="Ví dụ: 50000" style="margin-bottom: 0;">
                 <button type="button" class="btn-topup-submit" onclick="generateQR()" style="width: auto; padding: 0 20px; margin: 0; white-space: nowrap;">Tạo mã QR</button>
             </div>
             
             <div class="topup-helper">
                 <span class="material-symbols-outlined">info</span>
-                Nạp tối thiểu 10.000đ để tiếp tục nhận đơn.
+                Nạp tối thiểu <?= number_format($minTopupAmount, 0, ',', '.') ?>đ để tiếp tục nhận đơn.
             </div>
         </div>
 
@@ -42,7 +50,7 @@
 
     </div>
 
-    <!-- BƯỚC 2: THANH TOÁN QR CODE (Giao diện giống Payment) -->
+    <!-- BƯỚC 2: THANH TOÁN QR CODE -->
     <div id="step-2" class="payment-container" style="display: none; margin-top: 0; padding-top: 24px; border-top: 1px dashed var(--border-color);">
 
         <div class="payment-card">
@@ -67,18 +75,18 @@
                 
                 <div class="transfer-detail-row">
                     <span class="t-label">Ngân hàng:</span>
-                    <span class="t-value"><strong>Vietcombank</strong></span>
+                    <span class="t-value"><strong><?= app_e($bankName) ?></strong></span>
                 </div>
                 
                 <div class="transfer-detail-row">
                     <span class="t-label">Chủ tài khoản:</span>
-                    <span class="t-value" style="text-transform: uppercase;"><strong>CONG TY TNHH NUN EXPRESS</strong></span>
+                    <span class="t-value" style="text-transform: uppercase;"><strong><?= app_e($accountName) ?></strong></span>
                 </div>
                 
                 <div class="transfer-detail-row">
                     <span class="t-label">Số tài khoản:</span>
                     <span class="t-value">
-                        <strong id="copy-account">1234567890</strong>
+                        <strong id="copy-account"><?= app_e($accountNo) ?></strong>
                         <button type="button" class="btn-copy" onclick="copyToClipboard('copy-account')" title="Copy số tài khoản">
                             <span class="material-symbols-outlined" style="font-size: 18px;">content_copy</span>
                         </button>
@@ -96,7 +104,6 @@
                 </div>
 
                 <form method="POST" action="/driver/wallet/topup" style="margin: 0;">
-                    <!-- Input ẩn truyền số tiền sang Controller -->
                     <input type="hidden" name="amount" id="form-amount" value="">
                     <button type="submit" class="btn-paid-submit">
                         <span class="material-symbols-outlined" style="font-size: 20px;">check_circle</span>
@@ -114,55 +121,47 @@
 </div>
 
 <script>
-    // Chọn nhanh mệnh giá nạp và tự động trigger hàm tạo QR.
     function setAmount(value) {
         document.getElementById('amount').value = value;
-        generateQR(); // Tự động tạo QR ngay khi bấm chọn mệnh giá
+        generateQR();
     }
 
-    // Lấy số tiền cần nạp để gọi API VietQR sinh mã QR thanh toán động.
     function generateQR() {
         const amountInput = document.getElementById('amount').value;
         const amount = parseInt(amountInput);
+        const formatter = new Intl.NumberFormat('vi-VN');
+        const minTopupAmount = <?= (int) $minTopupAmount ?>;
 
-        if (!amount || amount < 10000) {
+        if (!amount || amount < minTopupAmount) {
+            const message = 'Vui lòng nhập số tiền hợp lệ (tối thiểu ' + formatter.format(minTopupAmount) + 'đ).';
             if (typeof showToast === 'function') {
-                showToast('Vui lòng nhập số tiền hợp lệ (tối thiểu 10.000đ).', 'error');
+                showToast(message, 'error');
             } else {
-                alert('Vui lòng nhập số tiền hợp lệ (tối thiểu 10.000đ).');
+                alert(message);
             }
             return;
         }
 
-        // Format số tiền
-        const formatter = new Intl.NumberFormat('vi-VN');
         document.getElementById('display-amount').innerText = formatter.format(amount) + ' đ';
         document.getElementById('form-amount').value = amount;
 
-        // Cấu hình ngân hàng
-        const bankId = "VCB";
-        const accountNo = "1234567890";
-        const accountName = "CONG TY TNHH NUN EXPRESS";
-        
-        // Biến $userId được lấy tự động từ user_header.php
-        const driverId = "<?= $userId ?? 0 ?>";
+        const bankId = <?= json_encode($bankId, JSON_UNESCAPED_UNICODE) ?>;
+        const accountNo = <?= json_encode($accountNo, JSON_UNESCAPED_UNICODE) ?>;
+        const accountName = <?= json_encode($accountName, JSON_UNESCAPED_UNICODE) ?>;
+        const driverId = <?= json_encode((string) ($userId ?? 0), JSON_UNESCAPED_UNICODE) ?>;
         const description = "NUN NAP VI " + driverId;
 
         document.getElementById('copy-content').innerText = description;
 
-        // Gọi API tạo QR Code
         const qrUrl = `https://img.vietqr.io/image/${bankId}-${accountNo}-compact2.png?amount=${amount}&addInfo=${encodeURIComponent(description)}&accountName=${encodeURIComponent(accountName)}`;
         document.getElementById('qr-image').src = qrUrl;
-
         document.getElementById('step-2').style.display = 'block';
         
-        // Cuộn mượt mà xuống phần QR
         setTimeout(() => {
             document.getElementById('step-2').scrollIntoView({ behavior: 'smooth', block: 'start' });
         }, 100);
     }
 
-    // Sao chép nội dung văn bản (số tài khoản, thông điệp chuyển khoản) vào khay nhớ tạm (Clipboard).
     function copyToClipboard(elementId) {
         const textToCopy = document.getElementById(elementId).innerText;
         navigator.clipboard.writeText(textToCopy).then(() => {

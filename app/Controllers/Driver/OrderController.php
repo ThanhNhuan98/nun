@@ -108,7 +108,9 @@ class OrderController extends BaseController
         }
 
         // Truyền tọa độ tài xế để Database chặn đứng các đơn hàng quá xa (>20km)
-        $orders = $orderModel->getPendingForDriver($driverId, $driverLocation, 20);
+        $settingModel = new Setting();
+        $radarRadiusKm = max(1, (float) $settingModel->get('driver_radar_radius_km', 20));
+        $orders = $orderModel->getPendingForDriver($driverId, $driverLocation, (int) ceil($radarRadiusKm));
         
         $batches = [];
         
@@ -116,7 +118,6 @@ class OrderController extends BaseController
             return ['batches' => [], 'message' => 'Hiện tại khu vực của bạn không có đơn hàng mới nào đang chờ.'];
         }
 
-        $settingModel = new Setting();
         $globalMaxOrdersPerBatch = (int) $settingModel->get('max_orders_per_batch', 5);
         
         $dp = $userModel->getDriverProfile($driverId);
@@ -764,6 +765,18 @@ class OrderController extends BaseController
                         }
                     }
 
+                    $refundMsg = "";
+                    if ($newStatus === 'cancelled' && ($order['payment_status'] ?? '') === 'paid') {
+                        if ($isBannedGoods) {
+                            $successMessage .= " Tịch thu tiền cước (Không hoàn trả) do vi phạm gửi hàng cấm.";
+                            $orderModel->addStatusHistory($orderId, 'cancelled', 'Hệ thống từ chối hoàn tiền do Khách hàng vi phạm chính sách gửi hàng cấm.');
+                        } elseif ($orderModel->refundPaidOrder($orderId)) {
+                            $successMessage .= " Hệ thống đã ghi nhận hoàn tiền cho khách.";
+                            $orderModel->addStatusHistory($orderId, 'cancelled', 'Hệ thống hoàn tiền cho khách do đơn đã thanh toán nhưng bị hủy.');
+                            $refundMsg = " Tiền cước đã thanh toán (" . number_format($order['shipping_fee'] ?? 0, 0, ',', '.') . "đ) đang được hệ thống hoàn trả lại cho bạn.";
+                        }
+                    }
+
                     $userModel = new User();
                     
                     if ($newStatus === 'disputed') {
@@ -802,7 +815,10 @@ class OrderController extends BaseController
                                 $notiMsg = "Tài khoản của bạn đã bị khóa do vi phạm chính sách gửi Hàng cấm tại đơn #{$order['tracking_code']}.";
                             } elseif (in_array($currentStatus, ['accepted', 'picking_up'], true)) {
                                 $notiTitle = "Cảnh báo vi phạm giao nhận";
-                                $notiMsg = "Đơn hàng #{$order['tracking_code']} đã bị hủy do tài xế báo cáo lấy hàng thất bại. Hệ thống đã ghi nhận 1 lần vi phạm trên tài khoản của bạn.";
+                                $notiMsg = "Đơn hàng #{$order['tracking_code']} đã bị hủy do tài xế báo cáo lấy hàng thất bại. Hệ thống đã ghi nhận 1 lần vi phạm trên tài khoản của bạn." . $refundMsg;
+                            } else {
+                                $notiTitle = "Đơn hàng bị hủy";
+                                $notiMsg = "Đơn hàng #{$order['tracking_code']} đã bị hủy." . $refundMsg;
                             }
                         }
 
@@ -841,16 +857,6 @@ class OrderController extends BaseController
                                 'system',
                                 "/admin/orders/view/{$orderId}"
                             );
-                        }
-                    }
-
-                    if ($newStatus === 'cancelled' && ($order['payment_status'] ?? '') === 'paid') {
-                        if ($isBannedGoods) {
-                            $successMessage .= " Tịch thu tiền cước (Không hoàn trả) do vi phạm gửi hàng cấm.";
-                            $orderModel->addStatusHistory($orderId, 'cancelled', 'Hệ thống từ chối hoàn tiền do Khách hàng vi phạm chính sách gửi hàng cấm.');
-                        } elseif ($orderModel->refundPaidOrder($orderId)) {
-                            $successMessage .= " Hệ thống đã ghi nhận hoàn tiền cho khách.";
-                            $orderModel->addStatusHistory($orderId, 'cancelled', 'Hệ thống hoàn tiền cho khách do đơn đã thanh toán nhưng bị hủy.');
                         }
                     }
 
@@ -962,12 +968,14 @@ class OrderController extends BaseController
                         $_SESSION['flash_success'] = "Đã báo cáo lấy hàng thất bại thành công. Đơn hàng đã bị hủy.";
                     }
 
+                    $refundMsg = "";
                     // Xử lý hoàn tiền nếu đã thanh toán
                     if (($order['payment_status'] ?? '') === 'paid') {
                         if ($isBannedGoods) {
                             $orderModel->addStatusHistory($orderId, 'cancelled', 'Hệ thống từ chối hoàn tiền do Khách hàng vi phạm chính sách gửi hàng cấm.');
                         } elseif ($orderModel->refundPaidOrder($orderId)) {
                             $orderModel->addStatusHistory($orderId, 'cancelled', 'Hệ thống hoàn tiền cho khách do đơn đã thanh toán nhưng bị hủy.');
+                            $refundMsg = " Tiền cước đã thanh toán (" . number_format($order['shipping_fee'] ?? 0, 0, ',', '.') . "đ) đang được hệ thống hoàn trả lại cho bạn.";
                         }
                     }
 
@@ -983,7 +991,7 @@ class OrderController extends BaseController
                         $userModel->createNotification(
                             $order['customer_id'],
                             "Cảnh báo vi phạm giao nhận",
-                            "Đơn hàng #{$order['tracking_code']} đã bị hủy do tài xế báo cáo lấy hàng thất bại. Hệ thống đã ghi nhận 1 lần vi phạm trên tài khoản của bạn.",
+                            "Đơn hàng #{$order['tracking_code']} đã bị hủy do tài xế báo cáo lấy hàng thất bại. Hệ thống đã ghi nhận 1 lần vi phạm trên tài khoản của bạn." . $refundMsg,
                             'system',
                             "/user/orders/track/{$order['tracking_code']}"
                         );

@@ -10,33 +10,68 @@ use App\Models\Setting;
 
 class SettingController extends BaseController
 {
-    // Hiển thị và xử lý lưu cấu hình các biến môi trường hệ thống (System Settings).
+    // Hiển thị và xử lý lưu cấu hình vận hành hệ thống.
     public function index(Request $request, Response $response)
     {
         $settingModel = new Setting();
 
         if ($request->isPost()) {
-            $data = $request->getBody();
-            
-            // Lọc và ràng buộc giá trị phần trăm (từ 0 đến 100)
-            if (isset($data['platform_fee_percent'])) {
-                $data['platform_fee_percent'] = max(0, min(100, (float) $data['platform_fee_percent']));
-            }
-            
-            // Ràng buộc số lần vi phạm giao nhận tối thiểu là 1
-            if (isset($data['no_show_threshold_for_ban'])) {
-                $data['no_show_threshold_for_ban'] = max(1, (int) $data['no_show_threshold_for_ban']);
+            $data = app_sanitize($request->getBody());
+
+            $percentKeys = ['platform_fee_percent'];
+            foreach ($percentKeys as $key) {
+                if (isset($data[$key])) {
+                    $data[$key] = max(0, min(100, (float) $data[$key]));
+                }
             }
 
-            if (isset($data['max_order_weight'])) {
-                $data['max_order_weight'] = max(1, (float) $data['max_order_weight']);
+            $positiveIntegerKeys = [
+                'default_max_concurrent_orders',
+                'max_orders_per_batch',
+                'fast_max_orders',
+                'no_show_threshold_for_ban',
+                'violation_threshold_for_ban',
+                'min_wallet_topup_amount',
+                'min_wallet_withdraw_amount',
+                'driver_pickup_timeout_minutes',
+                'pending_order_auto_cancel_hours',
+                'scheduled_order_visible_before_minutes',
+            ];
+            foreach ($positiveIntegerKeys as $key) {
+                if (isset($data[$key])) {
+                    $data[$key] = max(1, (int) $data[$key]);
+                }
             }
 
-            if (isset($data['fast_max_orders'])) {
-                $data['fast_max_orders'] = max(1, (int) $data['fast_max_orders']);
+            $positiveFloatKeys = [
+                'max_order_weight',
+                'default_max_total_weight',
+                'driver_radar_radius_km',
+                'vehicle_speed_kmh',
+            ];
+            foreach ($positiveFloatKeys as $key) {
+                if (isset($data[$key])) {
+                    $data[$key] = max(1, (float) $data[$key]);
+                }
             }
 
-            // Bọc trong transaction để đảm bảo an toàn
+            if (isset($data['auto_refund_on_system_cancel'])) {
+                $data['auto_refund_on_system_cancel'] = (int) ((bool) $data['auto_refund_on_system_cancel']);
+            }
+
+            $textKeys = [
+                'bank_id',
+                'bank_name',
+                'bank_account_no',
+                'bank_account_name',
+                'refund_processing_note',
+            ];
+            foreach ($textKeys as $key) {
+                if (isset($data[$key])) {
+                    $data[$key] = trim((string) $data[$key]);
+                }
+            }
+
             $db = Database::getInstance();
             $db->beginTransaction();
             try {

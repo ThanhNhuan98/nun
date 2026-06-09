@@ -66,14 +66,14 @@ def traffic_meta(scheduled_time_str=""):
 
 async def osrm_table_async(locations, client: httpx.AsyncClient):
     """
-    Gọi API OSRM (Bản đồ) để lấy toàn bộ ma trận thời gian (Duration Matrix) giữa nhiều điểm trong 1 lần gọi.
+    Gọi API OSRM (Bản đồ) để lấy toàn bộ ma trận khoảng cách (Distance Matrix) giữa nhiều điểm trong 1 lần gọi.
     Dữ liệu này là đầu vào bắt buộc để thuật toán Google OR-Tools tính toán đường đi.
     Tham số `locations`: danh sách các tuple (lat, lon)
     """
     # OSRM yêu cầu định dạng "kinh_độ,vĩ_độ;kinh_độ,vĩ_độ..."
     coords = ";".join([f"{lon},{lat}" for lat, lon in locations])
     # Sử dụng máy chủ OSRM public, hoặc đổi thành URL local của bạn (VD: http://localhost:5000)
-    url = f"{OSRM_BASE_URL}/table/v1/driving/{coords}?annotations=duration"
+    url = f"{OSRM_BASE_URL}/table/v1/driving/{coords}?annotations=distance"
 
     try:
         # Tối ưu: Dùng httpx.AsyncClient để gọi API không block luồng chính
@@ -81,7 +81,7 @@ async def osrm_table_async(locations, client: httpx.AsyncClient):
         response.raise_for_status() # Ném lỗi nếu HTTP status là 4xx hoặc 5xx
         payload = response.json()
         if payload.get("code") == "Ok":
-            return payload.get("durations")
+            return payload.get("distances")
     except Exception:
         pass # Lỗi mạng hoặc API quá tải
     # Trả về None để hệ thống tự động fallback sang tính toán bằng Haversine
@@ -114,9 +114,13 @@ async def osrm_route_async(lat1, lon1, lat2, lon2, client: httpx.AsyncClient, ve
 
     # Thành công: Bóc tách khoảng cách và thời gian từ Response của OSRM
     route = payload["routes"][0]
+    distance_km = float(route.get("distance", 0)) / 1000
+    
+    # Tính toán lại thời gian bằng vận tốc xe máy thay vì dùng duration gốc của OSRM (dành cho ô tô)
+    duration_s = (distance_km / vehicle_speed) * 3600 if distance_km > 0 else 0
     return {
-        "distance_km": float(route.get("distance", 0)) / 1000,
-        "duration_s": float(route.get("duration", 0)),
+        "distance_km": distance_km,
+        "duration_s": duration_s,
         "source": "osrm",
         "is_fallback": False,
     }
@@ -204,8 +208,8 @@ def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity,
 
     num_locations = len(locations)
 
-    # Tối ưu: Nhận ma trận thời gian đã được tính toán sẵn từ bên ngoài
-    duration_matrix = osrm_matrix
+    # Tối ưu: Nhận ma trận khoảng cách đã được tính toán sẵn từ bên ngoài
+    distance_matrix = osrm_matrix
     
     # TỐI ƯU HÓA: Sử dụng mảng 2 chiều (List of Lists) thay vì Dictionary of Dictionaries 
     # Tăng tốc độ truy xuất O(1) trên RAM cho hàm callback của C++ OR-Tools
@@ -218,8 +222,9 @@ def solve_pdp_for_batch(batch_orders_data, driver_location, max_weight_capacity,
                 dist_matrix[from_node][to_node] = 0
             else:
                 # Ưu tiên dùng API OSRM
-                if duration_matrix and duration_matrix[from_node][to_node] is not None:
-                    dist_matrix[from_node][to_node] = int(duration_matrix[from_node][to_node])
+                if distance_matrix and distance_matrix[from_node][to_node] is not None:
+                    dist_km = distance_matrix[from_node][to_node] / 1000.0
+                    dist_matrix[from_node][to_node] = int((dist_km / vehicle_speed) * 3600)
                 else:
                     # Dự phòng (Fallback): Tính thời gian ước tính với vận tốc ~28km/h theo đường chim bay
                     dist = haversine_distance(locations[from_node][0], locations[from_node][1], locations[to_node][0], locations[to_node][1])

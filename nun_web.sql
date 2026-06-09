@@ -263,16 +263,41 @@ CREATE TABLE `settings` (
 
 INSERT INTO `settings` (`setting_key`, `setting_value`, `updated_at`) VALUES
 ('app_name', 'NUN Express', '2026-05-02 09:48:38'),
+('auto_refund_on_system_cancel', '1', '2026-06-09 00:00:00'),
+('bank_account_name', 'CONG TY TNHH NUN EXPRESS', '2026-06-09 00:00:00'),
+('bank_account_no', '1234567890', '2026-06-09 00:00:00'),
+('bank_id', 'VCB', '2026-06-09 00:00:00'),
+('bank_name', 'Vietcombank', '2026-06-09 00:00:00'),
 ('default_max_concurrent_orders', '10', '2026-05-05 09:08:09'),
 ('default_max_total_weight', '200', '2026-05-05 11:04:50'),
 ('driver_commission_percentage', '15', '2026-05-02 20:34:05'),
+('driver_pickup_timeout_minutes', '15', '2026-06-09 00:00:00'),
+('driver_radar_radius_km', '20', '2026-06-09 00:00:00'),
+('fast_max_orders', '3', '2026-06-09 00:00:00'),
 ('max_concurrent_orders_per_driver', '3', '2026-05-02 20:34:05'),
+('max_order_weight', '100', '2026-06-09 00:00:00'),
 ('max_orders_per_batch', '6', '2026-05-04 15:35:36'),
 ('max_total_weight_per_driver', '100', '2026-05-02 20:34:05'),
+('min_wallet_topup_amount', '10000', '2026-06-09 00:00:00'),
+('min_wallet_withdraw_amount', '50000', '2026-06-09 00:00:00'),
 ('no_show_threshold_for_ban', '5', '2026-05-04 15:35:43'),
+('pending_order_auto_cancel_hours', '24', '2026-06-09 00:00:00'),
 ('penalty_multiplier', '1.5', '2026-05-02 20:34:05'),
+('price_express_base', '25000', '2026-06-09 00:00:00'),
+('price_express_distance', '4800', '2026-06-09 00:00:00'),
+('price_express_weight', '7500', '2026-06-09 00:00:00'),
+('price_fast_base', '18000', '2026-06-09 00:00:00'),
+('price_fast_distance', '3800', '2026-06-09 00:00:00'),
+('price_fast_weight', '6200', '2026-06-09 00:00:00'),
+('price_standard_base', '12000', '2026-06-09 00:00:00'),
+('price_standard_distance', '3000', '2026-06-09 00:00:00'),
+('price_standard_weight', '5000', '2026-06-09 00:00:00'),
 ('platform_fee_percent', '21.2', '2026-05-04 15:35:21'),
-('violation_fine_amount', '50000', '2026-05-02 20:34:05');
+('refund_processing_note', 'Số tiền sẽ được hoàn về phương thức thanh toán ban đầu trong 1-3 ngày làm việc.', '2026-06-09 00:00:00'),
+('scheduled_order_visible_before_minutes', '120', '2026-06-09 00:00:00'),
+('vehicle_speed_kmh', '28', '2026-06-09 00:00:00'),
+('violation_fine_amount', '50000', '2026-05-02 20:34:05'),
+('violation_threshold_for_ban', '5', '2026-06-09 00:00:00');
 
 -- --------------------------------------------------------
 

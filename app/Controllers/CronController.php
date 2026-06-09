@@ -6,6 +6,7 @@ use App\Core\Request;
 use App\Core\Response;
 use App\Models\DriverPenalty;
 use App\Models\Order;
+use App\Models\Setting;
 use App\Models\User;
 
 class CronController extends BaseController
@@ -22,8 +23,10 @@ class CronController extends BaseController
         $orderModel = new Order();
         $userModel = new User();
         $penaltyModel = new DriverPenalty();
+        $settingModel = new Setting();
+        $pickupTimeoutMinutes = max(1, (int) $settingModel->get('driver_pickup_timeout_minutes', 15));
         
-        $stuckOrders = $orderModel->getStuckAcceptedOrders(15);
+        $stuckOrders = $orderModel->getStuckAcceptedOrders($pickupTimeoutMinutes);
         $processedCount = 0;
 
         foreach ($stuckOrders as $order) {

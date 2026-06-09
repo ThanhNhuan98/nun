@@ -1,4 +1,7 @@
 <?php require_once __DIR__ . '/../../layouts/user_header.php'; ?>
+<?php
+$minWithdrawAmount = (int) ($minWithdraw ?? 50000);
+?>
 
 <div class="admin-container">
     <div class="topup-wrapper">
@@ -16,7 +19,7 @@
         <form method="POST" action="/driver/wallet/withdraw">
             <div class="topup-form-group">
                 <label for="amount">Số tiền cần rút (VNĐ)</label>
-                <input type="number" id="amount" name="amount" class="topup-input" min="50000" step="1000" placeholder="Nhập số tiền tối thiểu 50.000đ" required data-error="Vui lòng nhập số tiền rút tối thiểu 50.000đ.">
+                <input type="number" id="amount" name="amount" class="topup-input" min="<?= app_e($minWithdrawAmount) ?>" step="1000" placeholder="Nhập số tiền tối thiểu <?= number_format($minWithdrawAmount, 0, ',', '.') ?>đ" required data-error="Vui lòng nhập số tiền rút tối thiểu <?= number_format($minWithdrawAmount, 0, ',', '.') ?>đ.">
                 <div class="topup-helper">
                     <span class="material-symbols-outlined">info</span>
                     Bạn phải có đủ số dư mới thực hiện được thao tác này.

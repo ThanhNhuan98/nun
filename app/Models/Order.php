@@ -97,7 +97,7 @@ class Order
         $trackingCode = 'NUN' . ($data['customer_id'] ?? '0') . $randomPart . random_int(10, 99);
         $paymentMethod = $data['payment_method'] ?? 'cash';
         $initialStatus = $paymentMethod === 'transfer' ? 'awaiting_payment' : 'searching_driver';
-        
+
         $ownsTransaction = !$this->db->inTransaction();
         if ($ownsTransaction) {
             $this->db->beginTransaction();
@@ -174,21 +174,21 @@ class Order
     public function findByIdAndUserId(int $orderId, int $userId)
     {
         $sql = "
-            SELECT 
-                o.*, 
+            SELECT
+                o.*,
                 del.driver_id,
-                u.name AS driver_name, 
-                u.phone AS driver_phone, 
+                u.name AS driver_name,
+                u.phone AS driver_phone,
                 u.avatar AS driver_avatar,
                 dp.license_plate AS driver_license_plate,
                 oa.sender_name, oa.sender_phone, oa.sender_address, oa.sender_lat, oa.sender_lng,
                 oa.receiver_name, oa.receiver_phone, oa.receiver_address, oa.receiver_lat, oa.receiver_lng
-            FROM orders o 
+            FROM orders o
             LEFT JOIN order_deliveries del ON del.order_id = o.id
-            LEFT JOIN users u ON u.id = del.driver_id 
+            LEFT JOIN users u ON u.id = del.driver_id
             LEFT JOIN driver_profiles dp ON dp.user_id = del.driver_id
             LEFT JOIN order_addresses oa ON oa.order_id = o.id
-            WHERE o.id = ? AND o.customer_id = ? AND o.is_archived = 0 
+            WHERE o.id = ? AND o.customer_id = ? AND o.is_archived = 0
             LIMIT 1
         ";
         $stmt = $this->db->prepare($sql);
@@ -203,18 +203,19 @@ class Order
      */
     public function getPendingForDriver(int $driverId, ?array $driverLocation = null, int $radiusKm = 20): array
     {
-        $where = "o.status = 'searching_driver' AND o.is_archived = 0 
-              AND (o.scheduled_at IS NULL OR o.scheduled_at <= DATE_ADD(NOW(), INTERVAL 120 MINUTE))";
+        $visibleBeforeMinutes = max(1, (int) (new Setting())->get('scheduled_order_visible_before_minutes', 120));
+        $where = "o.status = 'searching_driver' AND o.is_archived = 0
+              AND (o.scheduled_at IS NULL OR o.scheduled_at <= DATE_ADD(NOW(), INTERVAL {$visibleBeforeMinutes} MINUTE))";
 
         if ($driverLocation && isset($driverLocation['lat'], $driverLocation['lng'])) {
             $lat = (float) $driverLocation['lat'];
             $lng = (float) $driverLocation['lng'];
-            
+
             // Lọc thô bằng Hình vuông bao quanh (Bounding Box)
             // 1 độ Vĩ tuyến tương đương khoảng 111.045 km
             $latDelta = $radiusKm / 111.045;
             $lngDelta = $radiusKm / (111.045 * cos(deg2rad($lat)));
-            
+
             $minLat = $lat - $latDelta;
             $maxLat = $lat + $latDelta;
             $minLng = $lng - $lngDelta;
@@ -225,9 +226,9 @@ class Order
         }
 
         $sql = "
-            SELECT 
-                o.*, 
-                oa.sender_lat, oa.sender_lng, oa.sender_address AS pickup_address, 
+            SELECT
+                o.*,
+                oa.sender_lat, oa.sender_lng, oa.sender_address AS pickup_address,
                 oa.receiver_lat, oa.receiver_lng, oa.receiver_address AS delivery_address,
                 fin.shipping_fee
             FROM orders o
@@ -238,7 +239,7 @@ class Order
         ";
         $stmt = $this->db->prepare($sql);
         $stmt->execute();
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
@@ -252,7 +253,7 @@ class Order
         if ($endDate !== '') $where .= " AND DATE(o.created_at) <= :end_date";
 
         $sql = "
-            SELECT 
+            SELECT
                 o.id, o.tracking_code, o.status, o.created_at, o.updated_at, o.scheduled_at, o.weight,
                 oa.sender_address AS pickup_address, oa.receiver_address AS delivery_address,
                 fin.shipping_fee
@@ -280,7 +281,7 @@ class Order
     public function getActiveOrdersForDriver(int $driverId): array
     {
         $sql = "
-            SELECT 
+            SELECT
                 o.id, o.tracking_code, o.status, o.created_at, o.updated_at, od.accepted_at, o.weight, o.scheduled_at, o.shipping_method, o.note, od.batch_code, od.batch_route_details,
                 oa.sender_name, oa.sender_address AS pickup_address, oa.sender_lat, oa.sender_lng,
                 oa.receiver_name, oa.receiver_address AS delivery_address, oa.receiver_lat, oa.receiver_lng,
@@ -293,14 +294,14 @@ class Order
             LEFT JOIN order_addresses oa ON o.id = oa.order_id
             LEFT JOIN order_finances fin ON o.id = fin.order_id
             LEFT JOIN driver_profiles dp ON od.driver_id = dp.user_id
-            WHERE od.driver_id = ? 
+            WHERE od.driver_id = ?
               AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning')
               AND o.is_archived = 0
             ORDER BY od.accepted_at ASC
         ";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$driverId]);
-        
+
         return $stmt->fetchAll(PDO::FETCH_ASSOC) ?: [];
     }
 
@@ -310,10 +311,10 @@ class Order
     public function getActiveTrackingCodesForDriver(int $driverId): array
     {
         $sql = "
-            SELECT o.tracking_code 
+            SELECT o.tracking_code
             FROM orders o
             JOIN order_deliveries od ON o.id = od.order_id
-            WHERE od.driver_id = ? 
+            WHERE od.driver_id = ?
               AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning')
               AND o.is_archived = 0
         ";
@@ -336,7 +337,7 @@ class Order
             WHERE $where
         ";
         $stmt = $this->db->prepare($sql);
-        
+
         $stmt->bindValue(':driver_id', $driverId, PDO::PARAM_INT);
         if ($startDate !== '') $stmt->bindValue(':start_date', $startDate, PDO::PARAM_STR);
         if ($endDate !== '') $stmt->bindValue(':end_date', $endDate, PDO::PARAM_STR);
@@ -349,8 +350,8 @@ class Order
     public function findByIdForDriver(int $orderId, int $driverId)
     {
         $sql = "
-            SELECT 
-                o.*, 
+            SELECT
+                o.*,
                 del.driver_id,
                 fin.shipping_fee, fin.payment_method, fin.payment_status, fin.paid_at, fin.refunded_at,
                 oa.sender_name, oa.sender_phone, oa.sender_address, oa.sender_lat, oa.sender_lng,
@@ -385,7 +386,7 @@ class Order
         }
 
         $now = date('Y-m-d H:i:s'); // Dùng chung 1 mốc thời gian duy nhất cho cả chuyến
-        
+
         $ownsTransaction = !$this->db->inTransaction();
         if ($ownsTransaction) {
             $this->db->beginTransaction();
@@ -403,7 +404,7 @@ class Order
             $stmtOrder = $this->db->prepare("UPDATE orders SET status = 'accepted', updated_at = ? WHERE id IN ($inClause) AND status = 'searching_driver'");
             $paramsOrder = array_merge([$now], $orderIds);
             $stmtOrder->execute($paramsOrder);
-            
+
             // KIỂM TRA ĐIỀU KIỆN KHÓA LẠC QUAN (ALL OR NOTHING)
             // Nếu `rowCount()` không khớp số lượng đơn yêu cầu -> Có ít nhất 1 đơn đã bị tài xế khác "hớt tay trên" (Race Condition).
             // Hướng xử lý: Ngay lập tức Rollback hủy bỏ toàn bộ cụm đơn hàng để đảm bảo tính toàn vẹn dữ liệu.
@@ -411,12 +412,12 @@ class Order
                 if ($ownsTransaction) $this->db->rollBack();
                 return [];
             }
-            
+
             // SỬA LỖI: Cập nhật batch_route_details cho TOÀN BỘ đơn trong cụm. Nếu chỉ lưu ở đơn đầu tiên, khi đơn đầu bị hủy/thu hồi, cả chuyến sẽ mất lộ trình AI.
             $stmtDelivery = $this->db->prepare("UPDATE order_deliveries SET driver_id = ?, accepted_at = ?, batch_code = ?, batch_route_details = ? WHERE order_id IN ($inClause)");
             $paramsDelivery = array_merge([$driverId, $now, $batchCode, $routeDetailsJson], $orderIds);
             $stmtDelivery->execute($paramsDelivery);
-            
+
             $historyValues = [];
             $historyParams = [];
             $desc = 'Tài xế đã nhận đơn hàng và đang di chuyển đến điểm lấy hàng.';
@@ -429,7 +430,7 @@ class Order
             }
             $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES " . implode(', ', $historyValues))
                 ->execute($historyParams);
-            
+
             if ($ownsTransaction) {
                 $this->db->commit();
             }
@@ -489,7 +490,7 @@ class Order
         }
 
         $sql = "
-            SELECT 
+            SELECT
                 o.id, o.tracking_code, o.status, o.created_at, o.scheduled_at, o.weight,
                 fin.shipping_fee,
                 oa.sender_address, oa.receiver_address,
@@ -531,21 +532,21 @@ class Order
     public function findByTrackingCodeForUser(string $code, int $userId)
     {
         $stmt = $this->db->prepare("
-            SELECT 
-                o.*, 
+            SELECT
+                o.*,
                 f.payment_status, f.payment_method, f.shipping_fee,
                 oa.sender_name, oa.sender_phone, oa.sender_address, oa.sender_lat, oa.sender_lng,
                 oa.receiver_name, oa.receiver_phone, oa.receiver_address, oa.receiver_lat, oa.receiver_lng,
                 del.driver_id,
                 u.name AS driver_name, u.phone AS driver_phone, u.avatar AS driver_avatar,
                 dp.license_plate AS driver_license_plate, dp.current_lat AS driver_lat, dp.current_lng AS driver_lng
-            FROM orders o 
-            LEFT JOIN order_finances f ON o.id = f.order_id 
+            FROM orders o
+            LEFT JOIN order_finances f ON o.id = f.order_id
             LEFT JOIN order_addresses oa ON o.id = oa.order_id
             LEFT JOIN order_deliveries del ON o.id = del.order_id
             LEFT JOIN users u ON del.driver_id = u.id
             LEFT JOIN driver_profiles dp ON u.id = dp.user_id
-            WHERE o.tracking_code = ? AND o.customer_id = ? 
+            WHERE o.tracking_code = ? AND o.customer_id = ?
             LIMIT 1
         ");
         $stmt->execute([$code, $userId]);
@@ -558,7 +559,7 @@ class Order
     public function findByTrackingCodePublic(string $trackingCode)
     {
         $sql = "
-            SELECT 
+            SELECT
                 o.id, o.tracking_code, o.status, o.created_at, o.updated_at, o.scheduled_at,
                 oa.sender_name, oa.receiver_name, oa.sender_address, oa.receiver_address,
                 oa.sender_lat, oa.sender_lng, oa.receiver_lat, oa.receiver_lng,
@@ -566,13 +567,13 @@ class Order
                 u.name AS driver_name, u.avatar AS driver_avatar,
                 dp.current_lat AS driver_lat, dp.current_lng AS driver_lng,
                 dp.license_plate AS driver_license_plate
-            FROM orders o 
+            FROM orders o
             LEFT JOIN order_addresses oa ON oa.order_id = o.id
             LEFT JOIN order_finances fin ON fin.order_id = o.id
             LEFT JOIN order_deliveries del ON del.order_id = o.id
-            LEFT JOIN users u ON u.id = del.driver_id 
-            LEFT JOIN driver_profiles dp ON dp.user_id = del.driver_id 
-            WHERE o.tracking_code = ? AND o.is_archived = 0 
+            LEFT JOIN users u ON u.id = del.driver_id
+            LEFT JOIN driver_profiles dp ON dp.user_id = del.driver_id
+            WHERE o.tracking_code = ? AND o.is_archived = 0
             LIMIT 1
         ";
         $stmt = $this->db->prepare($sql);
@@ -665,9 +666,9 @@ class Order
         [$where, $params] = $this->buildAdminFilters($statusFilter, $search);
 
         $sql = "
-            SELECT 
+            SELECT
                 o.id, o.tracking_code, o.status, o.created_at, o.scheduled_at, o.weight,
-                u.name as customer_name, u.phone as customer_phone, 
+                u.name as customer_name, u.phone as customer_phone,
                 del.driver_id,
                 d.name as driver_name, d.phone as driver_phone,
                 fin.shipping_fee, fin.payment_method, fin.payment_status
@@ -692,8 +693,8 @@ class Order
     public function findByIdForAdmin(int $orderId)
     {
         $sql = "
-            SELECT 
-                o.*, 
+            SELECT
+                o.*,
                 del.driver_id, del.accepted_at, del.picked_up_at, del.delivered_at, del.cancelled_at,
                 u.name as customer_name, u.phone as customer_phone, u.email as customer_email, u.avatar as customer_avatar, u.no_show_count as customer_no_show_count,
                 d.name as driver_name, d.phone as driver_phone, d.avatar as driver_avatar,
@@ -765,7 +766,7 @@ class Order
             $paymentStatus = $data['payment_status'] ?? $oldData['payment_status'];
             $shippingFee = isset($data['shipping_fee']) ? (float)$data['shipping_fee'] : $oldData['shipping_fee'];
             $paymentMethod = $data['payment_method'] ?? $oldData['payment_method'];
-            
+
             $financeTimeUpdate = "";
             if ($paymentStatus !== $oldData['payment_status']) {
                 if ($paymentStatus === 'paid') $financeTimeUpdate = ", paid_at = NOW()";
@@ -918,18 +919,18 @@ class Order
         $limit = (int) $limit;
 
         $sql = "
-            (SELECT MAX(o.created_at) as last_used, oa.sender_address as address, oa.sender_lat as lat, oa.sender_lng as lng, '' as name, '' as phone, 'pickup' as type 
-             FROM order_addresses oa 
-             JOIN orders o ON oa.order_id = o.id 
-             WHERE o.customer_id = ? AND oa.sender_address != '' 
-             GROUP BY oa.sender_address, oa.sender_lat, oa.sender_lng 
+            (SELECT MAX(o.created_at) as last_used, oa.sender_address as address, oa.sender_lat as lat, oa.sender_lng as lng, '' as name, '' as phone, 'pickup' as type
+             FROM order_addresses oa
+             JOIN orders o ON oa.order_id = o.id
+             WHERE o.customer_id = ? AND oa.sender_address != ''
+             GROUP BY oa.sender_address, oa.sender_lat, oa.sender_lng
              ORDER BY last_used DESC LIMIT ?)
             UNION ALL
-            (SELECT MAX(o.created_at) as last_used, oa.receiver_address as address, oa.receiver_lat as lat, oa.receiver_lng as lng, oa.receiver_name as name, oa.receiver_phone as phone, 'delivery' as type 
-             FROM order_addresses oa 
-             JOIN orders o ON oa.order_id = o.id 
-             WHERE o.customer_id = ? AND oa.receiver_address != '' 
-             GROUP BY oa.receiver_address, oa.receiver_lat, oa.receiver_lng, oa.receiver_name, oa.receiver_phone 
+            (SELECT MAX(o.created_at) as last_used, oa.receiver_address as address, oa.receiver_lat as lat, oa.receiver_lng as lng, oa.receiver_name as name, oa.receiver_phone as phone, 'delivery' as type
+             FROM order_addresses oa
+             JOIN orders o ON oa.order_id = o.id
+             WHERE o.customer_id = ? AND oa.receiver_address != ''
+             GROUP BY oa.receiver_address, oa.receiver_lat, oa.receiver_lng, oa.receiver_name, oa.receiver_phone
              ORDER BY last_used DESC LIMIT ?)
         ";
 
@@ -963,7 +964,7 @@ class Order
 
         // 1. Lấy thông tin tài xế (Chỉ 1 Query)
         $stmtDriver = $this->db->prepare("
-            SELECT u.is_blocked, u.blocked_reason, dp.max_concurrent_orders, dp.max_total_weight, dp.current_load, dp.is_verified 
+            SELECT u.is_blocked, u.blocked_reason, dp.max_concurrent_orders, dp.max_total_weight, dp.current_load, dp.is_verified
             FROM users u LEFT JOIN driver_profiles dp ON u.id = dp.user_id WHERE u.id = ?
         ");
         $stmtDriver->execute([$driverId]);
@@ -1009,7 +1010,7 @@ class Order
         $defaultMaxWeight = (float) $settingModel->get('default_max_total_weight', 100);
         $fastMaxOrders = (int) $settingModel->get('fast_max_orders', 3);
         $maxOrders = isset($driver['max_concurrent_orders']) ? (int) $driver['max_concurrent_orders'] : $defaultMaxOrders;
-        
+
         if ($activeFastCount > 0) {
             $maxOrders = min($maxOrders, $fastMaxOrders);
         }
@@ -1036,7 +1037,7 @@ class Order
                 $response['rejected_orders'][$oid] = 'Đơn hàng không tồn tại';
                 continue;
             }
-            
+
             $isExpress = $orderData[$oid]['shipping_method'] === 'express';
             $isFast = $orderData[$oid]['shipping_method'] === 'fast';
             if ($isExpress) {
@@ -1049,7 +1050,7 @@ class Order
                     continue;
                 }
             }
-            
+
             if ($isFast) {
                 $maxOrders = min($maxOrders, $fastMaxOrders);
             }
@@ -1089,7 +1090,7 @@ class Order
     public function getDriverActiveStats(int $driverId): array
     {
         $stmt = $this->db->prepare("
-            SELECT 
+            SELECT
                 COUNT(*) as active_count,
                 COALESCE(SUM(o.weight), 0) as current_weight,
                 MAX(CASE WHEN o.shipping_method = 'express' THEN 1 ELSE 0 END) as has_express,
@@ -1108,7 +1109,7 @@ class Order
     public function getDriverActiveOrderCount(int $driverId): int
     {
         $stmt = $this->db->prepare("
-            SELECT COUNT(*) as count 
+            SELECT COUNT(*) as count
             FROM orders o
             JOIN order_deliveries od ON o.id = od.order_id
             WHERE od.driver_id = ? AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning')
@@ -1124,10 +1125,10 @@ class Order
     public function hasDriverActiveExpressOrder(int $driverId): bool
     {
         $stmt = $this->db->prepare("
-            SELECT 1 
+            SELECT 1
             FROM orders o
             JOIN order_deliveries od ON o.id = od.order_id
-            WHERE od.driver_id = ? 
+            WHERE od.driver_id = ?
               AND o.status IN ('accepted', 'picking_up', 'in_transit', 'shipping', 'returning')
               AND o.shipping_method = 'express'
             LIMIT 1
@@ -1155,13 +1156,18 @@ class Order
     /**
      * Lấy danh sách đơn hàng bị giam (đã nhận nhưng không đi lấy quá X phút)
      */
-    public function getStuckAcceptedOrders(int $minutes = 15): array
+    public function getStuckAcceptedOrders(?int $minutes = null): array
     {
+        if ($minutes === null) {
+            $settingModel = new Setting();
+            $minutes = (int) $settingModel->get('driver_pickup_timeout_minutes', 15);
+        }
+
         $sql = "
-            SELECT o.id, o.tracking_code, od.driver_id, od.accepted_at 
+            SELECT o.id, o.tracking_code, od.driver_id, od.accepted_at
             FROM orders o
             JOIN order_deliveries od ON o.id = od.order_id
-            WHERE o.status = 'accepted' 
+            WHERE o.status = 'accepted'
               AND od.accepted_at <= DATE_SUB(NOW(), INTERVAL ? MINUTE)
               AND o.is_archived = 0
         ";
@@ -1202,7 +1208,7 @@ class Order
             if ($ownsTransaction) {
                 $this->db->commit();
             }
-            
+
             // Tìm thông tin khách hàng để gửi thông báo trấn an
             $stmtInfo = $this->db->prepare("SELECT tracking_code, customer_id FROM orders WHERE id = ?");
             $stmtInfo->execute([$orderId]);
@@ -1216,7 +1222,7 @@ class Order
                     "/user/orders/track/{$info['tracking_code']}"
                 );
             }
-            
+
             return true;
         } catch (\Throwable $e) {
             if ($ownsTransaction) {
@@ -1236,16 +1242,22 @@ class Order
             $this->db->beginTransaction();
         }
         try {
+            $settingModel = new Setting();
+            $autoCancelHours = max(1, (int) $settingModel->get('pending_order_auto_cancel_hours', 24));
+            $autoRefund = (string) $settingModel->get('auto_refund_on_system_cancel', '1') === '1';
+            $refundNote = trim((string) $settingModel->get('refund_processing_note', 'Số tiền sẽ được hoàn về phương thức thanh toán ban đầu trong 1-3 ngày làm việc.'));
+
             // Lấy danh sách đơn quá hạn 1 ngày (so với lúc tạo hoặc lúc hẹn lấy hàng)
             $stmt = $this->db->prepare("
-                SELECT id, tracking_code, customer_id 
-                FROM orders 
-                WHERE status IN ('awaiting_payment', 'searching_driver') 
+                SELECT o.id, o.tracking_code, o.customer_id, f.payment_status, f.shipping_fee
+                FROM orders o
+                LEFT JOIN order_finances f ON o.id = f.order_id
+                WHERE o.status IN ('awaiting_payment', 'searching_driver')
                   AND is_archived = 0
                   AND (
-                      (scheduled_at IS NULL AND created_at <= DATE_SUB(NOW(), INTERVAL 1 DAY))
-                      OR 
-                      (scheduled_at IS NOT NULL AND scheduled_at <= DATE_SUB(NOW(), INTERVAL 1 DAY))
+                      (o.scheduled_at IS NULL AND o.created_at <= DATE_SUB(NOW(), INTERVAL {$autoCancelHours} HOUR))
+                      OR
+                      (o.scheduled_at IS NOT NULL AND o.scheduled_at <= DATE_SUB(NOW(), INTERVAL {$autoCancelHours} HOUR))
                   )
             ");
             $stmt->execute();
@@ -1257,19 +1269,27 @@ class Order
             }
 
             $updateStmt = $this->db->prepare("UPDATE orders SET status = 'cancelled', updated_at = NOW() WHERE id = ?");
-            $desc = "Hệ thống tự động hủy đơn do quá 24h không có tài xế nhận.";
+            $desc = "Hệ thống tự động hủy đơn do quá {$autoCancelHours}h không có tài xế nhận.";
             $histStmt = $this->db->prepare("INSERT INTO order_status_history (order_id, status, description, created_at) VALUES (?, 'cancelled', ?, NOW())");
             $userModel = new \App\Models\User();
 
             foreach ($expiredOrders as $order) {
                 $updateStmt->execute([$order['id']]);
                 $histStmt->execute([$order['id'], $desc]);
-                
+
+                $msg = "Hệ thống đã tự động hủy đơn hàng #{$order['tracking_code']} do không có tài xế tiếp nhận sau {$autoCancelHours} giờ. Rất mong bạn thông cảm vì sự bất tiện này.";
+
+                if ($autoRefund && ($order['payment_status'] ?? '') === 'paid') {
+                    $this->refundPaidOrder($order['id']);
+                    $this->addStatusHistory($order['id'], 'cancelled', "Hệ thống hoàn tiền cho khách do hủy đơn tự động quá {$autoCancelHours}h.");
+                    $msg .= " Số tiền cước " . number_format($order['shipping_fee'] ?? 0, 0, ',', '.') . "đ đã thanh toán sẽ được hoàn lại vào tài khoản của bạn. " . $refundNote;
+                }
+
                 // Gửi thông báo cho khách hàng
                 $userModel->createNotification(
                     $order['customer_id'],
                     'Hủy đơn hàng tự động',
-                    "Hệ thống đã tự động hủy đơn hàng #{$order['tracking_code']} do không có tài xế tiếp nhận sau 24 giờ. Rất mong bạn thông cảm vì sự bất tiện này.",
+                    $msg,
                     'system',
                     "/user/orders/track/{$order['tracking_code']}"
                 );

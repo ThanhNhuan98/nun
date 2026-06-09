@@ -11,9 +11,11 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
             
             <?php 
                 // Cấu hình VietQR theo chuẩn Mockup thiết kế
-                $bankId = "VCB"; // Vietcombank
-                $accountNo = "1234567890";
-                $accountName = "CONG TY TNHH NUN EXPRESS"; 
+                $paymentSettings = $paymentSettings ?? [];
+                $bankId = $paymentSettings['bank_id'] ?? 'VCB';
+                $bankName = $paymentSettings['bank_name'] ?? 'Vietcombank';
+                $accountNo = $paymentSettings['bank_account_no'] ?? '1234567890';
+                $accountName = $paymentSettings['bank_account_name'] ?? 'CONG TY TNHH NUN EXPRESS';
                 $amount = (int)($order['shipping_fee'] ?? 0);
                 $description = "NUN TT DH " . ($order['tracking_code'] ?? '');
                 
@@ -43,7 +45,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                 
                 <div class="transfer-detail-row">
                     <span class="t-label">Ngân hàng:</span>
-                    <span class="t-value"><strong>Vietcombank</strong></span>
+                    <span class="t-value"><strong><?= app_e($bankName) ?></strong></span>
                 </div>
                 
                 <div class="transfer-detail-row">
