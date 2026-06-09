@@ -222,11 +222,11 @@
                     </div>
                     <div class="settings-input-col" style="width: auto; display: flex; gap: 10px;">
                         <div class="input-suffix-group" style="width: 160px;">
-                            <input type="number" name="min_wallet_topup_amount" class="form-control" min="1" step="1000" value="<?= app_e($settings['min_wallet_topup_amount'] ?? '10000') ?>" required>
+                            <input type="number" name="min_wallet_topup_amount" class="form-control" min="1000" step="1000" value="<?= app_e($settings['min_wallet_topup_amount'] ?? '10000') ?>" required>
                             <span class="suffix">đ nạp</span>
                         </div>
                         <div class="input-suffix-group" style="width: 160px;">
-                            <input type="number" name="min_wallet_withdraw_amount" class="form-control" min="1" step="1000" value="<?= app_e($settings['min_wallet_withdraw_amount'] ?? '50000') ?>" required>
+                            <input type="number" name="min_wallet_withdraw_amount" class="form-control" min="1000" step="1000" value="<?= app_e($settings['min_wallet_withdraw_amount'] ?? '50000') ?>" required>
                             <span class="suffix">đ rút</span>
                         </div>
                     </div>

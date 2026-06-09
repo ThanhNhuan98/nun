@@ -1,7 +1,5 @@
 <?php
-
 namespace App\Controllers\User;
-
 use App\Controllers\BaseController;
 use App\Core\Database;
 use App\Core\Request;
