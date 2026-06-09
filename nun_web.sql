@@ -169,6 +169,8 @@ CREATE TABLE `order_deliveries` (
   `picked_up_at` datetime DEFAULT NULL,
   `delivered_at` datetime DEFAULT NULL,
   `cancelled_at` datetime DEFAULT NULL,
+  `returning_at` datetime DEFAULT NULL,
+  `returned_at` datetime DEFAULT NULL,
   `proof_image` varchar(500) DEFAULT NULL,
   `cancel_reason` text DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),

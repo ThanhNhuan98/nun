@@ -397,12 +397,16 @@ class Order
                 ? json_encode($routeDetails, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
                 : null;
 
+            // [KHÓA LẠC QUAN - OPTIMISTIC LOCKING]
+            // Sử dụng chính cột `status = 'searching_driver'` làm điều kiện kiểm tra phiên bản (version check).
+            // Tránh việc dùng Khóa bi quan (FOR UPDATE) có thể gây nghẽn cổ chai (Deadlock) toàn hệ thống.
             $stmtOrder = $this->db->prepare("UPDATE orders SET status = 'accepted', updated_at = ? WHERE id IN ($inClause) AND status = 'searching_driver'");
             $paramsOrder = array_merge([$now], $orderIds);
             $stmtOrder->execute($paramsOrder);
             
-            // Logic ALL OR NOTHING (Tất cả hoặc không có gì)
-            // Nếu số dòng cập nhật thực tế không bằng số lượng đơn yêu cầu -> Có đơn đã bị người khác hớt tay trên -> Hủy toàn bộ
+            // KIỂM TRA ĐIỀU KIỆN KHÓA LẠC QUAN (ALL OR NOTHING)
+            // Nếu `rowCount()` không khớp số lượng đơn yêu cầu -> Có ít nhất 1 đơn đã bị tài xế khác "hớt tay trên" (Race Condition).
+            // Hướng xử lý: Ngay lập tức Rollback hủy bỏ toàn bộ cụm đơn hàng để đảm bảo tính toàn vẹn dữ liệu.
             if ($stmtOrder->rowCount() !== count($orderIds)) {
                 if ($ownsTransaction) $this->db->rollBack();
                 return [];
@@ -742,6 +746,8 @@ class Order
                 if ($status === 'picking_up') $timeColumn = "picked_up_at";
                 elseif ($status === 'completed') $timeColumn = "delivered_at";
                 elseif ($status === 'cancelled') $timeColumn = "cancelled_at";
+                elseif ($status === 'returning') $timeColumn = "returning_at";
+                elseif ($status === 'returned') $timeColumn = "returned_at";
 
                 if ($timeColumn) {
                     try {
@@ -816,6 +822,8 @@ class Order
             if ($status === 'picking_up') $timeColumn = "picked_up_at";
             elseif ($status === 'completed') $timeColumn = "delivered_at";
             elseif ($status === 'cancelled') $timeColumn = "cancelled_at";
+            elseif ($status === 'returning') $timeColumn = "returning_at";
+            elseif ($status === 'returned') $timeColumn = "returned_at";
 
             if ($timeColumn) {
                 try {
@@ -1172,9 +1180,12 @@ class Order
             $this->db->beginTransaction();
         }
         try {
+            // [KHÓA LẠC QUAN - OPTIMISTIC LOCKING]
+            // Đảm bảo đơn hàng vẫn còn đang ở trạng thái 'accepted' (chưa bị chuyển sang 'picking_up' hoặc 'cancelled') trong lúc Cron đang chạy.
             $stmtOrder = $this->db->prepare("UPDATE orders SET status = 'searching_driver', updated_at = NOW() WHERE id = ? AND status = 'accepted'");
             $stmtOrder->execute([$orderId]);
 
+            // Khóa lạc quan phát hiện ra trạng thái đã thay đổi khi rowCount = 0
             if ($stmtOrder->rowCount() === 0) {
                 if ($ownsTransaction) $this->db->rollBack();
                 return false;

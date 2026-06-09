@@ -4,8 +4,8 @@ namespace App\Controllers;
 
 use App\Core\Request;
 use App\Core\Response;
+use App\Models\DriverPenalty;
 use App\Models\Order;
-use App\Models\Wallet;
 use App\Models\User;
 
 class CronController extends BaseController
@@ -20,8 +20,8 @@ class CronController extends BaseController
         }
 
         $orderModel = new Order();
-        $walletModel = new Wallet();
         $userModel = new User();
+        $penaltyModel = new DriverPenalty();
         
         $stuckOrders = $orderModel->getStuckAcceptedOrders(15);
         $processedCount = 0;
@@ -32,12 +32,17 @@ class CronController extends BaseController
             
             if ($orderModel->autoReassignOrder($orderId)) {
                 $penaltyAmount = 10000;
-                $walletModel->deduct($driverId, $penaltyAmount, 'penalty', "Phạt giam đơn hàng #{$order['tracking_code']}");
+                $penaltyApplied = $penaltyModel->applyPenalty(
+                    $driverId,
+                    'no_response',
+                    $penaltyAmount,
+                    "Phạt giam đơn hàng #{$order['tracking_code']}"
+                );
                 
                 $userModel->createNotification(
                     $driverId,
                     'Thông báo chế tài',
-                    "Hệ thống đã thu hồi đơn hàng #{$order['tracking_code']} do quá thời gian quy định không lấy hàng, đồng thời khấu trừ " . number_format($penaltyAmount, 0, ',', '.') . "đ từ ví của bạn.",
+                    "Hệ thống đã thu hồi đơn hàng #{$order['tracking_code']} do quá thời gian quy định không lấy hàng" . ($penaltyApplied ? ", đồng thời ghi nhận 1 vi phạm và khấu trừ " . number_format($penaltyAmount, 0, ',', '.') . "đ từ ví của bạn." : ". Hệ thống chưa thể ghi nhận khoản phạt, vui lòng liên hệ quản trị viên."),
                     'wallet',
                     "/driver/history"
                 );

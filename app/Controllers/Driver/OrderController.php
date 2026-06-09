@@ -14,6 +14,20 @@ use App\Models\Wallet;
 
 class OrderController extends BaseController
 {
+    private const PREPAID_PAYMENT_METHODS = ['transfer', 'bank_transfer', 'wallet'];
+
+    private function normalizeFailureReason(string $reason): string
+    {
+        return $reason === 'banned_goods' ? 'Phát hiện Hàng cấm' : $reason;
+    }
+
+    private function isBannedGoodsReason(string $reason): bool
+    {
+        return $reason === 'banned_goods'
+            || str_contains($reason, 'Hàng cấm')
+            || str_contains($reason, 'Hang cam');
+    }
+
     // Tải ảnh minh chứng giao nhận trực tiếp lên Cloudinary SDK theo cam kết trong báo cáo.
     private function uploadProofImage(int $orderId, string $prefix = ''): string
     {
@@ -587,7 +601,7 @@ class OrderController extends BaseController
         $orderId = (int) $request->getRouteParam('id');
         $data = $request->getBody(); // Sử dụng nhất quán Request object
         $newStatus = $data['status'] ?? '';
-        $cancelReason = trim($data['cancel_reason'] ?? ''); // Bỏ app_sanitize, chỉ cần trim
+        $cancelReason = $this->normalizeFailureReason(trim($data['cancel_reason'] ?? '')); // Bỏ app_sanitize, chỉ cần trim
         $deliveryPin = trim($data['delivery_pin'] ?? '');
         $redirectTo = $data['redirect_to'] ?? '';
         $redirectUrl = $redirectTo === 'active' ? "/driver/active-orders" : "/driver/orders/view/$orderId";
@@ -603,15 +617,15 @@ class OrderController extends BaseController
         $allowedTransitions = [
             'accepted' => ['picking_up', 'cancelled'],
             'picking_up' => ['in_transit', 'cancelled'],
-            'in_transit' => ['completed', 'cancelled', 'returning'],
+            'in_transit' => ['completed', 'returning'],
             'returning' => ['returned', 'disputed'],
-            'shipping' => ['completed', 'cancelled', 'returning'] // Phòng hờ nếu DB đang dùng chữ shipping
+            'shipping' => ['completed', 'returning'] // Phòng hờ nếu DB đang dùng chữ shipping
         ];
 
         $currentStatus = $order['status'];
         
         // Kiểm tra xem có phải là sự cố nghiêm trọng (Hàng cấm) hay không
-        $isBannedGoods = str_contains($cancelReason, 'Hàng cấm');
+        $isBannedGoods = $this->isBannedGoodsReason($cancelReason);
         
         if (isset($allowedTransitions[$currentStatus]) && in_array($newStatus, $allowedTransitions[$currentStatus])) {
             
@@ -674,7 +688,7 @@ class OrderController extends BaseController
                 if ($orderModel->updateStatus($orderId, $newStatus, $description)) {
                     $successMessage = "Cập nhật trạng thái thành công!";
 
-                    if ($newStatus === 'completed' && ($order['payment_method'] ?? 'cash') === 'transfer') {
+                    if ($newStatus === 'completed' && in_array($order['payment_method'] ?? 'cash', self::PREPAID_PAYMENT_METHODS, true)) {
                         $driverEarnings = app_calculate_driver_earnings((float)($order['shipping_fee'] ?? 0));
                         $walletModel = new Wallet();
                         
@@ -744,6 +758,9 @@ class OrderController extends BaseController
                                     "/admin/orders/view/{$orderId}"
                                 );
                             }
+                        } elseif (in_array($currentStatus, ['accepted', 'picking_up'], true)) {
+                            $userModel = new User();
+                            $userModel->recordNoShow($order['customer_id']);
                         }
                     }
 
@@ -779,6 +796,14 @@ class OrderController extends BaseController
                         } elseif ($newStatus === 'returned') {
                             $notiTitle = "Hoàn trả hàng thành công";
                             $notiMsg = "Đơn hàng #{$order['tracking_code']} đã được hoàn trả lại cho bạn. Vui lòng kiểm tra lại tình trạng gói hàng.";
+                        } elseif ($newStatus === 'cancelled') {
+                            if ($isBannedGoods) {
+                                $notiTitle = "Tài khoản bị khóa";
+                                $notiMsg = "Tài khoản của bạn đã bị khóa do vi phạm chính sách gửi Hàng cấm tại đơn #{$order['tracking_code']}.";
+                            } elseif (in_array($currentStatus, ['accepted', 'picking_up'], true)) {
+                                $notiTitle = "Cảnh báo vi phạm giao nhận";
+                                $notiMsg = "Đơn hàng #{$order['tracking_code']} đã bị hủy do tài xế báo cáo lấy hàng thất bại. Hệ thống đã ghi nhận 1 lần vi phạm trên tài khoản của bạn.";
+                            }
                         }
 
                         $userModel->createNotification(
@@ -855,7 +880,7 @@ class OrderController extends BaseController
         $driverId = $this->userId();
         $orderId = (int) $request->getRouteParam('id');
         $data = $request->getBody(); // Sử dụng nhất quán Request object
-        $reason = trim($data['reason'] ?? 'Sự cố giao/nhận hàng'); // Bỏ app_sanitize
+        $reason = $this->normalizeFailureReason(trim($data['reason'] ?? 'Sự cố giao/nhận hàng')); // Bỏ app_sanitize
 
         $orderModel = new Order();
         $order = $orderModel->findByIdForDriver($orderId, $driverId);
@@ -890,7 +915,7 @@ class OrderController extends BaseController
             // NGHIỆP VỤ 1: LẤY HÀNG THẤT BẠI (LỖI DO NGƯỜI GỬI TẠO APP)
             // =========================================================
             if (in_array($order['status'], ['accepted', 'picking_up'])) {
-                $isBannedGoods = str_contains($reason, 'Hàng cấm');
+                $isBannedGoods = $this->isBannedGoodsReason($reason);
 
                 if ($isBannedGoods) {
                     $description = "🚨 TÀI XẾ PHÁT HIỆN HÀNG CẤM. Hệ thống tự động hủy đơn và khóa tài khoản Khách hàng.";

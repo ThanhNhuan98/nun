@@ -35,6 +35,10 @@ class Wallet
         if ($ownsTransaction) $this->db->beginTransaction();
 
         try {
+            // [KHÓA BI QUAN - PESSIMISTIC LOCKING]
+            // Sử dụng mệnh đề `FOR UPDATE` để khóa dòng (Row-level lock) tài khoản của tài xế.
+            // Ngăn chặn luồng khác đọc số dư hiện tại cho đến khi luồng này thực hiện xong giao dịch (commit).
+            // Đảm bảo an toàn tuyệt đối tránh Race Condition làm sai lệch tiền trong ví.
             $stmt = $this->db->prepare("SELECT balance FROM driver_profiles WHERE user_id = ? FOR UPDATE");
             $stmt->execute([$userId]);
             $currentBalance = (float) ($stmt->fetchColumn() ?: 0);
@@ -68,6 +72,8 @@ class Wallet
         if ($ownsTransaction) $this->db->beginTransaction();
 
         try {
+            // [KHÓA BI QUAN - PESSIMISTIC LOCKING]
+            // Khóa dòng để đảm bảo tính toàn vẹn dữ liệu khi cưỡng chế trừ tiền (phạt vi phạm).
             $stmt = $this->db->prepare("SELECT balance FROM driver_profiles WHERE user_id = ? FOR UPDATE");
             $stmt->execute([$userId]);
             $currentBalance = (float) ($stmt->fetchColumn() ?: 0);
@@ -96,6 +102,8 @@ class Wallet
         if ($ownsTransaction) $this->db->beginTransaction();
 
         try {
+            // [KHÓA BI QUAN - PESSIMISTIC LOCKING]
+            // Đảm bảo số dư cũ được đọc chính xác tuyệt đối trước khi cộng thêm tiền mới.
             $stmt = $this->db->prepare("SELECT balance FROM driver_profiles WHERE user_id = ? FOR UPDATE");
             $stmt->execute([$userId]);
             $currentBalance = (float) ($stmt->fetchColumn() ?: 0);

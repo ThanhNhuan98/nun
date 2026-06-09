@@ -14,6 +14,8 @@ use App\Models\Setting;
 
 class DisputeController extends BaseController
 {
+    private const PREPAID_PAYMENT_METHODS = ['transfer', 'bank_transfer', 'wallet'];
+
     // Hiển thị danh sách khiếu nại của hệ thống (có hỗ trợ phân trang và tìm kiếm).
     public function index(Request $request, Response $response)
     {
@@ -105,7 +107,7 @@ class DisputeController extends BaseController
                                 $desc = "Admin đã xử lý khiếu nại. Quyết định: " . ($resolutionNote ?: 'Thay đổi trạng thái đơn hàng');
                                 $orderModel->updateStatus($currentOrder['id'], $newOrderStatus, $desc);
                                 
-                                if ($newOrderStatus === 'completed' && ($currentOrder['payment_method'] ?? 'cash') === 'transfer' && !empty($currentOrder['driver_id'])) {
+                                if ($newOrderStatus === 'completed' && in_array($currentOrder['payment_method'] ?? 'cash', self::PREPAID_PAYMENT_METHODS, true) && !empty($currentOrder['driver_id'])) {
                                     $driverEarnings = app_calculate_driver_earnings((float)($currentOrder['shipping_fee'] ?? 0));
                                     $walletModel = new Wallet();
                                     
@@ -126,7 +128,7 @@ class DisputeController extends BaseController
 
                                 // NGHIỆP VỤ HOÀN TIỀN CƯỚC ONLINE TỰ ĐỘNG CHƯA TỪNG CÓ:
                                 // Nếu khách hàng trả trước bằng ví/Online mà đơn bị lỗi/hủy/hoàn trả, Admin kết luận trả tiền cho khách
-                                if (in_array($currentOrder['payment_method'] ?? '', ['transfer', 'online']) && ($currentOrder['payment_status'] ?? '') === 'paid' && in_array($newOrderStatus, ['cancelled', 'returning', 'returned'])) {
+                                if (in_array($currentOrder['payment_method'] ?? '', self::PREPAID_PAYMENT_METHODS, true) && ($currentOrder['payment_status'] ?? '') === 'paid' && in_array($newOrderStatus, ['cancelled', 'returning', 'returned'], true)) {
                                     
                                     // Cập nhật trạng thái tiền tệ sang 'refunded' và cập nhật 'refunded_at' qua Model đã sửa đổi
                                     $orderModel->updatePaymentStatus($currentOrder['id'], 'refunded');

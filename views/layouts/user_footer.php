@@ -1,7 +1,12 @@
         </div> <!-- End content-area -->
         
-        <footer class="app-footer">
+        <footer class="app-footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
             <p style="margin: 0;">&copy; <?= date('Y') ?> NUN Express. All rights reserved.</p>
+            <div class="footer-hotline" style="font-size: 14px; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+                <span class="material-symbols-outlined" style="font-size: 18px;">support_agent</span> 
+                <span>Hotline CSKH:</span>
+                <a href="tel:19009999" style="color: var(--primary); font-weight: 600; text-decoration: none;">1900 9999</a>
+            </div>
         </footer>
     </div> <!-- End main-content -->
     

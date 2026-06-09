@@ -34,6 +34,9 @@ class DriverPenalty
             ");
             $stmt->execute([$driverId, $penaltyType, $amount, $reason, $createdBy]);
 
+            $this->db->prepare("UPDATE users SET violation_count = violation_count + 1 WHERE id = ?")
+                ->execute([$driverId]);
+
             // Deduct penalty from driver wallet
             if ($amount > 0) {
                 $walletModel = new Wallet();
@@ -77,18 +80,10 @@ class DriverPenalty
             $settingModel = new Setting();
             $violationThreshold = (int) $settingModel->get('violation_threshold_for_ban', 5);
 
-            // BẢN VÁ: Cửa sổ trượt - Chỉ đếm các vi phạm thực tế xảy ra trong vòng 3 tháng (90 ngày) gần nhất
-            $stmt = $this->db->prepare("
-                SELECT COUNT(id) as recent_violations 
-                FROM driver_penalties 
-                WHERE driver_id = ? AND created_at >= DATE_SUB(NOW(), INTERVAL 3 MONTH)
-            ");
+            $stmt = $this->db->prepare("SELECT violation_count FROM users WHERE id = ?");
             $stmt->execute([$driverId]);
             $result = $stmt->fetch(PDO::FETCH_ASSOC);
-            $violationCount = (int) ($result['recent_violations'] ?? 0);
-
-            // Đồng bộ lại con số thực tế vào bảng users để phục vụ hiển thị
-            $this->db->prepare("UPDATE users SET violation_count = ? WHERE id = ?")->execute([$violationCount, $driverId]);
+            $violationCount = (int) ($result['violation_count'] ?? 0);
 
             if ($violationCount >= $violationThreshold) {
                 $stmt = $this->db->prepare("

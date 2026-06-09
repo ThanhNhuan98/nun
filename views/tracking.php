@@ -180,8 +180,13 @@
     </div>
 </div>
 
-<footer class="public-footer">
+<footer class="public-footer" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; padding: 20px 5%; max-width: 1200px; margin: 0 auto; width: 100%; box-sizing: border-box;">
     <p style="margin: 0;">&copy; <?= date('Y') ?> NUN Express. All rights reserved.</p>
+    <div class="footer-hotline" style="font-size: 14px; color: var(--text-muted); display: flex; align-items: center; gap: 6px;">
+        <span class="material-symbols-outlined" style="font-size: 18px;">support_agent</span> 
+        <span>Hotline hỗ trợ 24/7:</span>
+        <a href="tel:19009999" style="color: var(--primary); font-weight: 600; text-decoration: none;">1900 9999</a>
+    </div>
 </footer>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

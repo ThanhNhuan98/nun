@@ -163,7 +163,7 @@ class AdminController extends BaseController
 
         $penaltyModel = new DriverPenalty();
         
-        if ($penaltyModel->applyPenalty($driverId, 'admin_penalty', $penaltyAmount, $reason, $this->userId())) {
+        if ($penaltyModel->applyPenalty($driverId, 'traffic_violation', $penaltyAmount, $reason, $this->userId())) {
             $currentBalance = (new Wallet())->getBalance($driverId);
             $desc = "Admin đã " . ($penaltyAmount > 0 ? "phạt tài xế " . number_format($penaltyAmount, 0, ',', '.') . "đ" : "cảnh cáo tài xế (0đ)") . ". Lý do: " . $reason;
             

@@ -165,6 +165,11 @@
             <a href="#">Chính sách bảo mật</a>
             <a href="#">Liên hệ</a>
         </div>
+        <div class="landing-footer-contact" style="text-align: right;">
+            <div style="font-size: 14px; color: var(--text-muted); margin-bottom: 4px;">Tổng đài hỗ trợ 24/7</div>
+            <a href="tel:19009999" style="font-size: 24px; font-weight: 800; color: var(--primary); text-decoration: none; display: flex; align-items: center; gap: 8px; justify-content: flex-end;"><span class="material-symbols-outlined" style="font-size: 28px;">support_agent</span> 1900 9999</a>
+            <div style="font-size: 14px; color: var(--text-muted); margin-top: 4px;">Email: cskh@nunexpress.vn</div>
+        </div>
     </footer>
 
 </body>

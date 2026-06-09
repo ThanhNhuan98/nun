@@ -229,7 +229,7 @@
                                 <?php if ($isPickingUp): ?>
                                     <option value="Người gửi không nghe máy">Người gửi không nghe máy / Không liên lạc được</option>
                                     <option value="Hàng hóa quá khổ / Sai mô tả">Hàng hóa quá khổ / Sai mô tả</option>
-                                    <option value="Phát hiện Hàng cấm">🚨 Phát hiện Hàng cấm / Vi phạm pháp luật</option>
+                                    <option value="banned_goods">🚨 Phát hiện Hàng cấm / Vi phạm pháp luật</option>
                                 <?php else: ?>
                                     <option value="Người nhận không nghe máy">Người nhận không nghe máy / Không liên lạc được</option>
                                     <option value="Người nhận từ chối nhận hàng">Người nhận từ chối nhận hàng</option>
