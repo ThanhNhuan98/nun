@@ -102,7 +102,7 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
             <?php if (!empty($order['driver_id'])): ?>
             <div class="od-card">
                 <h2 class="od-card-title">Tài Xế Phụ Trách</h2>
-                <div class="od-driver-profile">
+                <a href="/profile/<?= $order['driver_id'] ?>" class="od-driver-profile" style="text-decoration: none; color: inherit; display: flex; transition: opacity 0.2s;" onmouseover="this.style.opacity=0.8" onmouseout="this.style.opacity=1" title="Nhấn để xem hồ sơ và đánh giá chi tiết">
                     <?php
                         $dAvatarUrl = app_avatar_url($order['driver_avatar'] ?? '', $order['driver_name'] ?? 'D');
                         $basePath = rtrim(dirname($_SERVER['SCRIPT_NAME']), '/\\');
@@ -112,13 +112,16 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
                     ?>
                     <img src="<?= htmlspecialchars($dAvatarUrl) ?>" alt="Driver">
                     <div>
-                        <div class="od-driver-name"><?= app_e($order['driver_name']) ?></div>
+                        <div class="od-driver-name" style="display: flex; align-items: center; gap: 4px;">
+                            <?= app_e($order['driver_name']) ?>
+                            <span class="material-symbols-outlined" style="font-size: 16px; color: var(--primary);">open_in_new</span>
+                        </div>
                         <div class="od-driver-meta">
-                            ★ <?= app_e($ratingInfo['avg'] ?? '0.0') ?> (<?= app_e($ratingInfo['total'] ?? '0') ?> chuyến) <br> 
+                            ★ <?= app_e($ratingInfo['avg'] ?? '0.0') ?> (<?= app_e($ratingInfo['total'] ?? '0') ?> đánh giá) <br> 
                             Biển số: <?= app_e($order['driver_license_plate'] ?? 'Chưa cập nhật') ?>
                         </div>
                     </div>
-                </div>
+                </a>
                 <div class="od-btn-group">
                     <a href="tel:<?= app_e($order['driver_phone']) ?>" class="od-btn od-btn-outline">
                         <span class="material-symbols-outlined" style="font-size: 18px;">call</span> Gọi điện
@@ -130,6 +133,16 @@ require_once __DIR__ . '/../../layouts/user_header.php'; ?>
 
                 <?php if ($order['status'] === 'completed' && empty($existingReview)): ?>
                     <a href="/user/orders/review/<?= $order['id'] ?>" class="od-btn od-btn-primary" style="margin-top: 12px; width: 100%; box-sizing: border-box;">Đánh giá tài xế</a>
+                <?php elseif (!empty($existingReview)): ?>
+                    <div style="margin-top: 16px; padding: 12px; background: #f8fafc; border: 1px solid var(--border-color); border-radius: 8px;">
+                        <div style="font-size: 13px; font-weight: 600; color: var(--text-main); margin-bottom: 4px;">Đánh giá của bạn:</div>
+                        <div style="color: var(--star-active); font-size: 16px; margin-bottom: 4px;">
+                            <?php for($i = 0; $i < $existingReview['rating']; $i++) echo '★'; ?><?php for($i = 0; $i < 5 - $existingReview['rating']; $i++) echo '<span style="color: var(--star-inactive);">★</span>'; ?>
+                        </div>
+                        <?php if (!empty($existingReview['comment'])): ?>
+                            <div style="font-size: 13px; color: var(--text-muted); font-style: italic;">"<?= app_e($existingReview['comment']) ?>"</div>
+                        <?php endif; ?>
+                    </div>
                 <?php endif; ?>
             </div>
             <?php endif; ?>

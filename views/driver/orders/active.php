@@ -77,7 +77,7 @@
                     ?>
 
                     <script>
-                        if (batchPointsForMap.length === 0) batchPointsForMap = <?= json_encode($pointsData) ?>;
+                        if (batchPointsForMap.length === 0) batchPointsForMap = <?= json_encode($pointsData, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) ?>;
                         if (fallbackDriverLat === 0) fallbackDriverLat = <?= (float)($group[0]['driver_lat'] ?? 0) ?>;
                         if (fallbackDriverLng === 0) fallbackDriverLng = <?= (float)($group[0]['driver_lng'] ?? 0) ?>;
                     </script>
@@ -167,7 +167,7 @@
                                             <div class="rt-title">Lấy hàng: <strong><?= app_e($order['sender_name'] ?? 'Kho/Cửa hàng') ?></strong></div>
                                             <div class="rt-address"><?= app_e($order['pickup_address']) ?></div>
                                             <?php if (!$isPickupDone): ?>
-                                                <a href="https://www.google.com/maps/dir/?api=1&destination=<?= (float)($order['sender_lat'] ?? 0) ?>,<?= (float)($order['sender_lng'] ?? 0) ?>&travelmode=driving" target="_blank" class="rt-link">
+                                                <a href="https://www.google.com/maps/dir/?api=1&destination=<?= (float)($order['sender_lat'] ?? 0) ?>,<?= (float)($order['sender_lng'] ?? 0) ?>&travelmode=driving" target="_blank" rel="noopener noreferrer" class="rt-link">
                                                     <span class="material-symbols-outlined">directions</span> Dẫn đường
                                                 </a>
                                             <?php endif; ?>
@@ -180,7 +180,7 @@
                                             <div class="rt-title">Giao hàng: <strong><?= app_e($order['receiver_name'] ?? 'Khách hàng') ?></strong></div>
                                             <div class="rt-address"><?= app_e($order['delivery_address']) ?></div>
                                             <?php if ($isPickupDone && !$isDeliveryDone): ?>
-                                                <a href="https://www.google.com/maps/dir/?api=1&destination=<?= (float)($order['receiver_lat'] ?? 0) ?>,<?= (float)($order['receiver_lng'] ?? 0) ?>&travelmode=driving" target="_blank" class="rt-link">
+                                                <a href="https://www.google.com/maps/dir/?api=1&destination=<?= (float)($order['receiver_lat'] ?? 0) ?>,<?= (float)($order['receiver_lng'] ?? 0) ?>&travelmode=driving" target="_blank" rel="noopener noreferrer" class="rt-link">
                                                     <span class="material-symbols-outlined">directions</span> Dẫn đường
                                                 </a>
                                             <?php endif; ?>
@@ -212,6 +212,7 @@
                                 </div>
 
                                 <form action="/driver/orders/update-status/<?= $order['id'] ?>" method="POST" enctype="multipart/form-data">
+                                    <?= function_exists('app_csrf_field') ? app_csrf_field() : '' ?>
                                     <input type="hidden" name="redirect_to" value="active">
                                     
                                     <?php if ($status === 'accepted'): ?>

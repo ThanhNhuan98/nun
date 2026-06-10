@@ -42,7 +42,7 @@ class OrderController extends BaseController
                 app_compress_image_before_upload($_FILES['proof_image']['tmp_name']);
             }
 
-            return $this->uploadToCloudinary($_FILES['proof_image'], 'nun_express/proofs', 'proof_' . $orderId . '_' . ($prefix ?: 'delivery') . '_' . time());
+            return $this->uploadToCloudinary($_FILES['proof_image'], 'nun_express/proofs', 'proof_' . $orderId . '_' . ($prefix ?: 'delivery') . '_' . time(), ['type' => 'authenticated']);
         }
         return '';
     }

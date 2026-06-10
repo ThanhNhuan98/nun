@@ -32,6 +32,7 @@ $roleLabel = $targetUser['role'] === 'admin' ? 'Quản trị viên' : ($targetUs
             <?php if ($isOwnProfile): ?>
             <!-- Nút Upload ảnh đại diện tinh gọn -->
             <form action="/profile/update-avatar" method="POST" enctype="multipart/form-data" id="avatarUploadForm">
+                <?= function_exists('app_csrf_field') ? app_csrf_field() : '' ?>
                 <label for="avatar-input" class="profile-avatar-edit-btn" title="Thay đổi ảnh đại diện">
                     <span class="material-symbols-outlined" style="font-size: 16px;">photo_camera</span>
                 </label>
@@ -62,6 +63,9 @@ $roleLabel = $targetUser['role'] === 'admin' ? 'Quản trị viên' : ($targetUs
                 </h3>
                 
                 <form action="<?= $isOwnProfile ? '/profile/update-info' : '#' ?>" method="<?= $isOwnProfile ? 'POST' : 'GET' ?>">
+                    <?php if ($isOwnProfile && function_exists('app_csrf_field')): ?>
+                        <?= app_csrf_field() ?>
+                    <?php endif; ?>
                     
                     <div class="profile-form-group">
                         <label>Email (Tài khoản đăng nhập)</label>
@@ -102,6 +106,7 @@ $roleLabel = $targetUser['role'] === 'admin' ? 'Quản trị viên' : ($targetUs
                 </h3>
                 
                 <form action="/profile/change-password" method="POST">
+                    <?= function_exists('app_csrf_field') ? app_csrf_field() : '' ?>
                     <div class="profile-form-group">
                         <label>Mật khẩu hiện tại</label>
                         <input type="password" name="current_password" required placeholder="Nhập mật khẩu hiện tại..." data-error="Vui lòng nhập mật khẩu hiện tại.">
@@ -144,6 +149,7 @@ $roleLabel = $targetUser['role'] === 'admin' ? 'Quản trị viên' : ($targetUs
                         <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 20px;">Gia nhập đội ngũ NUN Express để tăng thu nhập và làm chủ thời gian của bạn.</p>
                         
                         <form action="/profile/register-driver" method="POST" enctype="multipart/form-data">
+                            <?= function_exists('app_csrf_field') ? app_csrf_field() : '' ?>
                             <div class="profile-form-group">
                                 <label>Biển số xe <span style="color: var(--danger);">*</span></label>
                                 <input type="text" name="license_plate" required placeholder="VD: 59A-123.45" data-error="Vui lòng nhập biển số xe.">

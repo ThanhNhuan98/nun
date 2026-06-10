@@ -594,3 +594,56 @@ if (!function_exists('app_compress_image_before_upload')) {
         return $success;
     }
 }
+
+if (!function_exists('app_cloudinary_signed_url')) {
+    /**
+     * Tự động tạo Cloudinary Signed URL (Đường dẫn có chữ ký).
+     * Mở khóa tạm thời cho các ảnh được bảo vệ (type: authenticated).
+     */
+    function app_cloudinary_signed_url(string $url): string
+    {
+        if (empty($url) || strpos($url, 'res.cloudinary.com') === false) {
+            return $url;
+        }
+
+        // Lấy API Secret từ biến môi trường (Ví dụ: $_ENV['CLOUDINARY_API_SECRET'])
+        // Thay chuỗi YOUR_API_SECRET bằng secret thật của bạn trên Cloudinary Dashboard
+        $apiSecret = $_ENV['CLOUDINARY_API_SECRET'] ?? 'YOUR_API_SECRET';
+        
+        $parts = explode('/image/authenticated/', $url);
+        if (count($parts) < 2) return $url; // Bỏ qua nếu không phải link dạng authenticated
+
+        $pathAndQuery = $parts[1]; // Lấy phần đuôi: v1780890000/nun_express/proofs/file.jpg
+        $parsedUrl = parse_url($pathAndQuery);
+        $pathToSign = $parsedUrl['path'];
+        
+        // Thuật toán Cloudinary: SHA-1 của (Đường dẫn tương đối + API Secret), lấy 8 ký tự đầu
+        $signature = substr(sha1($pathToSign . $apiSecret), 0, 8);
+
+        // Chèn đoạn chữ ký s--...-- vào đúng cấu trúc yêu cầu của Cloudinary
+        return $parts[0] . '/image/authenticated/s--' . $signature . '--/' . $pathAndQuery;
+    }
+}
+
+if (!function_exists('app_csrf_token')) {
+    /**
+     * Sinh mã CSRF Token bảo mật chống giả mạo request.
+     */
+    function app_csrf_token(): string
+    {
+        if (empty($_SESSION['csrf_token'])) {
+            $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+        }
+        return $_SESSION['csrf_token'];
+    }
+}
+
+if (!function_exists('app_csrf_field')) {
+    /**
+     * Sinh thẻ input ẩn chứa CSRF Token để nhúng vào các Form.
+     */
+    function app_csrf_field(): string
+    {
+        return '<input type="hidden" name="csrf_token" value="' . app_csrf_token() . '">';
+    }
+}
